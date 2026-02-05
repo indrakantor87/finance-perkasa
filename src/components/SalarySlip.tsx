@@ -93,10 +93,10 @@ export function SalarySlip({ data, employeeName, role, department, month, year }
               {isMarketing ? (
                 /* Marketing Structure */
                 <>
-                    {data.attendanceAllowance > 0 && (
+                    {(data.attendanceAllowance ?? 0) > 0 && (
                         <tr className="border-b border-black">
                             <td className="p-1 pl-2 border-r-2 border-black">Kehadiran Absensi</td>
-                            <td className="p-1 pr-2 text-right">{formatCurrency(data.attendanceAllowance)}</td>
+                            <td className="p-1 pr-2 text-right">{formatCurrency(data.attendanceAllowance!)}</td>
                         </tr>
                     )}
                     {data.baseSalary > 0 && (
@@ -105,32 +105,32 @@ export function SalarySlip({ data, employeeName, role, department, month, year }
                             <td className="p-1 pr-2 text-right">{formatCurrency(data.baseSalary)}</td>
                         </tr>
                     )}
-                    {data.incentivePsb > 0 && (
+                    {(data.incentivePsb ?? 0) > 0 && (
                         <tr className="border-b border-black">
                             <td className="p-1 pl-2 border-r-2 border-black">
                                 Incentive PSB {data.psbCount ? `(${data.psbCount})` : ''}
                             </td>
-                            <td className="p-1 pr-2 text-right">{formatCurrency(data.incentivePsb)}</td>
+                            <td className="p-1 pr-2 text-right">{formatCurrency(data.incentivePsb!)}</td>
                         </tr>
                     )}
-                    {data.incentiveInstalasi > 0 && (
+                    {(data.incentiveInstalasi ?? 0) > 0 && (
                         <tr className="border-b border-black">
                             <td className="p-1 pl-2 border-r-2 border-black">
                                 Incentive instalasi {data.installationCount5k || data.installationCount10k ? `(${data.installationCount5k || 0} x 5k, ${data.installationCount10k || 0} x 10k)` : ''}
                             </td>
-                            <td className="p-1 pr-2 text-right">{formatCurrency(data.incentiveInstalasi)}</td>
+                            <td className="p-1 pr-2 text-right">{formatCurrency(data.incentiveInstalasi!)}</td>
                         </tr>
                     )}
-                    {data.incentiveTagihan > 0 && (
+                    {(data.incentiveTagihan ?? 0) > 0 && (
                         <tr className="border-b border-black">
                             <td className="p-1 pl-2 border-r-2 border-black">Incentive tagihan</td>
-                            <td className="p-1 pr-2 text-right">{formatCurrency(data.incentiveTagihan)}</td>
+                            <td className="p-1 pr-2 text-right">{formatCurrency(data.incentiveTagihan!)}</td>
                         </tr>
                     )}
-                    {data.umtAmount > 0 && (
+                    {(data.umtAmount ?? 0) > 0 && (
                         <tr className="border-b border-black">
                             <td className="p-1 pl-2 border-r-2 border-black">UMT</td>
-                            <td className="p-1 pr-2 text-right">{formatCurrency(data.umtAmount)}</td>
+                            <td className="p-1 pr-2 text-right">{formatCurrency(data.umtAmount!)}</td>
                         </tr>
                     )}
                     {data.positionAllowance > 0 && (

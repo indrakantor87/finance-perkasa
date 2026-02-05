@@ -364,7 +364,7 @@ export default function SalaryPage() {
             sheet.addImage(ttdLogoId, {
                 tl: { col: col1 + 0.5, row: ttdRowStart + 0.5 }, 
                 br: { col: col1 + 1.5, row: currentRow }
-            });
+            } as any);
         }
 
         sheet.mergeCells(currentRow, col1, currentRow, col2);
@@ -1065,7 +1065,7 @@ export default function SalaryPage() {
                         
                         <InputItem label="Kinerja" value={inputData.performanceBonus} onChange={(v) => updateInput('performanceBonus', v)} />
                         <InputItem label="Kedisiplinan" value={inputData.disciplineBonus} onChange={(v) => updateInput('disciplineBonus', v)} />
-                        <InputItem label="Tunjangan Kesehatan" value={inputData.healthAllowance} onChange={(v) => updateInput('healthAllowance', v)} />
+                        <InputItem label="Tunjangan Kesehatan" value={inputData.healthAllowance ?? 0} onChange={(v) => updateInput('healthAllowance', v)} />
                         <InputItem label="BPJS Ketenagakerjaan" value={inputData.bpjsAllowance} onChange={(v) => updateInput('bpjsAllowance', v)} />
                         <InputItem label="Uang Makan" value={inputData.mealAllowance} onChange={(v) => updateInput('mealAllowance', v)} />
                         <InputItem label="Tunjangan Jabatan" value={inputData.positionAllowance} onChange={(v) => updateInput('positionAllowance', v)} />
