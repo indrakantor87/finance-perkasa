@@ -89,7 +89,7 @@ export function SalarySlip({ data, employeeName, role, department, month, year }
           </thead>
           <tbody>
               <tr className="border-b border-black">
-                  <td className="p-1 pl-2 border-r-2 border-black">Gaji Pokok</td>
+                  <td className="p-1 pl-2 border-r-2 border-black">{isMarketing ? 'Gaji Pokok' : 'Kehadiran Absensi'}</td>
                   <td className="p-1 pr-2 text-right">{formatCurrency(data.baseSalary)}</td>
               </tr>
               

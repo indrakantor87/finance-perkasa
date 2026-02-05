@@ -228,7 +228,8 @@ export default function SalaryPage() {
              currentRow++;
         };
         
-        addRow('Gaji', slip.baseSalary);
+        const isMarketing = slip.employee.department === 'Penjualan' || slip.employee.department === 'Marketing' || slip.employee.role.includes('MARKETING') || (slip.employee.department && slip.employee.department.toLowerCase().includes('pemasaran'));
+        addRow(isMarketing ? 'Gaji' : 'Kehadiran Absensi', slip.baseSalary);
         if (slip.incentivePsb) addRow(`Incentive PSB ${slip.psbCount || ''}`, slip.incentivePsb);
         if (slip.incentiveInstalasi) addRow('Incentive Instalasi', slip.incentiveInstalasi);
         if (slip.incentiveTagihan) addRow('Incentive Tagihan', slip.incentiveTagihan);
@@ -978,7 +979,7 @@ export default function SalaryPage() {
                       </>
                   ) : activeCategory === 'Teknisi' ? (
                       <>
-                        <InputItem label="Gaji" value={inputData.baseSalary} onChange={(v) => updateInput('baseSalary', v)} />
+                        <InputItem label="Kehadiran Absensi" value={inputData.baseSalary} onChange={(v) => updateInput('baseSalary', v)} />
                         
                         <InputItem label="Transport" value={inputData.transportAmount} onChange={(v) => updateInput('transportAmount', v)} />
                         <InputItem label="Uang Makan" value={inputData.mealAllowance} onChange={(v) => updateInput('mealAllowance', v)} />
