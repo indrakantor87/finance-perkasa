@@ -69,6 +69,10 @@ model SalarySlip {
   umtAmount        Float @default(0) // UMT (Uang Makan Transport) for Marketing
   presentDays      Int   @default(0) // Jumlah hari hadir (disimpan untuk UMT)
   
+  // Teknisi Incentives
+  newCustomerIncentive Float @default(0) // Pelanggan Baru User
+  clientFee        Float @default(0) // fee clien 3%
+  
   // Marketing Package Counts
   countHomeLite      Int @default(0)
   countHomeBasic     Int @default(0)

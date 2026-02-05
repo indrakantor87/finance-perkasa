@@ -234,6 +234,8 @@ export default function SalaryPage() {
         if (slip.incentiveTagihan) addRow('Incentive Tagihan', slip.incentiveTagihan);
         if (slip.bpjsAllowance) addRow('Tunjangan Kesehatan/ BPJS Ketenagakerjaan', slip.bpjsAllowance);
         if (slip.umtAmount) addRow('UMT', slip.umtAmount);
+        if (slip.newCustomerIncentive) addRow('Pelanggan Baru User', slip.newCustomerIncentive);
+        if (slip.clientFee) addRow('Fee Clien 3%', slip.clientFee);
         if (slip.transportAmount) addRow('Transport', slip.transportAmount);
         if (slip.mealAllowance) addRow('Uang Makan', slip.mealAllowance);
         if (slip.positionAllowance) addRow('Tunjangan Jabatan', slip.positionAllowance);
@@ -520,7 +522,9 @@ export default function SalaryPage() {
       (newData.incentivePsb || 0) +
       (newData.incentiveInstalasi || 0) +
       (newData.incentiveTagihan || 0) +
-      (newData.umtAmount || 0)
+      (newData.umtAmount || 0) +
+      (newData.newCustomerIncentive || 0) +
+      (newData.clientFee || 0)
 
     const totalDeduction = 
       (newData.arisanDeduction || 0) + 
@@ -971,6 +975,27 @@ export default function SalaryPage() {
                         {/* Overtime Block */}
                         <InputItem label="Overtime + Hari Libur" value={inputData.overtimeAmount} onChange={(v) => updateInput('overtimeAmount', v)} />
                         <InputItem label="Tunjangan Kesehatan/ BPJS Ketenagakerjaan" value={inputData.bpjsAllowance} onChange={(v) => updateInput('bpjsAllowance', v)} />
+                      </>
+                  ) : activeCategory === 'Teknisi' ? (
+                      <>
+                        <InputItem label="Gaji" value={inputData.baseSalary} onChange={(v) => updateInput('baseSalary', v)} />
+                        
+                        <div className="my-4 p-4 bg-orange-50 rounded-lg border border-orange-100">
+                             <h5 className="text-sm font-bold text-orange-800 mb-3">Insentif Teknisi</h5>
+                             <div className="space-y-3">
+                                <InputItem label="Pelanggan Baru User" value={inputData.newCustomerIncentive || 0} onChange={(v) => updateInput('newCustomerIncentive', v)} />
+                                <InputItem label="Fee Clien 3%" value={inputData.clientFee || 0} onChange={(v) => updateInput('clientFee', v)} />
+                             </div>
+                        </div>
+
+                        <InputItem label="Transport" value={inputData.transportAmount} onChange={(v) => updateInput('transportAmount', v)} />
+                        <InputItem label="Uang Makan" value={inputData.mealAllowance} onChange={(v) => updateInput('mealAllowance', v)} />
+                        
+                        <InputItem label="Overtime + Hari Libur" value={inputData.overtimeAmount} onChange={(v) => updateInput('overtimeAmount', v)} />
+                        <InputItem label="Tunjangan Kesehatan/ BPJS Ketenagakerjaan" value={inputData.bpjsAllowance} onChange={(v) => updateInput('bpjsAllowance', v)} />
+
+                        <InputItem label="Kinerja" value={inputData.performanceBonus} onChange={(v) => updateInput('performanceBonus', v)} />
+                        <InputItem label="Kedisiplinan" value={inputData.disciplineBonus} onChange={(v) => updateInput('disciplineBonus', v)} />
                       </>
                   ) : (
                       <>

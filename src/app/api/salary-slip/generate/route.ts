@@ -136,6 +136,10 @@ export async function POST(request: Request) {
     const incentiveTagihan = getVal('incentiveTagihan', 0)
     const umtAmount = getVal('umtAmount', presentDays * 15000)
 
+    // 9. Teknisi Incentives
+    const newCustomerIncentive = getVal('newCustomerIncentive', 0)
+    const clientFee = getVal('clientFee', 0)
+
 
     // --- DEDUCTIONS ---
     
@@ -184,6 +188,8 @@ export async function POST(request: Request) {
       incentiveInstalasi,
       incentiveTagihan,
       umtAmount,
+      newCustomerIncentive,
+      clientFee,
       presentDays,
       countHomeLite,
       countHomeBasic,
