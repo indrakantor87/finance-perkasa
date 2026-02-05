@@ -121,19 +121,7 @@ export function SalarySlip({ data, employeeName, role, department, month, year }
                 </>
               )}
 
-              {/* Teknisi Specifics */}
-              {(data.newCustomerIncentive || 0) > 0 && (
-                  <tr className="border-b border-black">
-                      <td className="p-1 pl-2 border-r-2 border-black">Pelanggan Baru User</td>
-                      <td className="p-1 pr-2 text-right">{formatCurrency(data.newCustomerIncentive!)}</td>
-                  </tr>
-              )}
-              {(data.clientFee || 0) > 0 && (
-                  <tr className="border-b border-black">
-                      <td className="p-1 pl-2 border-r-2 border-black">Fee Clien 3%</td>
-                      <td className="p-1 pr-2 text-right">{formatCurrency(data.clientFee!)}</td>
-                  </tr>
-              )}
+              {/* Teknisi Specifics removed as per user request */}
 
               {/* Non-Marketing Specifics */}
               {!isMarketing && (

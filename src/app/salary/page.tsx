@@ -980,14 +980,6 @@ export default function SalaryPage() {
                       <>
                         <InputItem label="Gaji" value={inputData.baseSalary} onChange={(v) => updateInput('baseSalary', v)} />
                         
-                        <div className="my-4 p-4 bg-orange-50 rounded-lg border border-orange-100">
-                             <h5 className="text-sm font-bold text-orange-800 mb-3">Insentif Teknisi</h5>
-                             <div className="space-y-3">
-                                <InputItem label="Pelanggan Baru User" value={inputData.newCustomerIncentive || 0} onChange={(v) => updateInput('newCustomerIncentive', v)} />
-                                <InputItem label="Fee Clien 3%" value={inputData.clientFee || 0} onChange={(v) => updateInput('clientFee', v)} />
-                             </div>
-                        </div>
-
                         <InputItem label="Transport" value={inputData.transportAmount} onChange={(v) => updateInput('transportAmount', v)} />
                         <InputItem label="Uang Makan" value={inputData.mealAllowance} onChange={(v) => updateInput('mealAllowance', v)} />
                         
