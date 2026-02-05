@@ -596,7 +596,7 @@ export default function SalaryPage() {
             ))}
           </div>
 
-          {activeCategory === 'Penjualan' ? (
+          {['Penjualan', 'Teknisi', 'Support Management', 'Management'].includes(activeCategory) ? (
             <>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <div>
