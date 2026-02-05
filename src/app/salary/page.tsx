@@ -7,8 +7,9 @@ import { SalarySlip, type SalarySlipData } from '@/components/SalarySlip'
 import { 
   Users, Calendar, Clock, FileText, Settings, LogOut, 
   LayoutDashboard, Database, UserCheck, Banknote, 
-  CreditCard, FileCheck, Bell, Edit, Printer, X, Save, Trash2
+  CreditCard, FileCheck, Bell, Edit, Printer, X, Save, Trash2, FileSpreadsheet
 } from 'lucide-react';
+import ExcelJS from 'exceljs';
 
 interface SlipHistoryItem extends SalarySlipData {
   id: string
@@ -95,6 +96,236 @@ export default function SalaryPage() {
         return [...prev, id]
       }
     })
+  }
+
+  const handleExportExcel = async () => {
+    const slipsToExport = selectedSlipIds.length > 0 
+      ? slips.filter(s => selectedSlipIds.includes(s.id))
+      : slips;
+    
+    if (slipsToExport.length === 0) {
+      alert('Tidak ada data untuk diexport');
+      return;
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Slip Gaji');
+
+    // Fetch images
+    let headerLogoId: number | null = null;
+    let ttdLogoId: number | null = null;
+
+    try {
+        const headerResponse = await fetch('/images/header-banner.png');
+        if (headerResponse.ok) {
+            const headerBuffer = await headerResponse.arrayBuffer();
+            headerLogoId = workbook.addImage({
+                buffer: headerBuffer,
+                extension: 'png',
+            });
+        }
+
+        const ttdResponse = await fetch('/images/ttd.png');
+        if (ttdResponse.ok) {
+            const ttdBuffer = await ttdResponse.arrayBuffer();
+            ttdLogoId = workbook.addImage({
+                buffer: ttdBuffer,
+                extension: 'png',
+            });
+        }
+    } catch (e) {
+        console.error("Error loading images", e);
+    }
+
+    let colOffset = 1;
+
+    for (const slip of slipsToExport) {
+        const col1 = colOffset;
+        const col2 = colOffset + 1;
+
+        // Set width
+        sheet.getColumn(col1).width = 30;
+        sheet.getColumn(col2).width = 20;
+        // Set spacer column width
+        sheet.getColumn(colOffset + 2).width = 2;
+
+        // --- Header Image ---
+        sheet.mergeCells(1, col1, 4, col2);
+        if (headerLogoId !== null) {
+            sheet.addImage(headerLogoId, {
+                tl: { col: col1 - 1, row: 0 },
+                br: { col: col2, row: 4 }
+            });
+        }
+
+        // --- Title ---
+        const titleRow = 5;
+        sheet.mergeCells(titleRow, col1, titleRow, col2);
+        const titleCell = sheet.getCell(titleRow, col1);
+        titleCell.value = 'SLIP GAJI';
+        titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+        titleCell.font = { bold: true, size: 12, name: 'Times New Roman' };
+        titleCell.border = { bottom: { style: 'double' } };
+
+        // --- Info Karyawan ---
+        let currentRow = 7;
+        const addInfo = (label: string, value: string) => {
+            const c1 = sheet.getCell(currentRow, col1);
+            c1.value = label;
+            c1.font = { name: 'Times New Roman', bold: true };
+            
+            const c2 = sheet.getCell(currentRow, col2);
+            c2.value = `: ${value}`;
+            c2.font = { name: 'Times New Roman', bold: true };
+            
+            currentRow++;
+        };
+
+        const monthName = new Date(slip.year, slip.month - 1).toLocaleString('id-ID', { month: 'long' }).toUpperCase();
+        addInfo('Bulan', monthName);
+        addInfo('Nama', slip.employee.name);
+        addInfo('Bagian', slip.employee.role);
+
+        currentRow++; // Spacer
+
+        // --- Table Header ---
+        const headerRow = currentRow;
+        const h1 = sheet.getCell(headerRow, col1);
+        h1.value = 'Penghasilan';
+        h1.alignment = { horizontal: 'center' };
+        h1.font = { bold: true, name: 'Times New Roman' };
+        h1.border = { top: { style: 'medium' }, bottom: { style: 'medium' }, left: { style: 'medium' }, right: { style: 'medium' } };
+
+        const h2 = sheet.getCell(headerRow, col2);
+        h2.value = 'Rincian';
+        h2.alignment = { horizontal: 'center' };
+        h2.font = { bold: true, name: 'Times New Roman' };
+        h2.border = { top: { style: 'medium' }, bottom: { style: 'medium' }, left: { style: 'medium' }, right: { style: 'medium' } };
+
+        currentRow++;
+
+        // --- Table Content ---
+        const addRow = (label: string, value: number | string | null | undefined, isCurrency = true) => {
+             const c1 = sheet.getCell(currentRow, col1);
+             c1.value = label;
+             c1.font = { name: 'Times New Roman' };
+             c1.border = { left: { style: 'medium' }, right: { style: 'medium' } };
+
+             const c2 = sheet.getCell(currentRow, col2);
+             if (value !== null && value !== undefined) {
+                 c2.value = value;
+                 if (typeof value === 'number' && isCurrency) {
+                    c2.numFmt = '"Rp" #,##0';
+                 }
+             }
+             c2.font = { name: 'Times New Roman' };
+             c2.border = { left: { style: 'medium' }, right: { style: 'medium' } };
+             
+             currentRow++;
+        };
+        
+        addRow('Gaji', slip.baseSalary);
+        if (slip.incentivePsb) addRow(`Incentive PSB ${slip.psbCount || ''}`, slip.incentivePsb);
+        if (slip.incentiveInstalasi) addRow('Incentive Instalasi', slip.incentiveInstalasi);
+        if (slip.incentiveTagihan) addRow('Incentive Tagihan', slip.incentiveTagihan);
+        if ((slip as any).healthAllowance) addRow('Tunjangan Kesehatan', (slip as any).healthAllowance);
+        if (slip.umtAmount) addRow('UMT', slip.umtAmount);
+        if (slip.transportAmount) addRow('Transport', slip.transportAmount);
+        if (slip.mealAllowance) addRow('Uang Makan', slip.mealAllowance);
+        if (slip.positionAllowance) addRow('Tunjangan Jabatan', slip.positionAllowance);
+        if (slip.performanceBonus) addRow('Bonus Kinerja', slip.performanceBonus);
+        if (slip.disciplineBonus) addRow('Bonus Disiplin', slip.disciplineBonus);
+
+        // NB Row
+        const nbRow = currentRow;
+        sheet.mergeCells(nbRow, col1, nbRow, col2);
+        const nbCell = sheet.getCell(nbRow, col1);
+        nbCell.value = 'NB : ...'; 
+        nbCell.font = { name: 'Times New Roman', bold: true, size: 10 };
+        nbCell.border = { top: { style: 'medium' }, bottom: { style: 'medium' }, left: { style: 'medium' }, right: { style: 'medium' } };
+        nbCell.alignment = { wrapText: true };
+        currentRow++;
+
+        // JUMLAH
+        const jumlahRow = currentRow;
+        const j1 = sheet.getCell(jumlahRow, col1);
+        j1.value = 'JUMLAH';
+        j1.font = { bold: true, name: 'Times New Roman' };
+        j1.border = { left: { style: 'medium' }, bottom: { style: 'thin' }, top: { style: 'medium' } };
+
+        const j2 = sheet.getCell(jumlahRow, col2);
+        j2.value = slip.totalIncome;
+        j2.numFmt = '"Rp" #,##0';
+        j2.font = { bold: true, name: 'Times New Roman' };
+        j2.border = { right: { style: 'medium' }, bottom: { style: 'thin' }, top: { style: 'medium' }, left: {style: 'medium'} };
+        currentRow++;
+
+        // BON
+        const bonRow = currentRow;
+        const b1 = sheet.getCell(bonRow, col1);
+        b1.value = 'BON';
+        b1.font = { bold: true, name: 'Times New Roman' };
+        b1.border = { left: { style: 'medium' }, bottom: { style: 'thin' } };
+
+        const b2 = sheet.getCell(bonRow, col2);
+        b2.value = slip.totalDeduction || 0;
+        b2.numFmt = '"Rp" #,##0';
+        b2.font = { bold: true, name: 'Times New Roman' };
+        b2.border = { right: { style: 'medium' }, bottom: { style: 'thin' }, left: {style: 'medium'} };
+        currentRow++;
+
+        // TOTAL DITERIMA
+        const totalRow = currentRow;
+        const t1 = sheet.getCell(totalRow, col1);
+        t1.value = 'TOTAL DITERIMA';
+        t1.font = { bold: true, name: 'Times New Roman' };
+        t1.border = { left: { style: 'medium' }, bottom: { style: 'medium' } };
+
+        const t2 = sheet.getCell(totalRow, col2);
+        t2.value = slip.netSalary;
+        t2.numFmt = '"Rp" #,##0';
+        t2.font = { bold: true, name: 'Times New Roman' };
+        t2.border = { right: { style: 'medium' }, bottom: { style: 'medium' }, left: {style: 'medium'} };
+        currentRow++;
+
+        // TTD Section
+        currentRow++; 
+        const ttdRowStart = currentRow;
+        
+        sheet.mergeCells(ttdRowStart, col1, ttdRowStart, col2);
+        const ttdTitle = sheet.getCell(ttdRowStart, col1);
+        ttdTitle.value = 'DIREKTUR';
+        ttdTitle.alignment = { horizontal: 'center' };
+        ttdTitle.font = { bold: true, name: 'Times New Roman' };
+
+        currentRow += 4;
+        
+        if (ttdLogoId !== null) {
+            sheet.addImage(ttdLogoId, {
+                tl: { col: col1 + 0.5, row: ttdRowStart + 0.5 }, 
+                br: { col: col1 + 1.5, row: currentRow }
+            });
+        }
+
+        sheet.mergeCells(currentRow, col1, currentRow, col2);
+        const ttdName = sheet.getCell(currentRow, col1);
+        ttdName.value = 'DARNO';
+        ttdName.alignment = { horizontal: 'center' };
+        ttdName.font = { bold: true, name: 'Times New Roman', underline: true };
+
+        // Move to next slip
+        colOffset += 3;
+    }
+
+    // Write file
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `Slip_Gaji_Export_${new Date().getTime()}.xlsx`;
+    anchor.click();
+    window.URL.revokeObjectURL(url);
   }
 
   const handleBulkPrint = () => {
@@ -422,6 +653,13 @@ export default function SalaryPage() {
              <h2 className="text-lg font-bold text-gray-800">Riwayat Slip Gaji</h2>
              <div className="flex items-center gap-4">
                  <button 
+                    onClick={handleExportExcel}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm rounded transition-colors font-medium bg-green-600 text-white hover:bg-green-700 shadow-sm"
+                 >
+                    <FileSpreadsheet size={16} />
+                    <span>Export Excel</span>
+                 </button>
+                 <button 
                     onClick={handleBulkPrint}
                     disabled={selectedSlipIds.length === 0}
                     className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded transition-colors font-medium ${selectedSlipIds.length > 0 ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
@@ -475,7 +713,7 @@ export default function SalaryPage() {
                             className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                         />
                       </td>
-                      <td className="px-6 py-3 text-gray-500">
+                      <td className="px-6 py-3 text-gray-900 font-medium">
                         {new Date(slip.createdAt).toLocaleDateString('id-ID')}
                       </td>
                       <td className="px-6 py-3 font-medium text-gray-900">{slip.employee.name}</td>

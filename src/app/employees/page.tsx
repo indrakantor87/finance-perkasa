@@ -6,8 +6,9 @@ import UserMenu from '@/components/UserMenu'
 import { 
   Users, Calendar, Clock, FileText, Settings, LogOut, 
   LayoutDashboard, Database, UserCheck, Banknote, 
-  CreditCard, FileCheck, Bell, Plus, Edit, Trash2, Search, X
+  CreditCard, FileCheck, Bell, Plus, Edit, Trash2, Search, X, FileSpreadsheet
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 interface Employee {
   id: string
@@ -220,6 +221,49 @@ export default function EmployeesPage() {
     return matchesSearch && matchesRole && matchesStatus
   })
 
+  const handleExportExcel = async () => {
+    try {
+      const res = await fetch('/api/employees') // Fetch all employees without filter
+      if (!res.ok) throw new Error('Failed to fetch data')
+      
+      const data = await res.json()
+      
+      // Transform data for Excel
+      const excelData = data.map((emp: Employee, index: number) => ({
+        'No': index + 1,
+        'Nama Lengkap': emp.name,
+        'Jabatan': emp.role,
+        'Divisi': emp.department,
+        'Status': emp.status,
+        'Tanggal Bergabung': new Date(emp.joinDate).toLocaleDateString('id-ID'),
+        'Gaji Pokok': emp.baseSalary,
+        'Tunjangan Jabatan': emp.positionAllowance
+      }))
+
+      const wb = XLSX.utils.book_new()
+      const ws = XLSX.utils.json_to_sheet(excelData)
+
+      // Auto-width columns
+      const colWidths = [
+        { wch: 5 },  // No
+        { wch: 25 }, // Nama
+        { wch: 20 }, // Jabatan
+        { wch: 20 }, // Divisi
+        { wch: 15 }, // Status
+        { wch: 20 }, // Join Date
+        { wch: 15 }, // Gaji
+        { wch: 15 }  // Tunjangan
+      ]
+      ws['!cols'] = colWidths
+
+      XLSX.utils.book_append_sheet(wb, ws, 'Data Karyawan')
+      XLSX.writeFile(wb, `Data_Karyawan_PSB_Perkasa_${new Date().toISOString().split('T')[0]}.xlsx`)
+    } catch (err) {
+      console.error('Export failed:', err)
+      alert('Gagal mengexport data ke Excel')
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
       {/* Header */}
@@ -257,12 +301,20 @@ export default function EmployeesPage() {
       <main className="p-6 max-w-6xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-800">Data Karyawan</h1>
-          <button 
-            onClick={() => { resetForm(); setShowModal(true) }}
-            className="bg-[#6b2c91] text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-purple-800 transition-colors"
-          >
-            <Plus size={18} /> Tambah
-          </button>
+          <div className="flex gap-2">
+            <button 
+              onClick={handleExportExcel}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-green-700 transition-colors"
+            >
+              <FileSpreadsheet size={18} /> Export Excel
+            </button>
+            <button 
+              onClick={() => { resetForm(); setShowModal(true) }}
+              className="bg-[#6b2c91] text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-purple-800 transition-colors"
+            >
+              <Plus size={18} /> Tambah
+            </button>
+          </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
@@ -287,37 +339,17 @@ export default function EmployeesPage() {
           <div className="p-4 border-b border-gray-100 bg-gray-50 flex flex-col md:flex-row gap-4 justify-between items-center">
             <div className="flex flex-1 gap-4 items-center flex-wrap">
               <div className="relative w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600 w-4 h-4" />
                 <input 
                   type="text"
                   placeholder="Cari nama karyawan..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                  className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm placeholder-gray-500 text-gray-900"
                 />
               </div>
 
-              <select 
-                value={filterRole}
-                onChange={(e) => setFilterRole(e.target.value)}
-                className="p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
-              >
-                <option value="">Semua Jabatan</option>
-                {uniqueRoles.map(role => (
-                  <option key={role} value={role}>{role}</option>
-                ))}
-              </select>
-
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
-              >
-                <option value="">Semua Status</option>
-                {uniqueStatuses.map(status => (
-                  <option key={status} value={status}>{status}</option>
-                ))}
-              </select>
+{/* Filters removed */}
             </div>
             
             <div className="text-sm text-gray-500 whitespace-nowrap">

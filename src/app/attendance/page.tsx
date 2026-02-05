@@ -116,40 +116,229 @@ export default function AttendancePage() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setImportFile(e.target.files[0])
-      parseCSV(e.target.files[0])
+      const file = e.target.files[0]
+      setImportFile(file)
+      parseFile(file)
     }
   }
 
-  const parseCSV = (file: File) => {
+  const parseFile = (file: File) => {
+    const fileBaseName = (file.name || '').replace(/\.[^/.]+$/, '')
+    const parseWorkbook = (workbook: XLSX.WorkBook) => {
+      const sheetName = workbook.SheetNames[0]
+      if (!sheetName) return false
+      const sheet = workbook.Sheets[sheetName]
+      const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false })
+      if (!jsonData || jsonData.length < 2) return false
+      const fileBase = (fileBaseName || '').trim()
+      const normalize = (s: any) => s?.toString().toLowerCase().trim()
+      const headers = (jsonData[0] as string[]).map(h => normalize(h))
+      const nameIdx = headers.findIndex(h => h.includes('nama') || h.includes('name') || h.includes('user') || h.includes('pegawai'))
+      const dateIdx = headers.findIndex(h => h.includes('tanggal') || h.includes('date') || h.includes('tgl'))
+      const inIdx = headers.findIndex(h => h.includes('masuk') || h.includes('in') || h.includes('check-in') || h.includes('jam masuk'))
+      const outIdx = headers.findIndex(h => h.includes('pulang') || h.includes('out') || h.includes('keluar') || h.includes('check-out') || h.includes('jam pulang'))
+      let timeIdx = headers.findIndex(h => h.includes('time') || h.includes('waktu') || h.includes('scan') || h.includes('clock') || h.includes('jam'))
+      const stateIdx = headers.findIndex(h => h.includes('state') || h.includes('status') || h.includes('event'))
+      if (nameIdx === -1 && !fileBase) {
+        alert('Kolom Nama tidak ditemukan dan tidak bisa menebak dari nama file.')
+        return false
+      }
+      const normName = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim()
+      const matchEmployee = (raw: any) => {
+        const n = normName(raw?.toString() || '')
+        if (!n) return null
+        const exact = employees.find(emp => normName(emp.name) === n)
+        if (exact) return exact
+        const candidates = employees.filter(emp => normName(emp.name).includes(n) || n.includes(normName(emp.name)))
+        if (candidates.length === 1) return candidates[0]
+        return null
+      }
+      const toDateString = (val: any, fallbackFromTime?: Date) => {
+        if (!val && fallbackFromTime) return fallbackFromTime.toISOString().split('T')[0]
+        if (val instanceof Date) return val.toISOString().split('T')[0]
+        if (typeof val === 'number') {
+          const d = new Date(Math.round((val - 25569) * 86400 * 1000))
+          return d.toISOString().split('T')[0]
+        }
+        const s = val?.toString()?.trim() || ''
+        const match = s.match(/(\d{4}-\d{2}-\d{2})/)
+        if (match) return match[1]
+        const dmMatch = s.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/)
+        if (dmMatch) {
+          let dd = dmMatch[1].padStart(2, '0')
+          let mm = dmMatch[2].padStart(2, '0')
+          let yyyy = dmMatch[3].length === 2 ? `20${dmMatch[3]}` : dmMatch[3]
+          return `${yyyy}-${mm}-${dd}`
+        }
+        return s
+      }
+      const toTimeString = (val: any) => {
+        if (!val) return null
+        if (val instanceof Date) {
+          const h = val.getHours().toString().padStart(2, '0')
+          const m = val.getMinutes().toString().padStart(2, '0')
+          return `${h}:${m}`
+        }
+        if (typeof val === 'number') {
+          const totalSeconds = Math.round(val * 86400)
+          const hours = Math.floor(totalSeconds / 3600)
+          const minutes = Math.floor((totalSeconds % 3600) / 60)
+          return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+        }
+        const s = val.toString().trim().replace('.', ':')
+        const m = s.match(/(\d{1,2}):(\d{2})/)
+        if (m) {
+          const hh = m[1].padStart(2, '0')
+          const mm = m[2].padStart(2, '0')
+          return `${hh}:${mm}`
+        }
+        const m2 = s.match(/(\d{1,2})\.(\d{2})/)
+        if (m2) {
+          const hh = m2[1].padStart(2, '0')
+          const mm = m2[2].padStart(2, '0')
+          return `${hh}:${mm}`
+        }
+        // Jika string hanya tanggal (dd/mm/yyyy atau yyyy-mm-dd), jangan menginterpretasi sebagai waktu
+        const dmOnly = s.match(/^\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}$/) || s.match(/^\d{4}-\d{2}-\d{2}$/)
+        if (dmOnly) return null
+        return null
+      }
+      if (timeIdx === -1) {
+        const sampleRows = jsonData.slice(1, Math.min(jsonData.length, 21)) as any[]
+        let bestIdx = -1
+        let bestScore = 0
+        const maxLen = Math.max(...sampleRows.map(r => Array.isArray(r) ? r.length : 0))
+        for (let ci = 0; ci < maxLen; ci++) {
+          let score = 0
+          for (const row of sampleRows) {
+            const val = row?.[ci]
+            const t = toTimeString(val)
+            if (t) score++
+          }
+          if (score > bestScore) {
+            bestScore = score
+            bestIdx = ci
+          }
+        }
+        if (bestScore >= 3) timeIdx = bestIdx
+      }
+      let parsedData: any[] = []
+      if (inIdx !== -1 || outIdx !== -1) {
+        parsedData = jsonData.slice(1).map((row: any, index) => {
+          const name = nameIdx !== -1 ? row[nameIdx] : fileBase
+          if (!name) return null
+          const emp = matchEmployee(name)
+          let dateStr = toDateString(dateIdx !== -1 ? row[dateIdx] : (row[timeIdx] ?? null))
+          const timeIn = toTimeString(row[inIdx])
+          const timeOut = toTimeString(row[outIdx])
+          return {
+            id: index,
+            employeeName: name,
+            employeeId: emp?.id || null,
+            date: dateStr,
+            checkIn: timeIn ? `${dateStr}T${timeIn}:00` : null,
+            checkOut: timeOut ? `${dateStr}T${timeOut}:00` : null,
+            status: 'PRESENT',
+            isValid: !!emp
+          }
+        }).filter(Boolean)
+      } else if (timeIdx !== -1) {
+        const groups: Record<string, { name: string, empId: string | null, date: string, times: string[], inTimes: string[], outTimes: string[], hasOT: boolean }> = {}
+        jsonData.slice(1).forEach((row: any) => {
+          const name = nameIdx !== -1 ? row[nameIdx] : fileBase
+          if (!name) return
+          const emp = matchEmployee(name)
+          const timeRaw = row[timeIdx]
+          let timeDate: Date | undefined
+          if (typeof timeRaw === 'number') {
+            const millis = Math.round((timeRaw - 25569) * 86400 * 1000)
+            timeDate = new Date(millis)
+          }
+          const dateStr = toDateString(dateIdx !== -1 ? row[dateIdx] : (timeDate || timeRaw))
+          const timeStr = toTimeString(timeDate || timeRaw)
+          if (!dateStr) return
+          const key = `${normName(name)}|${dateStr}`
+          if (!groups[key]) {
+            groups[key] = { name, empId: emp?.id || null, date: dateStr, times: [], inTimes: [], outTimes: [], hasOT: false }
+          }
+          const stateRaw = stateIdx !== -1 ? (row[stateIdx]?.toString()?.toLowerCase() || '') : ''
+          const isIn = stateRaw.includes('c/in') || stateRaw.includes('check-in') || stateRaw.includes('in') || stateRaw.includes('overtime in')
+          const isOut = stateRaw.includes('c/out') || stateRaw.includes('check-out') || stateRaw.includes('out') || stateRaw.includes('overtime out')
+          const isOT = stateRaw.includes('overtime') || stateRaw.includes('lembur')
+          if (timeStr) {
+            if (isIn) groups[key].inTimes.push(timeStr)
+            else if (isOut) groups[key].outTimes.push(timeStr)
+            else groups[key].times.push(timeStr)
+          }
+          if (isOT) groups[key].hasOT = true
+        })
+        parsedData = Object.values(groups).map((g, idx) => {
+          const toMinutes = (t: string) => {
+            const [h, m] = t.split(':').map(Number)
+            return h * 60 + m
+          }
+          const sorted = [...g.times].filter(Boolean).map(t => ({ t, s: toMinutes(t) })).sort((a, b) => a.s - b.s)
+          const sortedIn = [...g.inTimes].filter(Boolean).map(t => ({ t, s: toMinutes(t) })).sort((a, b) => a.s - b.s)
+          const sortedOut = [...g.outTimes].filter(Boolean).map(t => ({ t, s: toMinutes(t) })).sort((a, b) => a.s - b.s)
+          const first = (sortedIn[0]?.t || sorted[0]?.t) || null
+          const last = (sortedOut[sortedOut.length - 1]?.t || sorted[sorted.length - 1]?.t) || null
+          return {
+            id: idx,
+            employeeName: g.name,
+            employeeId: g.empId,
+            date: g.date,
+            checkIn: first ? `${g.date}T${first}:00` : null,
+            checkOut: last && last !== first ? `${g.date}T${last}:00` : null,
+            status: 'PRESENT',
+            isValid: !!g.empId
+          }
+        })
+      } else {
+        alert('Kolom waktu tidak ditemukan. Gunakan template yang disediakan.')
+        return false
+      }
+      setImportPreview(parsedData)
+      return parsedData.length > 0
+    }
     const reader = new FileReader()
     reader.onload = (e) => {
-      const text = e.target?.result as string
-      const lines = text.split('\n')
-      // Asumsi format CSV: Nama, Tanggal(YYYY-MM-DD), Jam Masuk(HH:mm), Jam Pulang(HH:mm)
-      // Skip header row 0
-      const parsedData = lines.slice(1).map((line, index) => {
-        const [name, date, checkIn, checkOut] = line.split(',').map(item => item?.trim())
-        if (!name || !date) return null
-
-        // Cari employee ID berdasarkan nama (case insensitive)
-        const matchedEmployee = employees.find(emp => emp.name.toLowerCase() === name.toLowerCase())
-        
-        return {
-          id: index,
-          employeeName: name,
-          employeeId: matchedEmployee?.id || null, // Jika null, user harus manual fix atau error
-          date,
-          checkIn: checkIn ? `${date}T${checkIn}:00` : null,
-          checkOut: checkOut ? `${date}T${checkOut}:00` : null,
-          status: 'PRESENT',
-          isValid: !!matchedEmployee
+      try {
+        const data = e.target?.result as ArrayBuffer
+        const workbook = XLSX.read(data, { type: 'array' })
+        const ok = parseWorkbook(workbook)
+        if (!ok) {
+          const reader2 = new FileReader()
+          reader2.onload = (ev) => {
+            try {
+              const data2 = ev.target?.result as string
+              const workbook2 = XLSX.read(data2, { type: 'binary' })
+              const ok2 = parseWorkbook(workbook2)
+              if (!ok2) {
+                alert('File kosong atau format salah')
+              }
+            } catch (err2) {
+              console.error('Error parsing file:', err2)
+              alert('Gagal membaca file. Pastikan format Excel benar.')
+            }
+          }
+          reader2.readAsBinaryString(file)
         }
-      }).filter(Boolean)
-      
-      setImportPreview(parsedData)
+      } catch (error) {
+        console.error('Error parsing file:', error)
+        alert('Gagal membaca file. Pastikan format Excel benar.')
+      }
     }
-    reader.readAsText(file)
+    reader.readAsArrayBuffer(file)
+  }
+
+  const downloadTemplate = () => {
+    const ws = XLSX.utils.json_to_sheet([
+        { 'Nama': 'Contoh Nama', 'Tanggal': '2024-01-01', 'Jam Masuk': '08:00', 'Jam Pulang': '17:00' },
+        { 'Nama': 'Budi Santoso', 'Tanggal': '2024-01-01', 'Jam Masuk': '08:05', 'Jam Pulang': '17:10' }
+    ])
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, "Template")
+    XLSX.writeFile(wb, "Template_Import_Absensi.xlsx")
   }
 
   const handleImportSubmit = async () => {
@@ -255,14 +444,14 @@ export default function AttendancePage() {
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium placeholder:text-gray-700"
                   />
                   <span className="text-gray-400">-</span>
                   <input
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium placeholder:text-gray-700"
                   />
                 </div>
 
@@ -299,7 +488,7 @@ export default function AttendancePage() {
                   placeholder="Cari nama karyawan..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  className="w-full pl-9 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-900 font-medium placeholder:text-gray-600"
                 />
               </div>
           </div>
@@ -326,7 +515,7 @@ export default function AttendancePage() {
                 ) : (
                   filteredAttendances.map((att) => (
                     <tr key={att.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-3 whitespace-nowrap">
+                      <td className="px-6 py-3 whitespace-nowrap text-gray-900 font-medium">
                         {new Date(att.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
                       </td>
                       <td className="px-6 py-3 font-medium text-gray-900">{att.employee.name}</td>
@@ -334,20 +523,29 @@ export default function AttendancePage() {
                       <td className="px-6 py-3 text-green-600 font-medium">
                         {att.checkIn ? new Date(att.checkIn).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}
                       </td>
-                      <td className="px-6 py-3 text-red-600 font-medium">
+                      <td className="px-6 py-3 text-green-600 font-medium">
                         {att.checkOut ? new Date(att.checkOut).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}
                       </td>
                       <td className="px-6 py-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          att.status === 'PRESENT' ? 'bg-green-100 text-green-700' :
-                          att.status === 'SICK' ? 'bg-yellow-100 text-yellow-700' :
-                          att.status === 'PERMIT' ? 'bg-blue-100 text-blue-700' :
-                          'bg-red-100 text-red-700'
-                        }`}>
-                          {att.status === 'PRESENT' ? 'Hadir' : att.status}
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            (!att.checkIn && !att.checkOut)
+                              ? 'bg-red-100 text-red-700'
+                              : (att.checkIn && att.checkOut)
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-yellow-100 text-yellow-700'
+                          }`}
+                        >
+                          {(!att.checkIn && !att.checkOut)
+                            ? 'Alfa'
+                            : (att.checkIn && att.checkOut)
+                            ? 'Valid'
+                            : 'Invalid'}
                         </span>
                       </td>
-                      <td className="px-6 py-3 font-medium">{att.overtimeHours > 0 ? `${att.overtimeHours} Jam` : '-'}</td>
+                      <td className={`px-6 py-3 ${att.overtimeHours > 0 ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
+                        {att.overtimeHours > 0 ? `${att.overtimeHours} Jam` : '-'}
+                      </td>
                     </tr>
                   ))
                 )}
@@ -372,11 +570,11 @@ export default function AttendancePage() {
             
             <div className="p-6 overflow-y-auto flex-1">
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Upload File CSV</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Upload File</label>
                 <div className="flex items-center gap-4">
                   <input 
                     type="file" 
-                    accept=".csv"
+                    accept=".csv, .xlsx, .xls"
                     onChange={handleFileChange}
                     className="block w-full text-sm text-gray-500
                       file:mr-4 file:py-2 file:px-4
@@ -388,14 +586,14 @@ export default function AttendancePage() {
                   />
                   <a 
                     href="#" 
-                    onClick={(e) => { e.preventDefault(); /* Logic download template */ }}
+                    onClick={(e) => { e.preventDefault(); downloadTemplate(); }}
                     className="text-sm text-blue-600 hover:underline whitespace-nowrap"
                   >
                     Download Template
                   </a>
                 </div>
                 <p className="mt-2 text-xs text-gray-500">
-                  Format: Nama Karyawan, Tanggal (YYYY-MM-DD), Jam Masuk (HH:MM), Jam Pulang (HH:MM)
+                  Format Excel/CSV: Nama, Tanggal (YYYY-MM-DD), Jam Masuk (HH:MM), Jam Pulang (HH:MM)
                 </p>
               </div>
 
@@ -421,11 +619,11 @@ export default function AttendancePage() {
                           <tr key={idx} className={item.isValid ? 'bg-white' : 'bg-red-50'}>
                             <td className="px-4 py-2 flex items-center gap-2">
                               {item.isValid ? <CheckCircle size={14} className="text-green-500" /> : <AlertCircle size={14} className="text-red-500" />}
-                              <span className={item.isValid ? '' : 'text-red-600 font-medium'}>{item.employeeName}</span>
+                              <span className={item.isValid ? 'text-gray-900 font-medium' : 'text-red-600 font-medium'}>{item.employeeName}</span>
                             </td>
-                            <td className="px-4 py-2">{item.date}</td>
-                            <td className="px-4 py-2">{item.checkIn ? item.checkIn.split('T')[1].substring(0, 5) : '-'}</td>
-                            <td className="px-4 py-2">{item.checkOut ? item.checkOut.split('T')[1].substring(0, 5) : '-'}</td>
+                            <td className="px-4 py-2 text-gray-900 font-medium">{item.date}</td>
+                            <td className="px-4 py-2 text-gray-900 font-medium">{item.checkIn ? item.checkIn.split('T')[1].substring(0, 5) : '-'}</td>
+                            <td className="px-4 py-2 text-gray-900 font-medium">{item.checkOut ? item.checkOut.split('T')[1].substring(0, 5) : '-'}</td>
                             <td className="px-4 py-2">
                               {item.isValid ? (
                                 <span className="text-green-600 text-xs">Ready</span>
@@ -451,7 +649,7 @@ export default function AttendancePage() {
               </button>
               <button 
                 onClick={handleImportSubmit}
-                disabled={isImporting || importPreview.filter(i => i.isValid).length === 0}
+                disabled={isImporting || importPreview.length === 0}
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {isImporting ? 'Mengimport...' : 'Proses Import'}

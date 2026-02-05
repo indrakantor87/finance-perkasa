@@ -75,11 +75,20 @@ export async function POST(request: Request) {
       // Expect body to be array of { employeeId, date, checkIn, checkOut, status }
       // Or we might need to upsert to avoid duplicates
       
+      const calcOvertimeHours = (inDate: Date | null, outDate: Date | null) => {
+        if (!inDate || !outDate) return 0
+        let diffMin = Math.round((outDate.getTime() - inDate.getTime()) / 60000)
+        if (diffMin < 0) diffMin += 24 * 60
+        const overtimeMin = diffMin - (9 * 60)
+        return overtimeMin > 0 ? parseFloat((overtimeMin / 60).toFixed(2)) : 0
+      }
+
       const results = []
       for (const item of body) {
         const date = new Date(item.date)
         const checkIn = item.checkIn ? new Date(item.checkIn) : null
         const checkOut = item.checkOut ? new Date(item.checkOut) : null
+        const computedOT = calcOvertimeHours(checkIn, checkOut)
         
         // Find existing attendance for this employee on this date
         const startOfDay = new Date(date)
@@ -105,7 +114,7 @@ export async function POST(request: Request) {
               checkIn: checkIn || existing.checkIn,
               checkOut: checkOut || existing.checkOut,
               status: item.status || existing.status,
-              overtimeHours: item.overtimeHours || existing.overtimeHours
+              overtimeHours: (checkIn && checkOut) ? computedOT : (item.overtimeHours || existing.overtimeHours)
             }
           })
           results.push(updated)
@@ -118,7 +127,7 @@ export async function POST(request: Request) {
               checkIn: checkIn,
               checkOut: checkOut,
               status: item.status || 'PRESENT',
-              overtimeHours: item.overtimeHours || 0
+              overtimeHours: (checkIn && checkOut) ? computedOT : (item.overtimeHours || 0)
             }
           })
           results.push(created)
@@ -128,14 +137,24 @@ export async function POST(request: Request) {
     } else {
       // Single create
       const { employeeId, date, checkIn, checkOut, status, overtimeHours } = body
+      const inDate = checkIn ? new Date(checkIn) : null
+      const outDate = checkOut ? new Date(checkOut) : null
+      const calcOvertimeHours = (inDate: Date | null, outDate: Date | null) => {
+        if (!inDate || !outDate) return 0
+        let diffMin = Math.round((outDate.getTime() - inDate.getTime()) / 60000)
+        if (diffMin < 0) diffMin += 24 * 60
+        const overtimeMin = diffMin - (9 * 60)
+        return overtimeMin > 0 ? parseFloat((overtimeMin / 60).toFixed(2)) : 0
+      }
+      const computedOT = calcOvertimeHours(inDate, outDate)
       const attendance = await prisma.attendance.create({
         data: {
           employeeId,
           date: new Date(date),
-          checkIn: checkIn ? new Date(checkIn) : null,
-          checkOut: checkOut ? new Date(checkOut) : null,
+          checkIn: inDate,
+          checkOut: outDate,
           status: status || 'PRESENT',
-          overtimeHours: overtimeHours || 0
+          overtimeHours: (inDate && outDate) ? computedOT : (overtimeHours || 0)
         }
       })
       return NextResponse.json(attendance)
