@@ -1,0 +1,941 @@
+'use client'
+
+import React, { useState, useEffect } from 'react'
+import Link from 'next/link'
+import UserMenu from '@/components/UserMenu'
+import { SalarySlip, type SalarySlipData } from '@/components/SalarySlip'
+import { 
+  Users, Calendar, Clock, FileText, Settings, LogOut, 
+  LayoutDashboard, Database, UserCheck, Banknote, 
+  CreditCard, FileCheck, Bell, Edit, Printer, X, Save, Trash2
+} from 'lucide-react';
+
+interface SlipHistoryItem extends SalarySlipData {
+  id: string
+  month: number
+  year: number
+  createdAt: string
+  employee: {
+    name: string
+    role: string
+  }
+}
+
+export default function SalaryPage() {
+  const [activeCategory, setActiveCategory] = useState('Penjualan')
+  const [employeeId, setEmployeeId] = useState('')
+  const [month, setMonth] = useState(new Date().getMonth() + 1)
+  const [year, setYear] = useState(new Date().getFullYear())
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  
+  // History List State
+  const [slips, setSlips] = useState<SlipHistoryItem[]>([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
+  
+  // Bulk Print State
+  const [selectedSlipIds, setSelectedSlipIds] = useState<string[]>([])
+  const [showBulkPreview, setShowBulkPreview] = useState(false)
+  
+  // Preview State
+  const [showPreview, setShowPreview] = useState(false)
+  const [selectedSlip, setSelectedSlip] = useState<SlipHistoryItem | null>(null)
+
+  // Input Modal State
+  const [showInputModal, setShowInputModal] = useState(false)
+  const [inputData, setInputData] = useState<SalarySlipData & { employee?: { name: string, role: string } } | null>(null)
+
+  // Delete Confirmation State
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteId, setDeleteId] = useState<string | null>(null)
+
+  const getRoleLabel = (role: string) => {
+    if (activeCategory === 'Penjualan') {
+      const r = role ? role.toUpperCase() : ''
+      if (r === 'MANAGER') return 'PENJUALAN MANAGER'
+      if (r === 'LEADER') return 'PENJUALAN LEADER'
+      return 'PENJUALAN'
+    }
+    return role
+  }
+
+  const fetchSlips = async () => {
+    setLoadingHistory(true)
+    try {
+      const res = await fetch(`/api/salary-slip?month=${month}&year=${year}`)
+      if (res.ok) {
+        const data = await res.json()
+        setSlips(data)
+      }
+    } catch (err) {
+      console.error('Failed to fetch history', err)
+    } finally {
+      setLoadingHistory(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchSlips()
+    setSelectedSlipIds([]) // Reset selection on period change
+  }, [month, year])
+
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedSlipIds(slips.map(s => s.id))
+    } else {
+      setSelectedSlipIds([])
+    }
+  }
+
+  const handleSelectSlip = (id: string) => {
+    setSelectedSlipIds(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(item => item !== id)
+      } else {
+        return [...prev, id]
+      }
+    })
+  }
+
+  const handleBulkPrint = () => {
+    if (selectedSlipIds.length === 0) return
+    setShowBulkPreview(true)
+  }
+  
+  const executeBulkPrint = () => {
+    window.print()
+  }
+
+  const handleInputRincian = async () => {
+    setLoading(true)
+    setError('')
+    
+    try {
+      // Fetch draft/calculated data
+      const res = await fetch('/api/salary-slip/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employeeId, month, year, preview: true }),
+      })
+      const data = await res.json()
+      
+      if (!res.ok) throw new Error(data.error || 'Gagal mengambil data')
+
+      // Marketing specific adjustments
+      if (activeCategory === 'Penjualan') {
+          // Reset standard Transport/Meal to avoid double counting if using UMT
+          // But allow them to be used if UMT is just a label? 
+          // Since we added umtAmount, we should use that.
+          // We'll zero out others to be safe, or user can't see them to change them.
+          data.transportAmount = 0
+          data.mealAllowance = 0
+          // data.performanceBonus = 0 // Keep if Kinerja is different? Image doesn't show Kinerja.
+          // Image shows: Incentive PSB, Instalasi, Tagihan.
+          // Kinerja might be irrelevant.
+          // data.performanceBonus = 0
+      }
+
+      setInputData(data)
+      setShowInputModal(true)
+      
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Terjadi kesalahan'
+      setError(msg)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSaveSlip = async () => {
+    if (!inputData) return
+    setLoading(true)
+    try {
+      const res = await fetch('/api/salary-slip/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          employeeId, 
+          month, 
+          year, 
+          overrides: inputData 
+        }),
+      })
+      const data = await res.json()
+      
+      if (!res.ok) throw new Error(data.error || 'Gagal menyimpan slip gaji')
+
+      setShowInputModal(false)
+      fetchSlips() // Refresh list
+      
+      // Optionally show preview immediately
+      // handlePreview({...data, employee: inputData.employee}) 
+
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Terjadi kesalahan'
+      setError(msg) // You might want to show this in the modal
+      alert(msg)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handlePreview = (slip: SlipHistoryItem) => {
+    setSelectedSlip(slip)
+    setShowPreview(true)
+  }
+
+  const handlePrint = (slip: SlipHistoryItem) => {
+    setSelectedSlip(slip)
+    setShowPreview(true)
+    setTimeout(() => {
+      window.print()
+    }, 500)
+  }
+
+  const handleEdit = (slip: SlipHistoryItem) => {
+    // Populate form with existing slip data for editing
+    setEmployeeId(slip.employee.name) // Note: logic in API uses ID or Name, so Name works if unique
+    setMonth(slip.month)
+    setYear(slip.year)
+    
+    // Directly open modal with this slip's data
+    setInputData({
+        ...slip,
+        employee: slip.employee
+    })
+    setShowInputModal(true)
+  }
+
+  const handleDeleteClick = (id: string) => {
+    setDeleteId(id)
+    setShowDeleteModal(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteId) return
+
+    try {
+        const res = await fetch(`/api/salary-slip?id=${deleteId}`, {
+            method: 'DELETE',
+        })
+
+        if (!res.ok) throw new Error('Gagal menghapus slip gaji')
+
+        fetchSlips() // Refresh list
+        setShowDeleteModal(false)
+        setDeleteId(null)
+    } catch (err) {
+        console.error(err)
+        alert('Gagal menghapus slip gaji')
+    }
+  }
+
+  const updateInput = (field: keyof SalarySlipData, value: number) => {
+    if (!inputData) return
+    const newData = { ...inputData, [field]: value }
+    
+    // Auto-calculate Incentive PSB if psbCount changes
+    if (field === 'psbCount') {
+        newData.incentivePsb = value * 50000
+    }
+
+    // Auto-calculate Incentive Instalasi
+    if (field === 'installationCount5k' || field === 'installationCount10k') {
+        const count5k = field === 'installationCount5k' ? value : (newData.installationCount5k || 0)
+        const count10k = field === 'installationCount10k' ? value : (newData.installationCount10k || 0)
+        newData.incentiveInstalasi = (count5k * 5000) + (count10k * 10000)
+    }
+
+    // Auto-calculate Gaji (Base Salary) for Marketing based on package counts
+    // Only if user changes one of the count fields
+    const packageFields = ['countHomeLite', 'countHomeBasic', 'countHomeStream', 'countHomeEntertain', 'countHomeSmall', 'countHomeAdvan']
+    if (packageFields.includes(field)) {
+        const countHomeLite = field === 'countHomeLite' ? value : (newData.countHomeLite || 0)
+        const countHomeBasic = field === 'countHomeBasic' ? value : (newData.countHomeBasic || 0)
+        const countHomeStream = field === 'countHomeStream' ? value : (newData.countHomeStream || 0)
+        const countHomeEntertain = field === 'countHomeEntertain' ? value : (newData.countHomeEntertain || 0)
+        const countHomeSmall = field === 'countHomeSmall' ? value : (newData.countHomeSmall || 0)
+        const countHomeAdvan = field === 'countHomeAdvan' ? value : (newData.countHomeAdvan || 0)
+
+        const rawTotal = (countHomeLite * 337800) +
+                         (countHomeBasic * 150000) +
+                         (countHomeStream * 180180) +
+                         (countHomeEntertain * 234234) +
+                         (countHomeSmall * 292793) +
+                         (countHomeAdvan * 418919)
+        
+        newData.baseSalary = Math.round(rawTotal * 0.20)
+    }
+
+    // Auto-calculate UMT
+    if (field === 'presentDays') {
+        newData.umtAmount = value * 15000
+    }
+    
+    // Recalculate totals
+    const totalIncome = 
+      (newData.baseSalary || 0) + 
+      (newData.transportAmount || 0) + 
+      (newData.overtimeAmount || 0) + 
+      (newData.performanceBonus || 0) + 
+      (newData.disciplineBonus || 0) + 
+      (newData.positionAllowance || 0) + 
+      (newData.bpjsAllowance || 0) + 
+      (newData.mealAllowance || 0) +
+      (newData.incentivePsb || 0) +
+      (newData.incentiveInstalasi || 0) +
+      (newData.incentiveTagihan || 0) +
+      (newData.umtAmount || 0)
+
+    const totalDeduction = 
+      (newData.arisanDeduction || 0) + 
+      (newData.jhtDeduction || 0) + 
+      (newData.loanDeduction || 0)
+
+    setInputData({
+      ...newData,
+      totalIncome,
+      totalDeduction,
+      netSalary: totalIncome - totalDeduction
+    })
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-100 font-sans print:bg-white">
+      {/* Top Navigation Bar - Hidden on Print */}
+      <header className="bg-blue-900 text-white px-6 py-3 flex items-center justify-between shadow-md print:hidden">
+        <div className="flex items-center gap-3">
+          <div className="bg-white/20 p-2 rounded-full">
+            <LayoutDashboard className="w-6 h-6" />
+          </div>
+          <h1 className="text-xl font-bold tracking-wide">FINANCE PERKASA</h1>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <Bell className="w-5 h-5 cursor-pointer hover:text-gray-200" />
+            <span className="absolute -top-1 -right-1 bg-red-600 text-[10px] w-4 h-4 flex items-center justify-center rounded-full">3</span>
+          </div>
+          <UserMenu />
+        </div>
+      </header>
+
+      {/* Secondary Navigation (Tabs) */}
+      <div className="bg-white shadow-sm border-b overflow-x-auto print:hidden">
+        <div className="px-6 flex gap-6 text-sm font-medium min-w-max">
+          <NavItem icon={<LayoutDashboard size={16} />} label="Dashboard" href="/dashboard" />
+          <NavItem icon={<Users size={16} />} label="Data Karyawan" href="/employees" />
+          <NavItem icon={<UserCheck size={16} />} label="Absensi" href="/attendance" />
+          <NavItem icon={<Banknote size={16} />} label="Gaji" href="/salary" active />
+          <NavItem icon={<CreditCard size={16} />} label="Pinjaman" href="/loans" />
+          <NavItem icon={<FileCheck size={16} />} label="Perizinan" href="/permissions" />
+          <NavItem icon={<Database size={16} />} label="Master Data" href="#" />
+          <NavItem icon={<Settings size={16} />} label="Settings" href="/settings" />
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <main className="p-6 max-w-4xl mx-auto space-y-6 print:p-0 print:max-w-none">
+        <div className="flex items-center justify-between print:hidden">
+          <h1 className="text-2xl font-bold text-gray-800">Penggajian & Slip Gaji</h1>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 print:hidden">
+          {/* Category Tabs */}
+          <div className="flex gap-4 border-b border-gray-200 mb-6">
+            {['Penjualan', 'Teknisi', 'Management'].map((category) => (
+              <button
+                key={category}
+                onClick={() => setActiveCategory(category)}
+                className={`pb-2 px-4 font-medium transition-colors border-b-2 ${
+                  activeCategory === category
+                    ? 'border-blue-600 text-blue-700'
+                    : 'border-transparent text-gray-500 hover:text-blue-600'
+                }`}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+
+          {activeCategory === 'Penjualan' ? (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-700">Nama Karyawan ({activeCategory})</label>
+                  <input
+                    type="text"
+                    value={employeeId}
+                    onChange={(e) => setEmployeeId(e.target.value)}
+                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900 placeholder:text-gray-400"
+                    placeholder={`contoh: Budi Santoso`}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-700">Bulan</label>
+                  <select
+                    value={month}
+                    onChange={(e) => setMonth(parseInt(e.target.value))}
+                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900"
+                  >
+                    {[...Array(12)].map((_, i) => (
+                      <option key={i + 1} value={i + 1}>{new Date(0, i).toLocaleString('id-ID', { month: 'long' })}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-700">Tahun</label>
+                  <input
+                    type="number"
+                    value={year}
+                    onChange={(e) => setYear(parseInt(e.target.value))}
+                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900 placeholder:text-gray-400"
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={handleInputRincian}
+                disabled={loading || !employeeId}
+                className="w-full bg-blue-700 text-white py-2 rounded hover:bg-blue-800 disabled:opacity-50 font-bold transition-colors"
+              >
+                {loading ? 'Memuat...' : 'Input Rincian & Buat Slip'}
+              </button>
+              
+              {error && <p className="text-red-500 mt-4 text-sm bg-red-50 p-2 rounded">{error}</p>}
+            </>
+          ) : (
+            <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+              <div className="bg-white inline-block p-4 rounded-full mb-4 shadow-sm">
+                <Clock className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900">Fitur Belum Tersedia</h3>
+              <p className="text-gray-500 mt-1">
+                Modul penggajian untuk kategori <span className="font-bold text-blue-600">{activeCategory}</span> sedang dalam pengembangan.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* History List */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden print:hidden">
+          <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+             <h2 className="text-lg font-bold text-gray-800">Riwayat Slip Gaji</h2>
+             <div className="flex items-center gap-4">
+                 <button 
+                    onClick={handleBulkPrint}
+                    disabled={selectedSlipIds.length === 0}
+                    className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded transition-colors font-medium ${selectedSlipIds.length > 0 ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
+                 >
+                    <Printer size={16} />
+                    <span>Print {selectedSlipIds.length > 0 ? `${selectedSlipIds.length} Terpilih` : 'Terpilih'}</span>
+                 </button>
+                 <div className="h-6 w-px bg-gray-200 mx-2"></div>
+                 <div className="text-sm text-gray-500">
+                    Periode: {new Date(year, month - 1).toLocaleString('id-ID', { month: 'long', year: 'numeric' })}
+                 </div>
+             </div>
+          </div>
+          
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-gray-50 text-gray-600 font-medium border-b border-gray-100">
+                <tr>
+                  <th className="px-6 py-3 w-10">
+                    <input 
+                        type="checkbox" 
+                        onChange={handleSelectAll}
+                        checked={slips.length > 0 && selectedSlipIds.length === slips.length}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                  </th>
+                  <th className="px-6 py-3">Tanggal</th>
+                  <th className="px-6 py-3">Karyawan</th>
+                  <th className="px-6 py-3">Jabatan</th>
+                  <th className="px-6 py-3">Total Terima</th>
+                  <th className="px-6 py-3 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {loadingHistory ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500">Memuat data...</td>
+                  </tr>
+                ) : slips.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500">Belum ada slip gaji untuk periode ini.</td>
+                  </tr>
+                ) : (
+                  slips.map((slip) => (
+                    <tr key={slip.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-3">
+                        <input 
+                            type="checkbox" 
+                            checked={selectedSlipIds.includes(slip.id)}
+                            onChange={() => handleSelectSlip(slip.id)}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                      </td>
+                      <td className="px-6 py-3 text-gray-500">
+                        {new Date(slip.createdAt).toLocaleDateString('id-ID')}
+                      </td>
+                      <td className="px-6 py-3 font-medium text-gray-900">{slip.employee.name}</td>
+                      <td className="px-6 py-3 text-gray-500">{getRoleLabel(slip.employee.role)}</td>
+                      <td 
+                        className="px-6 py-3 font-medium text-green-600 cursor-pointer hover:text-green-800 hover:underline"
+                        onClick={() => handlePreview(slip)}
+                        title="Klik untuk lihat detail"
+                      >
+                        {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(slip.netSalary)}
+                      </td>
+                      <td className="px-6 py-3 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button 
+                            onClick={() => handleEdit(slip)}
+                            className="p-2 text-amber-600 hover:bg-amber-50 rounded-full transition-colors"
+                            title="Edit"
+                          >
+                            <Edit size={16} />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteClick(slip.id)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                            title="Hapus"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 transform transition-all scale-100">
+              <div className="flex flex-col items-center text-center">
+                <div className="bg-red-100 p-3 rounded-full mb-4">
+                    <Trash2 className="w-8 h-8 text-red-600" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">Hapus Slip Gaji?</h3>
+                <p className="text-gray-500 mb-6 text-sm">
+                  Apakah Anda yakin ingin menghapus data ini? Tindakan ini tidak dapat dibatalkan.
+                </p>
+                <div className="flex gap-3 w-full">
+                  <button 
+                    onClick={() => setShowDeleteModal(false)}
+                    className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors"
+                  >
+                    Batal
+                  </button>
+                  <button 
+                    onClick={confirmDelete}
+                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold shadow-md transition-colors"
+                  >
+                    Hapus
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Bulk Print Preview Modal */}
+        {showBulkPreview && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 print:bg-white print:static print:h-auto print:w-full print:block print:p-0">
+             <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl h-[90vh] flex flex-col print:shadow-none print:w-full print:max-w-none print:h-auto print:rounded-none print:block">
+                {/* Modal Header - Hidden on Print */}
+                <div className="flex justify-between items-center p-4 border-b border-gray-100 print:hidden shrink-0">
+                    <div>
+                        <h3 className="font-bold text-gray-800 text-lg">Preview Cetak Slip Gaji</h3>
+                        <p className="text-sm text-gray-500">{selectedSlipIds.length} slip gaji terpilih</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button 
+                            onClick={() => setShowBulkPreview(false)}
+                            className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded font-medium"
+                        >
+                            Batal
+                        </button>
+                        <button 
+                            onClick={executeBulkPrint}
+                            className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-bold shadow-sm"
+                        >
+                            <Printer size={18} />
+                            Cetak
+                        </button>
+                    </div>
+                </div>
+
+                {/* Modal Content - Visible on Print */}
+                <div className="flex-1 overflow-y-auto p-8 bg-gray-50 print:bg-white print:p-0 print:overflow-visible print:block">
+                    <div className="max-w-7xl mx-auto print:max-w-none print:mx-0">
+                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-4 print:grid-cols-3 print:gap-4 print:w-full">
+                            {slips.filter(s => selectedSlipIds.includes(s.id)).map((slip) => (
+                               <div key={slip.id} className="bg-white shadow-sm print:shadow-none print:break-inside-avoid print:page-break-inside-avoid print:border print:border-gray-200">
+                                  <div className="transform scale-90 origin-top-left w-[111%] h-[111%] print:transform-none print:w-auto print:h-auto">
+                                      <SalarySlip 
+                                        data={slip} 
+                                        employeeName={slip.employee.name} 
+                                        role={slip.employee.role}
+                                        department={slip.employee.department}
+                                        month={slip.month}
+                                        year={slip.year}
+                                      />
+                                  </div>
+                               </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+             </div>
+          </div>
+        )}
+
+        {/* Input/Edit Modal */}
+        {showInputModal && inputData && (
+          <div className="fixed inset-0 z-50 flex items-start justify-center p-4 bg-black/50 overflow-y-auto">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl my-8">
+              <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-lg">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-800">Rincian Slip Gaji</h3>
+                  <p className="text-sm text-gray-500">
+                    {inputData.employee?.name} - {getRoleLabel(inputData.employee?.role || '')}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setShowInputModal(false)}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-full transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <div className="p-6 grid grid-cols-1 gap-8">
+                {/* Penghasilan */}
+                <div className="space-y-4">
+                  <h4 className="font-bold text-gray-700 border-b pb-2">Penghasilan</h4>
+                  
+                  {activeCategory === 'Penjualan' ? (
+                      <>
+                        <InputItem label="Gaji" value={inputData.baseSalary} onChange={(v) => updateInput('baseSalary', v)} />
+                        
+                        {/* Package Counts for Gaji Calculation */}
+                        <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                            <h5 className="text-sm font-bold text-blue-800 mb-3">Rincian Paket (Kalkulasi Gaji)</h5>
+                            <div className="grid grid-cols-2 gap-4">
+                                <PackageInput label="Home Lite" price="337.800" value={inputData.countHomeLite} onChange={(v) => updateInput('countHomeLite', v)} />
+                                <PackageInput label="Home Basic" price="150.000" value={inputData.countHomeBasic} onChange={(v) => updateInput('countHomeBasic', v)} />
+                                <PackageInput label="Home Stream" price="180.180" value={inputData.countHomeStream} onChange={(v) => updateInput('countHomeStream', v)} />
+                                <PackageInput label="Home Entertain" price="234.234" value={inputData.countHomeEntertain} onChange={(v) => updateInput('countHomeEntertain', v)} />
+                                <PackageInput label="Home Small" price="292.793" value={inputData.countHomeSmall} onChange={(v) => updateInput('countHomeSmall', v)} />
+                                <PackageInput label="Home Advan" price="418.919" value={inputData.countHomeAdvan} onChange={(v) => updateInput('countHomeAdvan', v)} />
+                            </div>
+                            <div className="mt-2 text-xs text-blue-600 text-right font-medium">
+                                * Gaji = Total × 20%
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2 items-center">
+                            <label className="text-sm font-medium text-gray-600 col-span-1">Incentive PSB</label>
+                            <div className="col-span-2 grid grid-cols-[80px_1fr] gap-2">
+                                <div className="relative">
+                                    <input 
+                                        type="number" 
+                                        value={inputData.psbCount || 0}
+                                        onChange={(e) => updateInput('psbCount', Math.round(Number(e.target.value)))}
+                                        className="w-full p-2 border rounded text-center font-medium text-blue-600 text-lg"
+                                        placeholder="0"
+                                        step="1"
+                                    />
+                                </div>
+                                <InputCurrency value={inputData.incentivePsb || 0} onChange={(v) => updateInput('incentivePsb', v)} />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 items-start">
+                            <label className="text-sm font-medium text-gray-600 col-span-1 pt-2">Incentive Instalasi</label>
+                            <div className="col-span-2 space-y-2">
+                                {/* 5.000 Rate */}
+                                <div className="grid grid-cols-[80px_1fr] gap-2 items-center">
+                                    <div className="relative">
+                                        <input 
+                                            type="number" 
+                                            value={inputData.installationCount5k || 0}
+                                            onChange={(e) => updateInput('installationCount5k', Math.round(Number(e.target.value)))}
+                                            className="w-full p-2 border rounded text-center font-medium text-blue-600 text-lg"
+                                            placeholder="0"
+                                            step="1"
+                                        />
+                                        <span className="absolute right-1 top-2 text-gray-400 text-[10px]">x5k</span>
+                                    </div>
+                                    <div className="text-sm text-gray-500 italic">
+                                        @ Rp 5.000
+                                    </div>
+                                </div>
+
+                                {/* 10.000 Rate */}
+                                <div className="grid grid-cols-[80px_1fr] gap-2 items-center">
+                                    <div className="relative">
+                                        <input 
+                                            type="number" 
+                                            value={inputData.installationCount10k || 0}
+                                            onChange={(e) => updateInput('installationCount10k', Math.round(Number(e.target.value)))}
+                                            className="w-full p-2 border rounded text-center font-medium text-blue-600 text-lg"
+                                            placeholder="0"
+                                            step="1"
+                                        />
+                                        <span className="absolute right-1 top-2 text-gray-400 text-[10px]">x10k</span>
+                                    </div>
+                                    <div className="text-sm text-gray-500 italic">
+                                        @ Rp 10.000
+                                    </div>
+                                </div>
+                                
+                                <div className="pt-1 border-t">
+                                     <InputCurrency value={inputData.incentiveInstalasi || 0} onChange={(v) => updateInput('incentiveInstalasi', v)} />
+                                </div>
+                            </div>
+                        </div>
+                        <InputItem label="Incentive Tagihan" value={inputData.incentiveTagihan || 0} onChange={(v) => updateInput('incentiveTagihan', v)} />
+                        
+                        {/* UMT Section with Days Input */}
+                        <div className="grid grid-cols-3 gap-2 items-center">
+                            <label className="text-sm font-medium text-gray-600 col-span-1">UMT</label>
+                            <div className="col-span-2 grid grid-cols-[80px_1fr] gap-2">
+                                <div className="relative">
+                                    <input 
+                                        type="number" 
+                                        value={inputData.presentDays || 0}
+                                        onChange={(e) => updateInput('presentDays', Math.round(Number(e.target.value)))}
+                                        className="w-full p-2 border rounded text-center font-medium text-blue-600 text-lg"
+                                        placeholder="0"
+                                        step="1"
+                                    />
+                                    <span className="absolute right-1 top-2 text-gray-400 text-[10px]">hari</span>
+                                </div>
+                                <InputCurrency value={inputData.umtAmount || 0} onChange={(v) => updateInput('umtAmount', v)} />
+                            </div>
+                        </div>
+
+                        <InputItem label="Kedisiplinan" value={inputData.disciplineBonus} onChange={(v) => updateInput('disciplineBonus', v)} />
+                        <InputItem label="Tunjangan Jabatan" value={inputData.positionAllowance} onChange={(v) => updateInput('positionAllowance', v)} />
+                        
+                        {/* Overtime Block */}
+                        <div className="grid grid-cols-3 gap-2 items-center">
+                            <label className="text-sm font-medium text-gray-600 col-span-3">Overtime + Hari Libur</label>
+                            <div className="col-span-1">
+                                    <div className="relative">
+                                    <input 
+                                        type="number" 
+                                        value={inputData.overtimeHours}
+                                        onChange={(e) => updateInput('overtimeHours', Math.round(Number(e.target.value)))}
+                                        className="w-full p-2 border rounded text-right pr-8 text-sm font-medium text-black text-lg"
+                                        step="1"
+                                    />
+                                    <span className="absolute right-2 top-2 text-gray-400 text-xs">jam</span>
+                                    </div>
+                            </div>
+                            <div className="col-span-2">
+                                <InputCurrency value={inputData.overtimeAmount} onChange={(v) => updateInput('overtimeAmount', v)} />
+                            </div>
+                        </div>
+                      </>
+                  ) : (
+                      <>
+                        <InputItem label="Transport" value={inputData.transportAmount} onChange={(v) => updateInput('transportAmount', v)} />
+                        
+                        {/* Overtime Block */}
+                        <div className="grid grid-cols-3 gap-2 items-center">
+                            <label className="text-sm font-medium text-gray-600 col-span-3">Overtime + Hari Libur</label>
+                            <div className="col-span-1">
+                                    <div className="relative">
+                                    <input 
+                                        type="number" 
+                                        value={inputData.overtimeHours}
+                                        onChange={(e) => updateInput('overtimeHours', Math.round(Number(e.target.value)))}
+                                        className="w-full p-2 border rounded text-right pr-8 text-sm font-medium text-black text-lg"
+                                        step="1"
+                                    />
+                                    <span className="absolute right-2 top-2 text-gray-400 text-xs">jam</span>
+                                    </div>
+                            </div>
+                            <div className="col-span-2">
+                                <InputCurrency value={inputData.overtimeAmount} onChange={(v) => updateInput('overtimeAmount', v)} />
+                            </div>
+                        </div>
+
+                        <InputItem label="Kinerja" value={inputData.performanceBonus} onChange={(v) => updateInput('performanceBonus', v)} />
+                        <InputItem label="Kedisiplinan" value={inputData.disciplineBonus} onChange={(v) => updateInput('disciplineBonus', v)} />
+                        <InputItem label="BPJS Ketenagakerjaan" value={inputData.bpjsAllowance} onChange={(v) => updateInput('bpjsAllowance', v)} />
+                        <InputItem label="Uang Makan" value={inputData.mealAllowance} onChange={(v) => updateInput('mealAllowance', v)} />
+                      </>
+                  )}
+                  
+                  <div className="pt-4 border-t flex justify-between items-center font-black text-lg text-black">
+                    <span>TOTAL</span>
+                    <span className="text-green-700">
+                      {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(inputData.totalIncome)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Potongan */}
+                <div className="space-y-4">
+                  <h4 className="font-bold text-gray-700 border-b pb-2">Potongan</h4>
+                  
+                  <InputItem label="Arisan" value={inputData.arisanDeduction} onChange={(v) => updateInput('arisanDeduction', v)} />
+                  <InputItem label="Potongan JHT" value={inputData.jhtDeduction} onChange={(v) => updateInput('jhtDeduction', v)} />
+                  <InputItem label="BON (Pinjaman)" value={inputData.loanDeduction} onChange={(v) => updateInput('loanDeduction', v)} />
+                  
+                  <div className="pt-4 border-t flex justify-between items-center font-black text-lg text-red-700">
+                    <span>TOTAL POTONGAN</span>
+                    <span>
+                      {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(inputData.totalDeduction)}
+                    </span>
+                  </div>
+
+                   <div className="mt-8 p-4 bg-gray-100 rounded-lg flex justify-between items-center font-black text-xl text-black">
+                    <span>TOTAL DITERIMA</span>
+                    <span className="text-blue-800">
+                      {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(inputData.netSalary)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 border-t bg-gray-50 rounded-b-lg flex justify-end gap-3">
+                <button 
+                  onClick={() => setShowInputModal(false)}
+                  className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded font-medium"
+                >
+                  Batal
+                </button>
+                <button 
+                  onClick={handleSaveSlip}
+                  disabled={loading}
+                  className="px-6 py-2 bg-blue-700 text-white rounded hover:bg-blue-800 font-bold flex items-center gap-2"
+                >
+                  <Save size={18} />
+                  {loading ? 'Menyimpan...' : 'Simpan & Generate'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Preview Modal */}
+        {showPreview && selectedSlip && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 print:bg-white print:p-0 print:static">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto print:shadow-none print:w-full print:max-w-none print:max-h-none print:rounded-none print:overflow-visible">
+              <div className="flex justify-between items-center p-4 border-b border-gray-100 print:hidden">
+                <h3 className="font-bold text-gray-800">Preview Slip Gaji</h3>
+                <div className="flex items-center gap-2">
+                   <button 
+                    onClick={() => {
+                        window.print()
+                    }}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 text-sm font-medium"
+                   >
+                     <Printer size={14} /> Print
+                   </button>
+                   <button 
+                    onClick={() => setShowPreview(false)}
+                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full"
+                   >
+                     <X size={20} />
+                   </button>
+                </div>
+              </div>
+              <div className="p-6 print:p-0">
+                <SalarySlip 
+                        data={selectedSlip} 
+                        employeeName={selectedSlip.employee.name} 
+                        role={selectedSlip.employee.role}
+                        department={selectedSlip.employee.department}
+                        month={selectedSlip.month}
+                        year={selectedSlip.year}
+                    />
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  )
+}
+
+function NavItem({ icon, label, href, active = false }: { icon: React.ReactNode, label: string, href: string, active?: boolean }) {
+  return (
+    <Link href={href} className={`flex items-center gap-2 py-4 cursor-pointer border-b-2 transition-colors ${active ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-blue-600'}`}>
+      {icon}
+      <span>{label}</span>
+    </Link>
+  );
+}
+
+function InputItem({ label, value, onChange, readOnly = false }: { label: string, value: number, onChange: (val: number) => void, readOnly?: boolean }) {
+  return (
+    <div className="grid grid-cols-3 gap-2 items-center">
+      <label className="text-sm font-medium text-gray-600 col-span-1">{label}</label>
+      <div className="col-span-2">
+        <InputCurrency value={value} onChange={onChange} />
+      </div>
+    </div>
+  )
+}
+
+function PackageInput({ label, price, value, onChange }: { label: string, price: string, value?: number, onChange: (val: number) => void }) {
+    return (
+        <div className="flex flex-col">
+            <div className="flex justify-between text-xs mb-1">
+                <span className="font-medium text-gray-700">{label}</span>
+                <span className="text-gray-400">@{price}</span>
+            </div>
+            <div className="relative">
+                 <input 
+                    type="number" 
+                    value={value || 0}
+                    onChange={(e) => onChange(Math.round(Number(e.target.value)))}
+                    className="w-full p-2 border rounded text-center font-medium text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    placeholder="0"
+                    step="1"
+                />
+            </div>
+        </div>
+    )
+}
+
+function InputCurrency({ value, onChange }: { value: number, onChange: (val: number) => void }) {
+    const [displayValue, setDisplayValue] = useState('')
+
+    useEffect(() => {
+        // Format with dots: 1000000 -> 1.000.000
+        const formatted = (value || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")
+        setDisplayValue(formatted)
+    }, [value])
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        // Remove dots and non-digits to get raw number
+        const rawValue = e.target.value.replace(/\./g, '').replace(/[^0-9]/g, '')
+        const numValue = rawValue === '' ? 0 : parseInt(rawValue, 10)
+        
+        onChange(numValue)
+    }
+
+    return (
+        <div className="relative">
+            <span className="absolute left-3 top-2 text-gray-700 font-medium text-sm">Rp</span>
+            <input 
+                type="text" 
+                value={displayValue}
+                onChange={handleChange}
+                className="w-full p-2 pl-10 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none text-right font-mono font-medium text-black text-lg"
+                placeholder="0"
+            />
+        </div>
+    )
+}

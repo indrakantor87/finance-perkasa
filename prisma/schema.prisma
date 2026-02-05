@@ -1,0 +1,151 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Employee {
+  id        String   @id @default(cuid())
+  name      String
+  role      String   @default("STAFF") // STAFF, LEADER, MANAGER, ADMIN
+  department String  @default("Penjualan") // Penjualan, Teknisi, Management
+  status    String   @default("Karyawan") // Training 1, Training 2, Karyawan, Kontrak 1, Kontrak 2
+  joinDate  DateTime @default(now())
+  baseSalary Float   @default(0) // Gaji Pokok / Kehadiran Absensi Base
+  positionAllowance Float @default(0) // Tunjangan Jabatan Default
+  identityPhoto String? // Foto Identitas URL/Path
+  
+  attendances Attendance[]
+  salarySlips SalarySlip[]
+  loans       Loan[]
+  leaveRequests LeaveRequest[]
+}
+
+model Attendance {
+  id        String   @id @default(cuid())
+  date      DateTime
+  checkIn   DateTime?
+  checkOut  DateTime?
+  status    String   @default("PRESENT") // PRESENT, SICK, PERMIT, ALPHA
+  employeeId String
+  employee  Employee @relation(fields: [employeeId], references: [id])
+  overtimeHours Float @default(0) // Jam lembur harian
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SalarySlip {
+  id        String   @id @default(cuid())
+  month     Int
+  year      Int
+  employeeId String
+  employee  Employee @relation(fields: [employeeId], references: [id])
+  
+  // Penghasilan
+  baseSalary       Float @default(0) // Kehadiran Absensi / Gaji Pokok
+  transportAmount  Float @default(0)
+  overtimeHours    Float @default(0)
+  overtimeAmount   Float @default(0)
+  performanceBonus Float @default(0) // Kinerja
+  disciplineBonus  Float @default(0) // Kedisiplinan
+  positionAllowance Float @default(0) // Tunjangan Jabatan
+  bpjsAllowance    Float @default(0) // BPJS Ketenagakerjaan (Tunjangan)
+  mealAllowance    Float @default(0) // Uang Makan
+  
+  // Marketing Incentives
+  psbCount         Int   @default(0)
+  incentivePsb     Float @default(0)
+  installationCount5k Int @default(0)
+  installationCount10k Int @default(0)
+  incentiveInstalasi Float @default(0)
+  incentiveTagihan Float @default(0)
+  umtAmount        Float @default(0) // UMT (Uang Makan Transport) for Marketing
+  presentDays      Int   @default(0) // Jumlah hari hadir (disimpan untuk UMT)
+  
+  // Marketing Package Counts
+  countHomeLite      Int @default(0)
+  countHomeBasic     Int @default(0)
+  countHomeStream    Int @default(0)
+  countHomeEntertain Int @default(0)
+  countHomeSmall     Int @default(0)
+  countHomeAdvan     Int @default(0)
+  
+  // Potongan
+  arisanDeduction  Float @default(0)
+  jhtDeduction     Float @default(0) // Potongan JHT
+  loanDeduction    Float @default(0) // BON
+  
+  totalIncome      Float @default(0)
+  totalDeduction   Float @default(0)
+  netSalary        Float @default(0) // TOTAL DITERIMA
+
+  createdAt DateTime @default(now())
+  
+  @@unique([month, year, employeeId])
+}
+
+model Loan {
+  id                 String   @id @default(cuid())
+  amount             Float    // Total Pinjaman
+  monthlyInstallment Float    @default(0) // Keinginan angsuran per bulan
+  description        String
+  date               DateTime // Tanggal pinjaman
+  employeeId         String
+  employee           Employee @relation(fields: [employeeId], references: [id])
+  status             String   @default("ACTIVE") // ACTIVE, PAID
+  
+  payments           LoanPayment[] // History pembayaran
+  
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model LoanPayment {
+  id        String   @id @default(cuid())
+  loanId    String
+  loan      Loan     @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  amount    Float
+  date      DateTime @default(now())
+  note      String?
+  
+  createdAt DateTime @default(now())
+}
+
+model LeaveRequest {
+  id          String   @id @default(cuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  
+  type        String   // SICK, SPECIAL_MARRIAGE, SPECIAL_MENSTRUATION, SPECIAL_BEREAVEMENT, ANNUAL, OTHER
+  startDate   DateTime
+  endDate     DateTime
+  duration    Float    // Value
+  durationUnit String  // DAYS, HOURS
+  reason      String
+  attachment  String?  // File URL/Path
+  
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SystemSetting {
+  id                String   @id @default(cuid())
+  companyName       String   @default("PSB PERKASA")
+  companyAddress    String   @default("Jl. Raya Perusahaan No. 1")
+  companyPhone      String   @default("0812-3456-7890")
+  companyEmail      String   @default("admin@psbperkasa.co.id")
+  
+  payrollCutoffDate Int      @default(25) // Tanggal tutup buku absen (misal tgl 25)
+  defaultWorkDays   Int      @default(26) // Hari kerja default per bulan
+  
+  updatedAt         DateTime @updatedAt
+}
