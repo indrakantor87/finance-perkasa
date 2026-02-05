@@ -233,7 +233,6 @@ export default function SalaryPage() {
         if (slip.incentivePsb) addRow(`Incentive PSB ${slip.psbCount || ''}`, slip.incentivePsb);
         if (slip.incentiveInstalasi) addRow('Incentive Instalasi', slip.incentiveInstalasi);
         if (slip.incentiveTagihan) addRow('Incentive Tagihan', slip.incentiveTagihan);
-        if (slip.bpjsAllowance) addRow('Tunjangan Kesehatan/ BPJS Ketenagakerjaan', slip.bpjsAllowance);
         if (slip.umtAmount) addRow('UMT', slip.umtAmount);
         if (slip.newCustomerIncentive) addRow('Pelanggan Baru User', slip.newCustomerIncentive);
         if (slip.clientFee) addRow('Fee Clien 3%', slip.clientFee);
@@ -242,6 +241,7 @@ export default function SalaryPage() {
         if (slip.positionAllowance) addRow('Tunjangan Jabatan', slip.positionAllowance);
         if (slip.performanceBonus) addRow('Bonus Kinerja', slip.performanceBonus);
         if (slip.disciplineBonus) addRow('Bonus Disiplin', slip.disciplineBonus);
+        if (slip.bpjsAllowance) addRow('Tunjangan Kesehatan/ BPJS Ketenagakerjaan', slip.bpjsAllowance);
 
         // NB Row
         const nbRow = currentRow;
@@ -985,10 +985,10 @@ export default function SalaryPage() {
                         <InputItem label="Uang Makan" value={inputData.mealAllowance} onChange={(v) => updateInput('mealAllowance', v)} />
                         
                         <InputItem label="Overtime + Hari Libur" value={inputData.overtimeAmount} onChange={(v) => updateInput('overtimeAmount', v)} />
-                        <InputItem label="Tunjangan Kesehatan/ BPJS Ketenagakerjaan" value={inputData.bpjsAllowance} onChange={(v) => updateInput('bpjsAllowance', v)} />
-
+                        
                         <InputItem label="Kinerja" value={inputData.performanceBonus} onChange={(v) => updateInput('performanceBonus', v)} />
                         <InputItem label="Kedisiplinan" value={inputData.disciplineBonus} onChange={(v) => updateInput('disciplineBonus', v)} />
+                        <InputItem label="Tunjangan Kesehatan/ BPJS Ketenagakerjaan" value={inputData.bpjsAllowance} onChange={(v) => updateInput('bpjsAllowance', v)} />
                       </>
                   ) : (
                       <>
@@ -996,10 +996,10 @@ export default function SalaryPage() {
                         
                         {/* Overtime Block */}
                         <InputItem label="Overtime + Hari Libur" value={inputData.overtimeAmount} onChange={(v) => updateInput('overtimeAmount', v)} />
-                        <InputItem label="Tunjangan Kesehatan/ BPJS Ketenagakerjaan" value={inputData.bpjsAllowance} onChange={(v) => updateInput('bpjsAllowance', v)} />
-
+                        
                         <InputItem label="Kinerja" value={inputData.performanceBonus} onChange={(v) => updateInput('performanceBonus', v)} />
                         <InputItem label="Kedisiplinan" value={inputData.disciplineBonus} onChange={(v) => updateInput('disciplineBonus', v)} />
+                        <InputItem label="Tunjangan Kesehatan/ BPJS Ketenagakerjaan" value={inputData.bpjsAllowance} onChange={(v) => updateInput('bpjsAllowance', v)} />
                         <InputItem label="Uang Makan" value={inputData.mealAllowance} onChange={(v) => updateInput('mealAllowance', v)} />
                       </>
                   )}
