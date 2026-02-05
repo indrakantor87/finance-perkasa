@@ -43,13 +43,35 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    await prisma.employee.delete({
-      where: { id }
-    })
+    
+    // Delete all related records first using a transaction
+    await prisma.$transaction([
+      // 1. Delete Salary Slips
+      prisma.salarySlip.deleteMany({
+        where: { employeeId: id }
+      }),
+      // 2. Delete Attendances
+      prisma.attendance.deleteMany({
+        where: { employeeId: id }
+      }),
+      // 3. Delete Leave Requests
+      prisma.leaveRequest.deleteMany({
+        where: { employeeId: id }
+      }),
+      // 4. Delete Loans (Payments will be deleted automatically due to Cascade on Loan schema if configured, 
+      //    but checking schema LoanPayment has onDelete: Cascade, so deleting Loan is enough)
+      prisma.loan.deleteMany({
+        where: { employeeId: id }
+      }),
+      // 5. Finally Delete Employee
+      prisma.employee.delete({
+        where: { id }
+      })
+    ])
 
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('Error deleting employee:', error)
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal Server Error', details: error instanceof Error ? error.message : String(error) }, { status: 500 })
   }
 }

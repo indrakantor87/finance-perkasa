@@ -12,7 +12,7 @@ export async function POST(request: Request) {
 
     // Get Employee
     let employee = await prisma.employee.findUnique({
-      where: { id: employeeId },
+      where: { id: employeeId.trim() },
     })
 
     if (!employee) {
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
       const employees = await prisma.employee.findMany({
         where: { 
           name: {
-            contains: employeeId
+            contains: employeeId.trim()
           }
         }
       })
@@ -66,6 +66,7 @@ export async function POST(request: Request) {
 
     // 1. Kehadiran Absensi
     const baseSalary = getVal('baseSalary', employee.baseSalary)
+    const attendanceAllowance = getVal('attendanceAllowance', 0)
 
     // Marketing Package Counts (for Base Salary calculation)
     const countHomeLite = getVal('countHomeLite', 0)
@@ -120,7 +121,8 @@ export async function POST(request: Request) {
     // 5. Uang Makan
     const mealAllowance = getVal('mealAllowance', presentDays * 15000)
 
-    // 6. BPJS
+    // 6. BPJS & Health
+    const healthAllowance = getVal('healthAllowance', 0)
     const bpjsAllowance = getVal('bpjsAllowance', Math.round(finalBaseSalary * 0.02))
 
     // 7. Kinerja & Kedisiplinan
@@ -167,18 +169,20 @@ export async function POST(request: Request) {
     const loanDeduction = getVal('loanDeduction', defaultLoanDeduction)
 
     // --- TOTALS ---
-    const totalIncome = finalBaseSalary + transportAmount + overtimeAmount + performanceBonus + disciplineBonus + positionAllowance + bpjsAllowance + mealAllowance + incentivePsb + incentiveInstalasi + incentiveTagihan + umtAmount
+    const totalIncome = finalBaseSalary + attendanceAllowance + transportAmount + overtimeAmount + performanceBonus + disciplineBonus + positionAllowance + healthAllowance + bpjsAllowance + mealAllowance + incentivePsb + incentiveInstalasi + incentiveTagihan + umtAmount
     const totalDeduction = arisanDeduction + jhtDeduction + loanDeduction
     const netSalary = totalIncome - totalDeduction
 
     const resultData = {
       baseSalary: finalBaseSalary,
+      attendanceAllowance,
       transportAmount,
       overtimeHours: totalOvertimeHours,
       overtimeAmount,
       performanceBonus,
       disciplineBonus,
       positionAllowance,
+      healthAllowance,
       bpjsAllowance,
       mealAllowance,
       psbCount,

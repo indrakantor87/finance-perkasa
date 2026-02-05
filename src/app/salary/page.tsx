@@ -62,7 +62,12 @@ export default function SalaryPage() {
   }
 
   // Filter slips based on active category
-  const filteredSlips = slips.filter(slip => slip.employee.department === activeCategory)
+  const filteredSlips = slips.filter(slip => {
+    if (activeCategory === 'Penjualan') {
+      return slip.employee.department === 'Penjualan' || slip.employee.department === 'Pemasaran & Pelayanan'
+    }
+    return slip.employee.department === activeCategory
+  })
 
   const fetchSlips = async () => {
     setLoadingHistory(true)
@@ -229,19 +234,35 @@ export default function SalaryPage() {
         };
         
         const isMarketing = slip.employee.department === 'Penjualan' || slip.employee.department === 'Marketing' || slip.employee.role.includes('MARKETING') || (slip.employee.department && slip.employee.department.toLowerCase().includes('pemasaran'));
-        addRow(isMarketing ? 'Gaji' : 'Kehadiran Absensi', slip.baseSalary);
-        if (slip.incentivePsb) addRow(`Incentive PSB ${slip.psbCount || ''}`, slip.incentivePsb);
-        if (slip.incentiveInstalasi) addRow('Incentive Instalasi', slip.incentiveInstalasi);
-        if (slip.incentiveTagihan) addRow('Incentive Tagihan', slip.incentiveTagihan);
-        if (slip.umtAmount) addRow('UMT', slip.umtAmount);
-        if (slip.newCustomerIncentive) addRow('Pelanggan Baru User', slip.newCustomerIncentive);
-        if (slip.clientFee) addRow('Fee Clien 3%', slip.clientFee);
-        if (slip.transportAmount) addRow('Transport', slip.transportAmount);
-        if (slip.mealAllowance) addRow('Uang Makan', slip.mealAllowance);
-        if (slip.positionAllowance) addRow('Tunjangan Jabatan', slip.positionAllowance);
-        if (slip.performanceBonus) addRow('Bonus Kinerja', slip.performanceBonus);
-        if (slip.disciplineBonus) addRow('Bonus Disiplin', slip.disciplineBonus);
-        if (slip.bpjsAllowance) addRow('Tunjangan Kesehatan/ BPJS Ketenagakerjaan', slip.bpjsAllowance);
+        
+        if (isMarketing) {
+             // Marketing Structure
+             if (slip.attendanceAllowance) addRow('Kehadiran Absensi', slip.attendanceAllowance);
+             addRow('Gaji', slip.baseSalary);
+             if (slip.incentivePsb) addRow(`Incentive PSB ${slip.psbCount || ''}`, slip.incentivePsb);
+             if (slip.incentiveInstalasi) addRow('Incentive Instalasi', slip.incentiveInstalasi);
+             if (slip.incentiveTagihan) addRow('Incentive Tagihan', slip.incentiveTagihan);
+             if (slip.umtAmount) addRow('UMT', slip.umtAmount);
+             if (slip.positionAllowance) addRow('Tunjangan Jabatan', slip.positionAllowance);
+             if (slip.overtimeAmount) addRow('Overtime + Hari Libur', slip.overtimeAmount);
+             if (slip.bpjsAllowance) addRow('Tunjangan Kesehatan/ BPJS Ketenagakerjaan', slip.bpjsAllowance);
+             if (slip.transportAmount) addRow('Transport', slip.transportAmount);
+             if (slip.disciplineBonus) addRow('Kedisiplinan', slip.disciplineBonus);
+        } else {
+             // Non-Marketing Structure
+             addRow('Kehadiran Absensi', slip.baseSalary);
+             if (slip.performanceBonus) addRow('Kinerja', slip.performanceBonus);
+             if (slip.disciplineBonus) addRow('Kedisiplinan', slip.disciplineBonus);
+             if (slip.transportAmount) addRow('Transport', slip.transportAmount);
+             if (slip.mealAllowance) addRow('Uang Makan', slip.mealAllowance);
+             if (slip.positionAllowance) addRow('Tunjangan Jabatan', slip.positionAllowance);
+             if (slip.overtimeAmount) addRow('Overtime + Hari Libur', slip.overtimeAmount);
+             if (slip.bpjsAllowance) addRow(['Teknisi', 'Support Management', 'Management'].includes(slip.employee.department || '') ? 'BPJS Ketenagakerjaan' : 'Tunjangan Kesehatan/ BPJS Ketenagakerjaan', slip.bpjsAllowance);
+             
+             // Teknisi Specific
+             if (slip.newCustomerIncentive) addRow('Pelanggan Baru User', slip.newCustomerIncentive);
+             if (slip.clientFee) addRow('Fee Clien 3%', slip.clientFee);
+        }
 
         // NB Row
         const nbRow = currentRow;
@@ -267,19 +288,51 @@ export default function SalaryPage() {
         j2.border = { right: { style: 'medium' }, bottom: { style: 'thin' }, top: { style: 'medium' }, left: {style: 'medium'} };
         currentRow++;
 
-        // BON
-        const bonRow = currentRow;
-        const b1 = sheet.getCell(bonRow, col1);
-        b1.value = 'BON';
-        b1.font = { bold: true, name: 'Times New Roman' };
-        b1.border = { left: { style: 'medium' }, bottom: { style: 'thin' } };
+        // DEDUCTIONS
+        if (slip.arisanDeduction > 0) {
+            const r = currentRow;
+            const c1 = sheet.getCell(r, col1);
+            c1.value = 'Arisan';
+            c1.font = { bold: true, name: 'Times New Roman' };
+            c1.border = { left: { style: 'medium' }, bottom: { style: 'thin' } };
+            
+            const c2 = sheet.getCell(r, col2);
+            c2.value = slip.arisanDeduction;
+            c2.numFmt = '"Rp" #,##0';
+            c2.font = { bold: true, name: 'Times New Roman' };
+            c2.border = { right: { style: 'medium' }, bottom: { style: 'thin' }, left: { style: 'medium' } };
+            currentRow++;
+        }
 
-        const b2 = sheet.getCell(bonRow, col2);
-        b2.value = slip.totalDeduction || 0;
-        b2.numFmt = '"Rp" #,##0';
-        b2.font = { bold: true, name: 'Times New Roman' };
-        b2.border = { right: { style: 'medium' }, bottom: { style: 'thin' }, left: {style: 'medium'} };
-        currentRow++;
+        if (slip.jhtDeduction > 0) {
+            const r = currentRow;
+            const c1 = sheet.getCell(r, col1);
+            c1.value = 'Potongan JHT';
+            c1.font = { bold: true, name: 'Times New Roman' };
+            c1.border = { left: { style: 'medium' }, bottom: { style: 'thin' } };
+            
+            const c2 = sheet.getCell(r, col2);
+            c2.value = slip.jhtDeduction;
+            c2.numFmt = '"Rp" #,##0';
+            c2.font = { bold: true, name: 'Times New Roman' };
+            c2.border = { right: { style: 'medium' }, bottom: { style: 'thin' }, left: { style: 'medium' } };
+            currentRow++;
+        }
+
+        if (slip.loanDeduction > 0) {
+            const r = currentRow;
+            const c1 = sheet.getCell(r, col1);
+            c1.value = 'BON';
+            c1.font = { bold: true, name: 'Times New Roman' };
+            c1.border = { left: { style: 'medium' }, bottom: { style: 'thin' } };
+            
+            const c2 = sheet.getCell(r, col2);
+            c2.value = slip.loanDeduction;
+            c2.numFmt = '"Rp" #,##0';
+            c2.font = { bold: true, name: 'Times New Roman' };
+            c2.border = { right: { style: 'medium' }, bottom: { style: 'thin' }, left: { style: 'medium' } };
+            currentRow++;
+        }
 
         // TOTAL DITERIMA
         const totalRow = currentRow;
@@ -345,6 +398,11 @@ export default function SalaryPage() {
   }
 
   const handleInputRincian = async () => {
+    if (!employeeId || !employeeId.trim()) {
+      alert('Silakan isi nama karyawan')
+      return
+    }
+
     setLoading(true)
     setError('')
     
@@ -353,7 +411,7 @@ export default function SalaryPage() {
       const res = await fetch('/api/salary-slip/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ employeeId, month, year, preview: true }),
+        body: JSON.stringify({ employeeId: employeeId.trim(), month, year, preview: true }),
       })
       const data = await res.json()
       
@@ -392,7 +450,7 @@ export default function SalaryPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          employeeId, 
+          employeeId: employeeId.trim(), 
           month, 
           year, 
           overrides: inputData 
@@ -513,6 +571,7 @@ export default function SalaryPage() {
     // Recalculate totals
     const totalIncome = 
       (newData.baseSalary || 0) + 
+      (newData.attendanceAllowance || 0) +
       (newData.transportAmount || 0) + 
       (newData.overtimeAmount || 0) + 
       (newData.performanceBonus || 0) + 
@@ -601,7 +660,7 @@ export default function SalaryPage() {
             <>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700">Nama Karyawan ({activeCategory})</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700">Nama Karyawan ({activeCategory === 'Support Management' ? 'Sup Management' : activeCategory})</label>
                   <input
                     type="text"
                     value={employeeId}
@@ -871,12 +930,12 @@ export default function SalaryPage() {
                   
                   {activeCategory === 'Penjualan' ? (
                       <>
+                        <InputItem label="Kehadiran Absensi" value={inputData.attendanceAllowance || 0} onChange={(v) => updateInput('attendanceAllowance', v)} />
                         <InputItem label="Gaji" value={inputData.baseSalary} onChange={(v) => updateInput('baseSalary', v)} />
-                        
-                        {/* Package Counts for Gaji Calculation */}
-                        <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
-                            <h5 className="text-sm font-bold text-blue-800 mb-3">Rincian Paket (Kalkulasi Gaji)</h5>
-                            <div className="grid grid-cols-2 gap-4">
+                        {/* Package Counts for Gaji Calculation (Optional/Reference) */}
+                        <details className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                            <summary className="text-sm font-bold text-blue-800 cursor-pointer">Kalkulator Gaji Otomatis (Opsional)</summary>
+                            <div className="mt-3 grid grid-cols-2 gap-4">
                                 <PackageInput label="Home Lite" price="337.800" value={inputData.countHomeLite} onChange={(v) => updateInput('countHomeLite', v)} />
                                 <PackageInput label="Home Basic" price="150.000" value={inputData.countHomeBasic} onChange={(v) => updateInput('countHomeBasic', v)} />
                                 <PackageInput label="Home Stream" price="180.180" value={inputData.countHomeStream} onChange={(v) => updateInput('countHomeStream', v)} />
@@ -885,10 +944,10 @@ export default function SalaryPage() {
                                 <PackageInput label="Home Advan" price="418.919" value={inputData.countHomeAdvan} onChange={(v) => updateInput('countHomeAdvan', v)} />
                             </div>
                             <div className="mt-2 text-xs text-blue-600 text-right font-medium">
-                                * Gaji = Total × 20%
+                                * Mengisi ini akan menimpa field "Gaji" di atas (20% x Total)
                             </div>
-                        </div>
-
+                        </details>
+                        
                         <div className="grid grid-cols-3 gap-2 items-center">
                             <label className="text-sm font-medium text-gray-600 col-span-1">Incentive PSB</label>
                             <div className="col-span-2 grid grid-cols-[80px_1fr] gap-2">
@@ -901,10 +960,12 @@ export default function SalaryPage() {
                                         placeholder="0"
                                         step="1"
                                     />
+                                    <span className="absolute right-1 top-2 text-gray-400 text-[10px]">pcs</span>
                                 </div>
                                 <InputCurrency value={inputData.incentivePsb || 0} onChange={(v) => updateInput('incentivePsb', v)} />
                             </div>
                         </div>
+
                         <div className="grid grid-cols-3 gap-2 items-start">
                             <label className="text-sm font-medium text-gray-600 col-span-1 pt-2">Incentive Instalasi</label>
                             <div className="col-span-2 space-y-2">
@@ -949,6 +1010,7 @@ export default function SalaryPage() {
                                 </div>
                             </div>
                         </div>
+
                         <InputItem label="Incentive Tagihan" value={inputData.incentiveTagihan || 0} onChange={(v) => updateInput('incentiveTagihan', v)} />
                         
                         {/* UMT Section with Days Input */}
@@ -970,25 +1032,29 @@ export default function SalaryPage() {
                             </div>
                         </div>
 
-                        <InputItem label="Kedisiplinan" value={inputData.disciplineBonus} onChange={(v) => updateInput('disciplineBonus', v)} />
                         <InputItem label="Tunjangan Jabatan" value={inputData.positionAllowance} onChange={(v) => updateInput('positionAllowance', v)} />
-                        
-                        {/* Overtime Block */}
                         <InputItem label="Overtime + Hari Libur" value={inputData.overtimeAmount} onChange={(v) => updateInput('overtimeAmount', v)} />
-                        <InputItem label="Tunjangan Kesehatan/ BPJS Ketenagakerjaan" value={inputData.bpjsAllowance} onChange={(v) => updateInput('bpjsAllowance', v)} />
+                        <InputItem label="Tunjangan Kesehatan" value={inputData.healthAllowance} onChange={(v) => updateInput('healthAllowance', v)} />
+                        <InputItem label="BPJS Ketenagakerjaan" value={inputData.bpjsAllowance} onChange={(v) => updateInput('bpjsAllowance', v)} />
+                        <InputItem label="Transport" value={inputData.transportAmount} onChange={(v) => updateInput('transportAmount', v)} />
+                        <InputItem label="Kedisiplinan" value={inputData.disciplineBonus} onChange={(v) => updateInput('disciplineBonus', v)} />
+
                       </>
-                  ) : activeCategory === 'Teknisi' ? (
+                  ) : ['Teknisi', 'Support Management', 'Management'].includes(activeCategory) ? (
                       <>
                         <InputItem label="Kehadiran Absensi" value={inputData.baseSalary} onChange={(v) => updateInput('baseSalary', v)} />
                         
+                        <InputItem label="Kinerja" value={inputData.performanceBonus} onChange={(v) => updateInput('performanceBonus', v)} />
+                        <InputItem label="Kedisiplinan" value={inputData.disciplineBonus} onChange={(v) => updateInput('disciplineBonus', v)} />
+                        
                         <InputItem label="Transport" value={inputData.transportAmount} onChange={(v) => updateInput('transportAmount', v)} />
                         <InputItem label="Uang Makan" value={inputData.mealAllowance} onChange={(v) => updateInput('mealAllowance', v)} />
+                        <InputItem label="Tunjangan Jabatan" value={inputData.positionAllowance} onChange={(v) => updateInput('positionAllowance', v)} />
                         
                         <InputItem label="Overtime + Hari Libur" value={inputData.overtimeAmount} onChange={(v) => updateInput('overtimeAmount', v)} />
                         
-                        <InputItem label="Kinerja" value={inputData.performanceBonus} onChange={(v) => updateInput('performanceBonus', v)} />
-                        <InputItem label="Kedisiplinan" value={inputData.disciplineBonus} onChange={(v) => updateInput('disciplineBonus', v)} />
-                        <InputItem label="Tunjangan Kesehatan/ BPJS Ketenagakerjaan" value={inputData.bpjsAllowance} onChange={(v) => updateInput('bpjsAllowance', v)} />
+                        <InputItem label="Tunjangan Kesehatan" value={inputData.healthAllowance} onChange={(v) => updateInput('healthAllowance', v)} />
+                        <InputItem label="BPJS Ketenagakerjaan" value={inputData.bpjsAllowance} onChange={(v) => updateInput('bpjsAllowance', v)} />
                       </>
                   ) : (
                       <>
@@ -999,8 +1065,10 @@ export default function SalaryPage() {
                         
                         <InputItem label="Kinerja" value={inputData.performanceBonus} onChange={(v) => updateInput('performanceBonus', v)} />
                         <InputItem label="Kedisiplinan" value={inputData.disciplineBonus} onChange={(v) => updateInput('disciplineBonus', v)} />
-                        <InputItem label="Tunjangan Kesehatan/ BPJS Ketenagakerjaan" value={inputData.bpjsAllowance} onChange={(v) => updateInput('bpjsAllowance', v)} />
+                        <InputItem label="Tunjangan Kesehatan" value={inputData.healthAllowance} onChange={(v) => updateInput('healthAllowance', v)} />
+                        <InputItem label="BPJS Ketenagakerjaan" value={inputData.bpjsAllowance} onChange={(v) => updateInput('bpjsAllowance', v)} />
                         <InputItem label="Uang Makan" value={inputData.mealAllowance} onChange={(v) => updateInput('mealAllowance', v)} />
+                        <InputItem label="Tunjangan Jabatan" value={inputData.positionAllowance} onChange={(v) => updateInput('positionAllowance', v)} />
                       </>
                   )}
                   

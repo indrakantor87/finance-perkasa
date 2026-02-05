@@ -49,13 +49,15 @@ model SalarySlip {
   employee  Employee @relation(fields: [employeeId], references: [id])
   
   // Penghasilan
-  baseSalary       Float @default(0) // Kehadiran Absensi / Gaji Pokok
+  baseSalary       Float @default(0) // Gaji (Marketing) / Kehadiran Absensi (Teknisi)
+  attendanceAllowance Float @default(0) // Kehadiran Absensi (Marketing)
   transportAmount  Float @default(0)
   overtimeHours    Float @default(0)
   overtimeAmount   Float @default(0)
   performanceBonus Float @default(0) // Kinerja
   disciplineBonus  Float @default(0) // Kedisiplinan
   positionAllowance Float @default(0) // Tunjangan Jabatan
+  healthAllowance   Float @default(0) // Tunjangan Kesehatan
   bpjsAllowance    Float @default(0) // BPJS Ketenagakerjaan (Tunjangan)
   mealAllowance    Float @default(0) // Uang Makan
   

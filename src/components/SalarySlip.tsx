@@ -8,6 +8,7 @@ export interface SalarySlipData {
   performanceBonus: number
   disciplineBonus: number
   positionAllowance: number
+  healthAllowance?: number
   bpjsAllowance: number
   mealAllowance: number
   incentivePsb?: number
@@ -32,6 +33,7 @@ export interface SalarySlipData {
   netSalary: number
   newCustomerIncentive?: number
   clientFee?: number
+  attendanceAllowance?: number
 }
 
 interface SalarySlipProps {
@@ -88,44 +90,103 @@ export function SalarySlip({ data, employeeName, role, department, month, year }
               </tr>
           </thead>
           <tbody>
-              <tr className="border-b border-black">
-                  <td className="p-1 pl-2 border-r-2 border-black">{isMarketing ? 'Gaji Pokok' : 'Kehadiran Absensi'}</td>
-                  <td className="p-1 pr-2 text-right">{formatCurrency(data.baseSalary)}</td>
-              </tr>
-              
-              {/* Marketing Specifics */}
-              {isMarketing && (
+              {isMarketing ? (
+                /* Marketing Structure */
                 <>
-                    <tr className="border-b border-black">
-                        <td className="p-1 pl-2 border-r-2 border-black">
-                            Incentive PSB {data.psbCount ? `(${data.psbCount})` : ''}
-                        </td>
-                        <td className="p-1 pr-2 text-right">{formatCurrency(data.incentivePsb || 0)}</td>
-                    </tr>
-                    <tr className="border-b border-black">
-                        <td className="p-1 pl-2 border-r-2 border-black">
-                            Incentive instalasi {data.installationCount5k || data.installationCount10k ? `(${data.installationCount5k || 0} x 5k, ${data.installationCount10k || 0} x 10k)` : ''}
-                        </td>
-                        <td className="p-1 pr-2 text-right">{formatCurrency(data.incentiveInstalasi || 0)}</td>
-                    </tr>
-                    <tr className="border-b border-black">
-                        <td className="p-1 pl-2 border-r-2 border-black">Incentive tagihan</td>
-                        <td className="p-1 pr-2 text-right">{formatCurrency(data.incentiveTagihan || 0)}</td>
-                    </tr>
-                    <tr className="border-b border-black">
-                        <td className="p-1 pl-2 border-r-2 border-black">
-                            UMT
-                        </td>
-                        <td className="p-1 pr-2 text-right">{formatCurrency(data.umtAmount || 0)}</td>
-                    </tr>
+                    {data.attendanceAllowance > 0 && (
+                        <tr className="border-b border-black">
+                            <td className="p-1 pl-2 border-r-2 border-black">Kehadiran Absensi</td>
+                            <td className="p-1 pr-2 text-right">{formatCurrency(data.attendanceAllowance)}</td>
+                        </tr>
+                    )}
+                    {data.baseSalary > 0 && (
+                        <tr className="border-b border-black">
+                            <td className="p-1 pl-2 border-r-2 border-black">Gaji</td>
+                            <td className="p-1 pr-2 text-right">{formatCurrency(data.baseSalary)}</td>
+                        </tr>
+                    )}
+                    {data.incentivePsb > 0 && (
+                        <tr className="border-b border-black">
+                            <td className="p-1 pl-2 border-r-2 border-black">
+                                Incentive PSB {data.psbCount ? `(${data.psbCount})` : ''}
+                            </td>
+                            <td className="p-1 pr-2 text-right">{formatCurrency(data.incentivePsb)}</td>
+                        </tr>
+                    )}
+                    {data.incentiveInstalasi > 0 && (
+                        <tr className="border-b border-black">
+                            <td className="p-1 pl-2 border-r-2 border-black">
+                                Incentive instalasi {data.installationCount5k || data.installationCount10k ? `(${data.installationCount5k || 0} x 5k, ${data.installationCount10k || 0} x 10k)` : ''}
+                            </td>
+                            <td className="p-1 pr-2 text-right">{formatCurrency(data.incentiveInstalasi)}</td>
+                        </tr>
+                    )}
+                    {data.incentiveTagihan > 0 && (
+                        <tr className="border-b border-black">
+                            <td className="p-1 pl-2 border-r-2 border-black">Incentive tagihan</td>
+                            <td className="p-1 pr-2 text-right">{formatCurrency(data.incentiveTagihan)}</td>
+                        </tr>
+                    )}
+                    {data.umtAmount > 0 && (
+                        <tr className="border-b border-black">
+                            <td className="p-1 pl-2 border-r-2 border-black">UMT</td>
+                            <td className="p-1 pr-2 text-right">{formatCurrency(data.umtAmount)}</td>
+                        </tr>
+                    )}
+                    {data.positionAllowance > 0 && (
+                        <tr className="border-b border-black">
+                            <td className="p-1 pl-2 border-r-2 border-black">Tunjangan Jabatan</td>
+                            <td className="p-1 pr-2 text-right">{formatCurrency(data.positionAllowance)}</td>
+                        </tr>
+                    )}
+                    {data.overtimeAmount > 0 && (
+                        <tr className="border-b-2 border-black">
+                            <td className="p-1 pl-2 border-r-2 border-black">Overtime + Hari Libur</td>
+                            <td className="p-1 pr-2 text-right">{formatCurrency(data.overtimeAmount)}</td>
+                        </tr>
+                    )}
+                    {(data.healthAllowance ?? 0) > 0 && (
+                        <tr className="border-b border-black">
+                            <td className="p-1 pl-2 border-r-2 border-black">Tunjangan Kesehatan</td>
+                            <td className="p-1 pr-2 text-right">{formatCurrency(data.healthAllowance!)}</td>
+                        </tr>
+                    )}
+                    {data.bpjsAllowance > 0 && (
+                        <tr className="border-b border-black">
+                            <td className="p-1 pl-2 border-r-2 border-black">BPJS Ketenagakerjaan</td>
+                            <td className="p-1 pr-2 text-right">{formatCurrency(data.bpjsAllowance)}</td>
+                        </tr>
+                    )}
+                    {data.transportAmount > 0 && (
+                        <tr className="border-b border-black">
+                            <td className="p-1 pl-2 border-r-2 border-black">Transport</td>
+                            <td className="p-1 pr-2 text-right">{formatCurrency(data.transportAmount)}</td>
+                        </tr>
+                    )}
+                    {data.disciplineBonus > 0 && (
+                        <tr className="border-b border-black">
+                            <td className="p-1 pl-2 border-r-2 border-black">Kedisiplinan</td>
+                            <td className="p-1 pr-2 text-right">{formatCurrency(data.disciplineBonus)}</td>
+                        </tr>
+                    )}
                 </>
-              )}
-
-              {/* Teknisi Specifics removed as per user request */}
-
-              {/* Non-Marketing Specifics */}
-              {!isMarketing && (
+              ) : (
+                /* Non-Marketing Structure */
                 <>
+                    <tr className="border-b border-black">
+                        <td className="p-1 pl-2 border-r-2 border-black">Kehadiran Absensi</td>
+                        <td className="p-1 pr-2 text-right">{formatCurrency(data.baseSalary)}</td>
+                    </tr>
+                    {data.performanceBonus > 0 && (
+                        <tr className="border-b border-black">
+                            <td className="p-1 pl-2 border-r-2 border-black">Kinerja</td>
+                            <td className="p-1 pr-2 text-right">{formatCurrency(data.performanceBonus)}</td>
+                        </tr>
+                    )}
+                    <tr className="border-b border-black">
+                        <td className="p-1 pl-2 border-r-2 border-black">Kedisiplinan</td>
+                        <td className="p-1 pr-2 text-right">{formatCurrency(data.disciplineBonus)}</td>
+                    </tr>
                     {data.transportAmount > 0 && (
                         <tr className="border-b border-black">
                             <td className="p-1 pl-2 border-r-2 border-black">Transport</td>
@@ -138,33 +199,28 @@ export function SalarySlip({ data, employeeName, role, department, month, year }
                             <td className="p-1 pr-2 text-right">{formatCurrency(data.mealAllowance)}</td>
                         </tr>
                     )}
-                    {data.performanceBonus > 0 && (
+                    <tr className="border-b border-black">
+                        <td className="p-1 pl-2 border-r-2 border-black">Tunjangan Jabatan</td>
+                        <td className="p-1 pr-2 text-right">{formatCurrency(data.positionAllowance)}</td>
+                    </tr>
+                    <tr className="border-b-2 border-black">
+                        <td className="p-1 pl-2 border-r-2 border-black">Overtime + Hari Libur</td>
+                        <td className="p-1 pr-2 text-right">{formatCurrency(data.overtimeAmount)}</td>
+                    </tr>
+                    {(data.healthAllowance ?? 0) > 0 && (
                         <tr className="border-b border-black">
-                            <td className="p-1 pl-2 border-r-2 border-black">Kinerja</td>
-                            <td className="p-1 pr-2 text-right">{formatCurrency(data.performanceBonus)}</td>
+                            <td className="p-1 pl-2 border-r-2 border-black">Tunjangan Kesehatan</td>
+                            <td className="p-1 pr-2 text-right">{formatCurrency(data.healthAllowance!)}</td>
+                        </tr>
+                    )}
+                    {data.bpjsAllowance > 0 && (
+                        <tr className="border-b border-black">
+                            <td className="p-1 pl-2 border-r-2 border-black">{['Teknisi', 'Support Management', 'Management'].includes(department || '') ? 'BPJS Ketenagakerjaan' : 'Tunjangan Kesehatan/ BPJS Ketenagakerjaan'}</td>
+                            <td className="p-1 pr-2 text-right">{formatCurrency(data.bpjsAllowance)}</td>
                         </tr>
                     )}
                 </>
               )}
-
-              <tr className="border-b border-black">
-                  <td className="p-1 pl-2 border-r-2 border-black">Kedisiplinan</td>
-                  <td className="p-1 pr-2 text-right">{formatCurrency(data.disciplineBonus)}</td>
-              </tr>
-              {data.bpjsAllowance > 0 && (
-                 <tr className="border-b border-black">
-                     <td className="p-1 pl-2 border-r-2 border-black">Tunjangan Kesehatan/ BPJS Ketenagakerjaan</td>
-                     <td className="p-1 pr-2 text-right">{formatCurrency(data.bpjsAllowance)}</td>
-                 </tr>
-               )}
-              <tr className="border-b border-black">
-                  <td className="p-1 pl-2 border-r-2 border-black">Tunjangan Jabatan</td>
-                  <td className="p-1 pr-2 text-right">{formatCurrency(data.positionAllowance)}</td>
-              </tr>
-              <tr className="border-b-2 border-black">
-                  <td className="p-1 pl-2 border-r-2 border-black">Overtime + Hari Libur</td>
-                  <td className="p-1 pr-2 text-right">{formatCurrency(data.overtimeAmount)}</td>
-              </tr>
               
               {/* TOTAL INCOME */}
               <tr className="border-b border-black font-black">
@@ -172,11 +228,25 @@ export function SalarySlip({ data, employeeName, role, department, month, year }
                   <td className="p-1 pr-2 text-right">{formatCurrency(data.totalIncome)}</td>
               </tr>
               
-              {/* DEDUCTIONS - Unified Format (Combined into BON) */}
-              <tr className="border-b border-black font-bold">
-                  <td className="p-1 pl-2 border-r-2 border-black">BON</td>
-                  <td className="p-1 pr-2 text-right">{formatCurrency(data.loanDeduction + data.arisanDeduction + data.jhtDeduction)}</td> 
-              </tr>
+              {/* DEDUCTIONS */}
+              {data.arisanDeduction > 0 && (
+                  <tr className="border-b border-black font-bold">
+                      <td className="p-1 pl-2 border-r-2 border-black">Arisan</td>
+                      <td className="p-1 pr-2 text-right">{formatCurrency(data.arisanDeduction)}</td>
+                  </tr>
+              )}
+              {data.jhtDeduction > 0 && (
+                  <tr className="border-b border-black font-bold">
+                      <td className="p-1 pl-2 border-r-2 border-black">Potongan JHT</td>
+                      <td className="p-1 pr-2 text-right">{formatCurrency(data.jhtDeduction)}</td>
+                  </tr>
+              )}
+              {data.loanDeduction > 0 && (
+                  <tr className="border-b border-black font-bold">
+                      <td className="p-1 pl-2 border-r-2 border-black">BON</td>
+                      <td className="p-1 pr-2 text-right">{formatCurrency(data.loanDeduction)}</td>
+                  </tr>
+              )}
 
               {/* TOTAL DITERIMA */}
               <tr className="font-black text-lg bg-gray-100 print:bg-gray-100" style={{ printColorAdjust: "exact", WebkitPrintColorAdjust: "exact" }}>
@@ -187,10 +257,15 @@ export function SalarySlip({ data, employeeName, role, department, month, year }
       </table>
 
       <div className="mt-4 flex justify-end text-center font-bold text-sm px-8">
-          <div className="flex flex-col items-center gap-1">
-              <div>DIREKTUR</div>
-              <img src="/images/ttd.png" alt="Signature" className="h-16" />
-              <div>DARNO</div>
+          <div className="flex flex-col items-center relative">
+              <div className="mb-[-15px] relative z-10">DIREKTUR</div>
+              <div className="relative w-32 h-20 flex items-center justify-center">
+                  {/* Signature Layer */}
+                  <img src="/images/ttd.png" alt="Signature" className="absolute top-0 left-0 w-full h-full object-contain scale-75" />
+                  {/* Stamp Layer (On Top) */}
+                  <img src="/uploads/stempel.png" alt="Stamp" className="absolute top-0 left-0 w-full h-full object-contain opacity-80 -rotate-12 scale-110" />
+              </div>
+              <div className="mt-[-15px] relative z-10">DARNO</div>
           </div>
           {/* Recipient Signature - Hidden for Marketing style match, but can be enabled if needed */}
           {/* 
