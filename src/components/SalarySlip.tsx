@@ -140,12 +140,6 @@ export function SalarySlip({ data, employeeName, role, department, month, year }
                             <td className="p-1 pr-2 text-right">{formatCurrency(data.performanceBonus)}</td>
                         </tr>
                     )}
-                    {data.bpjsAllowance > 0 && (
-                        <tr className="border-b border-black">
-                            <td className="p-1 pl-2 border-r-2 border-black">BPJS Ketenagakerjaan</td>
-                            <td className="p-1 pr-2 text-right">{formatCurrency(data.bpjsAllowance)}</td>
-                        </tr>
-                    )}
                 </>
               )}
 
@@ -161,6 +155,12 @@ export function SalarySlip({ data, employeeName, role, department, month, year }
                   <td className="p-1 pl-2 border-r-2 border-black">Overtime + Hari Libur</td>
                   <td className="p-1 pr-2 text-right">{formatCurrency(data.overtimeAmount)}</td>
               </tr>
+              {data.bpjsAllowance > 0 && (
+                 <tr className="border-b border-black">
+                     <td className="p-1 pl-2 border-r-2 border-black">Tunjangan Kesehatan/ BPJS Ketenagakerjaan</td>
+                     <td className="p-1 pr-2 text-right">{formatCurrency(data.bpjsAllowance)}</td>
+                 </tr>
+               )}
               
               {/* TOTAL INCOME */}
               <tr className="border-b border-black font-black">

@@ -85,49 +85,106 @@ export async function POST(request: Request) {
 
       const results = []
       for (const item of body) {
-        const date = new Date(item.date)
-        const checkIn = item.checkIn ? new Date(item.checkIn) : null
-        const checkOut = item.checkOut ? new Date(item.checkOut) : null
-        const computedOT = calcOvertimeHours(checkIn, checkOut)
+        const normalizeDateOnly = (val: any) => {
+          if (!val) return null
+          if (val instanceof Date && !isNaN(val.getTime())) return val.toISOString().split('T')[0]
+          const s = val.toString()
+          const d = new Date(s)
+          if (!isNaN(d.getTime())) return d.toISOString().split('T')[0]
+          const m = s.match(/^(\d{4}-\d{2}-\d{2})/)
+          if (m) return m[1]
+          return null
+        }
+        const dateOnlyStr = normalizeDateOnly(item.date)
+        if (!dateOnlyStr && !item.id) throw new Error('Invalid date provided')
+        const date = dateOnlyStr ? new Date(`${dateOnlyStr}T00:00:00.000Z`) : undefined
+        const hasCheckIn = 'checkIn' in item
+        const hasCheckOut = 'checkOut' in item
+        const hasExtra = 'overtimeHours' in item
+        let checkIn = hasCheckIn ? (item.checkIn ? new Date(item.checkIn) : null) : undefined
+        let checkOut = hasCheckOut ? (item.checkOut ? new Date(item.checkOut) : null) : undefined
+        if (checkIn instanceof Date && isNaN(checkIn.getTime())) {
+          checkIn = null
+        }
+        if (checkOut instanceof Date && isNaN(checkOut.getTime())) {
+          checkOut = null
+        }
+        let computedOT = 0
+        const parseExtra = (val: any) => {
+          if (typeof val === 'number') return val
+          if (typeof val === 'string') {
+            const n = parseFloat(val.replace(',', '.'))
+            return isNaN(n) ? 0 : n
+          }
+          return 0
+        }
+        const extra = hasExtra ? parseExtra(item.overtimeHours) : 0
         
         // Find existing attendance for this employee on this date
-        const startOfDay = new Date(date)
-        startOfDay.setHours(0, 0, 0, 0)
-        const endOfDay = new Date(date)
-        endOfDay.setHours(23, 59, 59, 999)
+        const startOfDay = dateOnlyStr ? new Date(`${dateOnlyStr}T00:00:00.000Z`) : undefined
+        const endOfDay = dateOnlyStr ? new Date(`${dateOnlyStr}T23:59:59.999Z`) : undefined
 
-        const existing = await prisma.attendance.findFirst({
-          where: {
-            employeeId: item.employeeId,
-            date: {
-              gte: startOfDay,
-              lte: endOfDay
+        let existing
+        if (item.id) {
+          existing = await prisma.attendance.findUnique({ where: { id: item.id } })
+        } else {
+          existing = await prisma.attendance.findFirst({
+            where: {
+              employeeId: item.employeeId,
+              date: {
+                gte: startOfDay!,
+                lte: endOfDay!
+              }
             }
-          }
-        })
+          })
+        }
 
         if (existing) {
+          // Calculate new overtime carefully
+          const finalCheckIn = hasCheckIn ? (checkIn ?? null) : existing.checkIn
+          const finalCheckOut = hasCheckOut ? (checkOut ?? null) : existing.checkOut
+          
+          const computedOT = calcOvertimeHours(finalCheckIn, finalCheckOut)
+          
+          // Determine final extra hours
+          // If hasExtra is true, use provided value (parseExtra(item.overtimeHours))
+          // If hasExtra is false, we need to preserve existing EXTRA.
+          // But existing.overtimeHours is TOTAL.
+          // existingExtra = existing.overtimeHours - calcOvertimeHours(existing.checkIn, existing.checkOut)
+          
+          let finalExtra = 0
+          if (hasExtra) {
+            finalExtra = parseExtra(item.overtimeHours)
+          } else {
+            const oldComputed = calcOvertimeHours(existing.checkIn, existing.checkOut)
+            finalExtra = Math.max(0, existing.overtimeHours - oldComputed)
+          }
+          
+          const newOT = parseFloat((computedOT + (finalExtra >= 0 ? finalExtra : 0)).toFixed(2))
+
           // Update
           const updated = await prisma.attendance.update({
             where: { id: existing.id },
             data: {
-              checkIn: checkIn || existing.checkIn,
-              checkOut: checkOut || existing.checkOut,
+              checkIn: hasCheckIn ? (checkIn ?? null) : existing.checkIn,
+              checkOut: hasCheckOut ? (checkOut ?? null) : existing.checkOut,
               status: item.status || existing.status,
-              overtimeHours: (checkIn && checkOut) ? computedOT : (item.overtimeHours || existing.overtimeHours)
+              overtimeHours: newOT
             }
           })
           results.push(updated)
         } else {
+          computedOT = calcOvertimeHours(checkIn ?? null, checkOut ?? null)
+          const newOT = parseFloat((computedOT + (extra >= 0 ? extra : 0)).toFixed(2))
           // Create
           const created = await prisma.attendance.create({
             data: {
-              date: startOfDay,
+              date: startOfDay!,
               employeeId: item.employeeId,
-              checkIn: checkIn,
-              checkOut: checkOut,
+              checkIn: checkIn ?? null,
+              checkOut: checkOut ?? null,
               status: item.status || 'PRESENT',
-              overtimeHours: (checkIn && checkOut) ? computedOT : (item.overtimeHours || 0)
+              overtimeHours: newOT
             }
           })
           results.push(created)
@@ -147,6 +204,14 @@ export async function POST(request: Request) {
         return overtimeMin > 0 ? parseFloat((overtimeMin / 60).toFixed(2)) : 0
       }
       const computedOT = calcOvertimeHours(inDate, outDate)
+      const parseExtra = (val: any) => {
+        if (typeof val === 'number') return val
+        if (typeof val === 'string') {
+          const n = parseFloat(val.replace(',', '.'))
+          return isNaN(n) ? 0 : n
+        }
+        return 0
+      }
       const attendance = await prisma.attendance.create({
         data: {
           employeeId,
@@ -154,13 +219,14 @@ export async function POST(request: Request) {
           checkIn: inDate,
           checkOut: outDate,
           status: status || 'PRESENT',
-          overtimeHours: (inDate && outDate) ? computedOT : (overtimeHours || 0)
+          overtimeHours: parseFloat((computedOT + parseExtra(overtimeHours)).toFixed(2))
         }
       })
       return NextResponse.json(attendance)
     }
   } catch (error) {
-    console.error('Error creating attendance:', error)
-    return NextResponse.json({ error: 'Failed to create attendance' }, { status: 500 })
+    console.error('Error creating/updating attendance:', error)
+    const msg = (error as any)?.message || 'Failed to create/update attendance'
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }

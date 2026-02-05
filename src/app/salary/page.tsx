@@ -19,6 +19,7 @@ interface SlipHistoryItem extends SalarySlipData {
   employee: {
     name: string
     role: string
+    department: string
   }
 }
 
@@ -60,6 +61,9 @@ export default function SalaryPage() {
     return role
   }
 
+  // Filter slips based on active category
+  const filteredSlips = slips.filter(slip => slip.employee.department === activeCategory)
+
   const fetchSlips = async () => {
     setLoadingHistory(true)
     try {
@@ -82,7 +86,7 @@ export default function SalaryPage() {
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      setSelectedSlipIds(slips.map(s => s.id))
+      setSelectedSlipIds(filteredSlips.map(s => s.id))
     } else {
       setSelectedSlipIds([])
     }
@@ -101,7 +105,7 @@ export default function SalaryPage() {
   const handleExportExcel = async () => {
     const slipsToExport = selectedSlipIds.length > 0 
       ? slips.filter(s => selectedSlipIds.includes(s.id))
-      : slips;
+      : filteredSlips;
     
     if (slipsToExport.length === 0) {
       alert('Tidak ada data untuk diexport');
@@ -228,7 +232,7 @@ export default function SalaryPage() {
         if (slip.incentivePsb) addRow(`Incentive PSB ${slip.psbCount || ''}`, slip.incentivePsb);
         if (slip.incentiveInstalasi) addRow('Incentive Instalasi', slip.incentiveInstalasi);
         if (slip.incentiveTagihan) addRow('Incentive Tagihan', slip.incentiveTagihan);
-        if ((slip as any).healthAllowance) addRow('Tunjangan Kesehatan', (slip as any).healthAllowance);
+        if (slip.bpjsAllowance) addRow('Tunjangan Kesehatan/ BPJS Ketenagakerjaan', slip.bpjsAllowance);
         if (slip.umtAmount) addRow('UMT', slip.umtAmount);
         if (slip.transportAmount) addRow('Transport', slip.transportAmount);
         if (slip.mealAllowance) addRow('Uang Makan', slip.mealAllowance);
@@ -573,7 +577,7 @@ export default function SalaryPage() {
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 print:hidden">
           {/* Category Tabs */}
           <div className="flex gap-4 border-b border-gray-200 mb-6">
-            {['Penjualan', 'Teknisi', 'Management'].map((category) => (
+            {['Penjualan', 'Teknisi', 'Support Management', 'Management'].map((category) => (
               <button
                 key={category}
                 onClick={() => setActiveCategory(category)}
@@ -682,7 +686,7 @@ export default function SalaryPage() {
                     <input 
                         type="checkbox" 
                         onChange={handleSelectAll}
-                        checked={slips.length > 0 && selectedSlipIds.length === slips.length}
+                        checked={filteredSlips.length > 0 && selectedSlipIds.length === filteredSlips.length}
                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
                   </th>
@@ -698,12 +702,14 @@ export default function SalaryPage() {
                   <tr>
                     <td colSpan={6} className="px-6 py-8 text-center text-gray-500">Memuat data...</td>
                   </tr>
-                ) : slips.length === 0 ? (
+                ) : filteredSlips.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500">Belum ada slip gaji untuk periode ini.</td>
+                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                      {slips.length === 0 ? 'Belum ada slip gaji untuk periode ini.' : 'Belum ada slip gaji untuk kategori ini.'}
+                    </td>
                   </tr>
                 ) : (
-                  slips.map((slip) => (
+                  filteredSlips.map((slip) => (
                     <tr key={slip.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-3">
                         <input 
@@ -963,52 +969,19 @@ export default function SalaryPage() {
                         <InputItem label="Tunjangan Jabatan" value={inputData.positionAllowance} onChange={(v) => updateInput('positionAllowance', v)} />
                         
                         {/* Overtime Block */}
-                        <div className="grid grid-cols-3 gap-2 items-center">
-                            <label className="text-sm font-medium text-gray-600 col-span-3">Overtime + Hari Libur</label>
-                            <div className="col-span-1">
-                                    <div className="relative">
-                                    <input 
-                                        type="number" 
-                                        value={inputData.overtimeHours}
-                                        onChange={(e) => updateInput('overtimeHours', Math.round(Number(e.target.value)))}
-                                        className="w-full p-2 border rounded text-right pr-8 text-sm font-medium text-black text-lg"
-                                        step="1"
-                                    />
-                                    <span className="absolute right-2 top-2 text-gray-400 text-xs">jam</span>
-                                    </div>
-                            </div>
-                            <div className="col-span-2">
-                                <InputCurrency value={inputData.overtimeAmount} onChange={(v) => updateInput('overtimeAmount', v)} />
-                            </div>
-                        </div>
+                        <InputItem label="Overtime + Hari Libur" value={inputData.overtimeAmount} onChange={(v) => updateInput('overtimeAmount', v)} />
+                        <InputItem label="Tunjangan Kesehatan/ BPJS Ketenagakerjaan" value={inputData.bpjsAllowance} onChange={(v) => updateInput('bpjsAllowance', v)} />
                       </>
                   ) : (
                       <>
                         <InputItem label="Transport" value={inputData.transportAmount} onChange={(v) => updateInput('transportAmount', v)} />
                         
                         {/* Overtime Block */}
-                        <div className="grid grid-cols-3 gap-2 items-center">
-                            <label className="text-sm font-medium text-gray-600 col-span-3">Overtime + Hari Libur</label>
-                            <div className="col-span-1">
-                                    <div className="relative">
-                                    <input 
-                                        type="number" 
-                                        value={inputData.overtimeHours}
-                                        onChange={(e) => updateInput('overtimeHours', Math.round(Number(e.target.value)))}
-                                        className="w-full p-2 border rounded text-right pr-8 text-sm font-medium text-black text-lg"
-                                        step="1"
-                                    />
-                                    <span className="absolute right-2 top-2 text-gray-400 text-xs">jam</span>
-                                    </div>
-                            </div>
-                            <div className="col-span-2">
-                                <InputCurrency value={inputData.overtimeAmount} onChange={(v) => updateInput('overtimeAmount', v)} />
-                            </div>
-                        </div>
+                        <InputItem label="Overtime + Hari Libur" value={inputData.overtimeAmount} onChange={(v) => updateInput('overtimeAmount', v)} />
+                        <InputItem label="Tunjangan Kesehatan/ BPJS Ketenagakerjaan" value={inputData.bpjsAllowance} onChange={(v) => updateInput('bpjsAllowance', v)} />
 
                         <InputItem label="Kinerja" value={inputData.performanceBonus} onChange={(v) => updateInput('performanceBonus', v)} />
                         <InputItem label="Kedisiplinan" value={inputData.disciplineBonus} onChange={(v) => updateInput('disciplineBonus', v)} />
-                        <InputItem label="BPJS Ketenagakerjaan" value={inputData.bpjsAllowance} onChange={(v) => updateInput('bpjsAllowance', v)} />
                         <InputItem label="Uang Makan" value={inputData.mealAllowance} onChange={(v) => updateInput('mealAllowance', v)} />
                       </>
                   )}

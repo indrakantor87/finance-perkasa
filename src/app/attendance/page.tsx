@@ -7,7 +7,7 @@ import UserMenu from '@/components/UserMenu'
 import { 
   Users, Calendar, Clock, FileText, Settings, LogOut, 
   LayoutDashboard, Database, UserCheck, Banknote, 
-  CreditCard, FileCheck, Bell, Upload, Search, Filter, CheckCircle, XCircle, AlertCircle, Download
+  CreditCard, FileCheck, Bell, Upload, Search, Filter, CheckCircle, XCircle, AlertCircle, Download, Edit3, ChevronDown
 } from 'lucide-react';
 
 interface Attendance {
@@ -17,6 +17,7 @@ interface Attendance {
   checkOut: string | null
   status: string
   overtimeHours: number
+  employeeId: string
   employee: {
     name: string
     role: string
@@ -60,6 +61,13 @@ export default function AttendancePage() {
   const [importPreview, setImportPreview] = useState<any[]>([])
   const [isImporting, setIsImporting] = useState(false)
   const [employees, setEmployees] = useState<Employee[]>([])
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editCheckIn, setEditCheckIn] = useState<string>('') // HH:MM
+  const [editCheckOut, setEditCheckOut] = useState<string>('') // HH:MM
+  const [editExtra, setEditExtra] = useState<string>('') // hours (decimal)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editingRow, setEditingRow] = useState<Attendance | null>(null)
+  const [openMenuRowId, setOpenMenuRowId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchEmployees()
@@ -388,6 +396,215 @@ export default function AttendancePage() {
     const matchSearch = att.employee.name.toLowerCase().includes(searchTerm.toLowerCase())
     return matchCategory && matchSearch
   })
+  
+  const calcOvertimeHours = (inISO: string | null, outISO: string | null) => {
+    if (!inISO || !outISO) return 0
+    const inDate = new Date(inISO)
+    const outDate = new Date(outISO)
+    let diffMin = Math.round((outDate.getTime() - inDate.getTime()) / 60000)
+    if (diffMin < 0) diffMin += 24 * 60
+    const overtimeMin = diffMin - (9 * 60)
+    return overtimeMin > 0 ? parseFloat((overtimeMin / 60).toFixed(2)) : 0
+  }
+
+  const calcExtra = (att: Attendance) => {
+    const computed = calcOvertimeHours(att.checkIn, att.checkOut)
+    if (computed > 0) return Math.max(0, parseFloat((att.overtimeHours - computed).toFixed(2)))
+    return att.overtimeHours
+  }
+  const hoursToHHMM = (h: number) => {
+    const totalMin = Math.round(h * 60)
+    const hh = Math.floor(totalMin / 60).toString().padStart(2, '0')
+    const mm = (totalMin % 60).toString().padStart(2, '0')
+    return `${hh}:${mm}`
+  }
+  const hoursToHHMMDot = (h: number) => {
+    const totalMin = Math.round(h * 60)
+    const hh = Math.floor(totalMin / 60).toString().padStart(2, '0')
+    const mm = (totalMin % 60).toString().padStart(2, '0')
+    return `${hh}.${mm}`
+  }
+  const hhmmToHours = (s: string) => {
+    const t = s.trim()
+    if (!t) return undefined
+    if (t === '0' || t === '00' || t === '00:00' || t === '00.00') return 0
+    // Accept HH:MM
+    const m = t.match(/^(\d{1,2}):(\d{2})$/)
+    if (m) {
+      const hh = parseInt(m[1], 10)
+      const mm = parseInt(m[2], 10)
+      if (isNaN(hh) || isNaN(mm)) return undefined
+      return parseFloat(((hh * 60 + mm) / 60).toFixed(2))
+    }
+    // Accept HH.MM or H.MM (dot)
+    const mdot = t.match(/^(\d{1,2})\.(\d{2})$/)
+    if (mdot) {
+      const hh = parseInt(mdot[1], 10)
+      const mm = parseInt(mdot[2], 10)
+      if (isNaN(hh) || isNaN(mm)) return undefined
+      return parseFloat(((hh * 60 + mm) / 60).toFixed(2))
+    }
+    // Accept HH,MM (comma)
+    const mcomma = t.match(/^(\d{1,2}),(\d{2})$/)
+    if (mcomma) {
+      const hh = parseInt(mcomma[1], 10)
+      const mm = parseInt(mcomma[2], 10)
+      if (isNaN(hh) || isNaN(mm)) return undefined
+      return parseFloat(((hh * 60 + mm) / 60).toFixed(2))
+    }
+    // Accept decimal hours like "1" or "1.5"
+    const dec = parseFloat(t.replace(',', '.'))
+    if (!isNaN(dec) && dec >= 0) return parseFloat(dec.toFixed(2))
+    return undefined
+  }
+
+  const formatTimeForInput = (isoString: string | null) => {
+    if (!isoString) return ''
+    const d = new Date(isoString)
+    const h = d.getHours().toString().padStart(2, '0')
+    const m = d.getMinutes().toString().padStart(2, '0')
+    return `${h}:${m}`
+  }
+
+  const openEditModalForRow = (att: Attendance) => {
+    setEditingRow(att)
+    setEditCheckIn(formatTimeForInput(att.checkIn))
+    setEditCheckOut(formatTimeForInput(att.checkOut))
+    const extra = calcExtra(att)
+    setEditExtra(extra > 0 ? hoursToHHMM(extra) : '')
+    setShowEditModal(true)
+    setOpenMenuRowId(null)
+  }
+
+  const openInlineEditForRow = (att: Attendance) => {
+    setEditingRow(att)
+    setEditCheckIn(formatTimeForInput(att.checkIn))
+    setEditCheckOut(formatTimeForInput(att.checkOut))
+    const extra = calcExtra(att)
+    setEditExtra(extra > 0 ? hoursToHHMM(extra) : '')
+    setOpenMenuRowId(att.id)
+  }
+
+  const toISOWithDate = (dateStr: string, timeHHMM: string | undefined) => {
+    if (!timeHHMM) return null
+    const t = timeHHMM.trim()
+    if (!t) return null
+    let dateOnly = dateStr
+    if (dateOnly.includes('T')) {
+      const d = new Date(dateOnly)
+      if (!isNaN(d.getTime())) {
+        dateOnly = d.toISOString().split('T')[0]
+      } else {
+        // fallback: try splitting manually
+        dateOnly = dateOnly.split('T')[0]
+      }
+    }
+    return `${dateOnly}T${t.padStart(5, '0')}:00`
+  }
+
+  const handleEditSubmit = async () => {
+    if (!editingRow) return
+    setIsEditing(true)
+    try {
+      const att = editingRow
+      const dateOnly = (() => {
+        let s = att.date
+        if (s.includes('T')) {
+          const d = new Date(s)
+          if (!isNaN(d.getTime())) return d.toISOString().split('T')[0]
+          return s.split('T')[0]
+        }
+        return s
+      })()
+      const payloadItem: any = {
+        id: att.id,
+        employeeId: att.employeeId
+      }
+      
+      const initialIn = formatTimeForInput(att.checkIn)
+      const initialOut = formatTimeForInput(att.checkOut)
+      const initialExtra = calcExtra(att) > 0 ? hoursToHHMM(calcExtra(att)) : ''
+      
+      const checkInISO = toISOWithDate(dateOnly, editCheckIn || undefined)
+      const checkOutISO = toISOWithDate(dateOnly, editCheckOut || undefined)
+      const extra = hhmmToHours(editExtra)
+      
+      // Only include fields that have changed
+      if (editCheckIn !== initialIn) {
+         payloadItem.date = dateOnly // date is required when updating checkIn
+         payloadItem.checkIn = editCheckIn.trim() ? checkInISO : null
+      }
+      
+      if (editCheckOut !== initialOut) {
+         payloadItem.date = dateOnly // date is required when updating checkOut
+         payloadItem.checkOut = editCheckOut.trim() ? checkOutISO : null
+      }
+      
+      // Compare extra (handle empty string vs 0 difference)
+      const currentExtraVal = typeof extra === 'number' ? extra : 0
+      const initialExtraVal = calcExtra(att)
+      // If editExtra is empty string and initial was 0, no change.
+      // If editExtra is '0' and initial was 0, no change.
+      // But we use string comparison for simplicity if format is consistent, 
+      // OR value comparison.
+      // Since editExtra can be '01.00' and initial '01:00', better compare values.
+      const isExtraChanged = Math.abs(currentExtraVal - initialExtraVal) > 0.01
+      
+      // Special case: if user clears the input (editExtra is empty string) and initial was > 0
+      const isExtraCleared = editExtra.trim() === '' && initialExtraVal > 0
+      
+      if (isExtraChanged || isExtraCleared) {
+        payloadItem.overtimeHours = currentExtraVal
+      }
+
+      // If no changes, return early
+      if (!payloadItem.hasOwnProperty('checkIn') && !payloadItem.hasOwnProperty('checkOut') && !payloadItem.hasOwnProperty('overtimeHours')) {
+        setIsEditing(false)
+        setOpenMenuRowId(null)
+        setEditingRow(null)
+        setShowEditModal(false)
+        return
+      }
+
+      const payload = [payloadItem]
+
+      const res = await fetch('/api/attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      if (res.ok) {
+        const result = await res.json()
+        alert(`Berhasil mengedit data absensi`)
+        setShowEditModal(false)
+        setEditCheckIn('')
+        setEditCheckOut('')
+        setEditExtra('')
+        setEditingRow(null)
+        setOpenMenuRowId(null)
+        fetchAttendance()
+      } else {
+        try {
+          const err = await res.json()
+          alert(err?.error || 'Gagal mengedit data absensi')
+        } catch {
+          alert('Gagal mengedit data absensi')
+        }
+      }
+    } catch (err) {
+      console.error('Edit error', err)
+      alert('Terjadi kesalahan saat edit')
+    } finally {
+      setIsEditing(false)
+    }
+  }
+
+  const handleEditKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleEditSubmit()
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
@@ -498,11 +715,13 @@ export default function AttendancePage() {
             <table className="w-full text-left">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
+                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider"></th>
                   <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Tanggal</th>
                   <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Nama Karyawan</th>
                   <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Jabatan</th>
                   <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Jam Masuk</th>
                   <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Jam Pulang</th>
+                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Ekstra (Jam)</th>
                   <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Lembur (Jam)</th>
                 </tr>
@@ -514,42 +733,124 @@ export default function AttendancePage() {
                   <tr><td colSpan={7} className="px-6 py-4 text-center text-gray-500">Tidak ada data absensi</td></tr>
                 ) : (
                   filteredAttendances.map((att) => (
-                    <tr key={att.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-3 whitespace-nowrap text-gray-900 font-medium">
-                        {new Date(att.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
-                      </td>
-                      <td className="px-6 py-3 font-medium text-gray-900">{att.employee.name}</td>
-                      <td className="px-6 py-3 text-gray-500">{att.employee.role}</td>
-                      <td className="px-6 py-3 text-green-600 font-medium">
-                        {att.checkIn ? new Date(att.checkIn).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}
-                      </td>
-                      <td className="px-6 py-3 text-green-600 font-medium">
-                        {att.checkOut ? new Date(att.checkOut).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}
-                      </td>
-                      <td className="px-6 py-3">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            (!att.checkIn && !att.checkOut)
-                              ? 'bg-red-100 text-red-700'
+                    <React.Fragment key={att.id}>
+                      <tr className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-3 relative">
+                          <button
+                            onClick={() => openMenuRowId === att.id ? setOpenMenuRowId(null) : openInlineEditForRow(att)}
+                            className="p-1 rounded hover:bg-gray-100 transition-transform"
+                            aria-label="Menu"
+                          >
+                            <ChevronDown size={16} className={`text-gray-600 transition-transform duration-200 ${openMenuRowId === att.id ? 'rotate-180' : ''}`} />
+                          </button>
+                        </td>
+                        <td className="px-6 py-3 whitespace-nowrap text-gray-900 font-medium">
+                          {new Date(att.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </td>
+                        <td className="px-6 py-3 font-medium text-gray-900">{att.employee.name}</td>
+                        <td className="px-6 py-3 text-gray-500">{att.employee.role}</td>
+                        <td className="px-6 py-3 text-green-600 font-medium">
+                          {att.checkIn ? new Date(att.checkIn).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}
+                        </td>
+                        <td className="px-6 py-3 text-green-600 font-medium">
+                          {att.checkOut ? new Date(att.checkOut).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}
+                        </td>
+                        <td className="px-6 py-3 text-gray-900 font-medium">
+                          {(() => {
+                            const extra = calcExtra(att)
+                          return extra > 0 ? hoursToHHMMDot(extra) : '-'
+                          })()}
+                        </td>
+                        <td className="px-6 py-3">
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              (!att.checkIn && !att.checkOut)
+                                ? 'bg-red-100 text-red-700'
+                                : (att.checkIn && att.checkOut)
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-yellow-100 text-yellow-700'
+                            }`}
+                          >
+                            {(!att.checkIn && !att.checkOut)
+                              ? 'Alfa'
                               : (att.checkIn && att.checkOut)
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-yellow-100 text-yellow-700'
-                          }`}
-                        >
-                          {(!att.checkIn && !att.checkOut)
-                            ? 'Alfa'
-                            : (att.checkIn && att.checkOut)
-                            ? 'Valid'
-                            : 'Invalid'}
-                        </span>
-                      </td>
-                      <td className={`px-6 py-3 ${att.overtimeHours > 0 ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
-                        {att.overtimeHours > 0 ? `${att.overtimeHours} Jam` : '-'}
-                      </td>
-                    </tr>
+                              ? 'Valid'
+                              : 'Invalid'}
+                          </span>
+                        </td>
+                        <td className={`px-6 py-3 ${att.overtimeHours > 0 ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
+                          {att.overtimeHours > 0 ? `${att.overtimeHours} Jam` : '-'}
+                        </td>
+                      </tr>
+                      {openMenuRowId === att.id && (
+                        <tr>
+                          <td colSpan={9} className="px-6 pb-4">
+                            <div className="rounded-lg border shadow-sm bg-white p-4 transition-all duration-200 ease-out translate-y-0 opacity-100">
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">Jam Masuk</label>
+                                  <input
+                                    type="time"
+                                    value={editCheckIn}
+                                    onChange={(e) => setEditCheckIn(e.target.value)}
+                                    onKeyDown={handleEditKeyDown}
+                                    className="w-full p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium placeholder:text-gray-700"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">Jam Pulang</label>
+                                  <input
+                                    type="time"
+                                    value={editCheckOut}
+                                    onChange={(e) => setEditCheckOut(e.target.value)}
+                                    onKeyDown={handleEditKeyDown}
+                                    className="w-full p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium placeholder:text-gray-700"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-sm font-medium text-gray-700 mb-1">Ekstra Lembur (Jam)</label>
+                                  <input
+                                    type="time"
+                                    value={editExtra}
+                                    onChange={(e) => setEditExtra(e.target.value)}
+                                    onKeyDown={handleEditKeyDown}
+                                    className="w-full p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium placeholder:text-gray-700"
+                                  />
+                                </div>
+                              </div>
+                              <div className="mt-4 flex gap-2">
+                                <button
+                                  onClick={handleEditSubmit}
+                                  disabled={isEditing}
+                                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {isEditing ? 'Menyimpan...' : 'Save'}
+                                </button>
+                                <button
+                                  onClick={() => { setOpenMenuRowId(null); setEditingRow(null); }}
+                                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                                >
+                                  Close
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   ))
                 )}
               </tbody>
+              {filteredAttendances.length > 0 && (
+                <tfoot className="bg-gray-50 border-t border-gray-200 font-bold">
+                  <tr>
+                    <td colSpan={8} className="px-6 py-4 text-right text-gray-700">Total Lembur:</td>
+                    <td className="px-6 py-4 text-red-600">
+                      {filteredAttendances.reduce((acc, curr) => acc + (curr.overtimeHours || 0), 0).toFixed(2)} Jam
+                    </td>
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </div>
         </div>
@@ -653,6 +954,69 @@ export default function AttendancePage() {
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {isImporting ? 'Mengimport...' : 'Proses Import'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <Edit3 className="text-blue-600" /> Edit Jam Absensi
+              </h2>
+              <button onClick={() => setShowEditModal(false)} className="text-gray-400 hover:text-gray-600">
+                <XCircle size={24} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Jam Masuk</label>
+                <input
+                  type="time"
+                  value={editCheckIn}
+                  onChange={(e) => setEditCheckIn(e.target.value)}
+                  className="w-full p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium placeholder:text-gray-700"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Jam Pulang</label>
+                <input
+                  type="time"
+                  value={editCheckOut}
+                  onChange={(e) => setEditCheckOut(e.target.value)}
+                  className="w-full p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium placeholder:text-gray-700"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ekstra Lembur (Jam)</label>
+                <input
+                  type="number"
+                  step="0.25"
+                  min="0"
+                  value={editExtra}
+                  onChange={(e) => setEditExtra(e.target.value)}
+                  className="w-full p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium placeholder:text-gray-700"
+                />
+                <p className="mt-1 text-xs text-gray-500">Ditambahkan di atas lembur hasil hitung jam masuk/pulang</p>
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
+              <button 
+                onClick={() => setShowEditModal(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
+              >
+                Batal
+              </button>
+              <button 
+                onClick={handleEditSubmit}
+                disabled={isEditing || selectedIds.size === 0}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isEditing ? 'Menyimpan...' : 'Simpan Perubahan'}
               </button>
             </div>
           </div>
