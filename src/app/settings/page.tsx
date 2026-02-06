@@ -1,13 +1,9 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import Link from 'next/link'
-import UserMenu from '@/components/UserMenu'
-import { 
-  Users, Calendar, Clock, FileText, Settings, LogOut, 
-  LayoutDashboard, Database, UserCheck, Banknote, 
-  CreditCard, FileCheck, Bell, Building, Save, Shield
-} from 'lucide-react';
+import { Building, Banknote, Shield, Save, Settings } from 'lucide-react';
+import Header from '@/components/layout/Header';
+import Navigation from '@/components/layout/Navigation';
 
 interface SystemSetting {
   id: string
@@ -109,7 +105,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Main Content */}
-      <main className="p-6 max-w-4xl mx-auto space-y-6">
+      <main className="p-6 max-w-[1600px] mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-800">Pengaturan Sistem</h1>
         </div>
@@ -281,13 +277,4 @@ export default function SettingsPage() {
       </main>
     </div>
   )
-}
-
-function NavItem({ icon, label, href, active = false }: { icon: React.ReactNode, label: string, href: string, active?: boolean }) {
-  return (
-    <Link href={href} className={`flex items-center gap-2 py-4 cursor-pointer border-b-2 transition-colors ${active ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-blue-600'}`}>
-      {icon}
-      <span>{label}</span>
-    </Link>
-  );
 }

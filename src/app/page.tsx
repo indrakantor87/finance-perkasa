@@ -35,6 +35,11 @@ export default function Home() {
     try {
       const storage = remember ? window.localStorage : window.sessionStorage;
       storage.setItem("perkasa-finance-auth", JSON.stringify(auth));
+      
+      // Set cookie for middleware
+      const maxAge = remember ? 7 * 24 * 60 * 60 : 0; // 7 days or session
+      const expires = remember ? `; max-age=${maxAge}` : '';
+      document.cookie = `perkasa-finance-auth=true; path=/${expires}`;
     } catch {}
     router.push("/dashboard");
   };

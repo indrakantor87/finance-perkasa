@@ -2,7 +2,8 @@
 
 import React from 'react';
 import Link from 'next/link';
-import UserMenu from '@/components/UserMenu';
+import Header from '@/components/layout/Header';
+import Navigation from '@/components/layout/Navigation';
 import { 
   PieChart, Pie, Cell, AreaChart, Area, Tooltip, ResponsiveContainer 
 } from 'recharts';
@@ -103,45 +104,9 @@ export default function DashboardClient({ stats }: { stats: DashboardStats | nul
   return (
     <div className="min-h-screen bg-gray-50/50 font-sans text-slate-800">
       
-      {/* --- Header --- */}
-      <header className="sticky top-0 z-30 bg-blue-900 text-white border-b border-blue-800 px-6 py-4 flex items-center justify-between shadow-md">
-        <div className="flex items-center gap-3">
-          <div className="bg-white p-1.5 rounded-full shadow-lg">
-            <img src="/uploads/logo-perkasa.png" alt="Logo" className="w-6 h-6 object-contain" />
-          </div>
-          <div>
-             <h1 className="text-lg font-bold tracking-tight text-white leading-none">FINANCE PERKASA</h1>
-             <p className="text-[10px] text-blue-200 font-medium tracking-wide">DASHBOARD SYSTEM</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-6">
-          <div className="hidden md:flex flex-col items-end mr-2">
-            <span className="text-xs font-semibold text-white">{formattedDate}</span>
-            <span className="text-[10px] text-blue-200">Selamat Datang, Admin</span>
-          </div>
-          <Link href="/notifications" className="relative p-2 hover:bg-blue-800 rounded-full transition-colors group">
-            <Bell className="w-5 h-5 text-blue-200 group-hover:text-white transition-colors" />
-            <span className="absolute top-1.5 right-1.5 bg-red-500 ring-2 ring-white w-2.5 h-2.5 rounded-full"></span>
-          </Link>
-          <div className="pl-6 border-l border-blue-700">
-             <UserMenu />
-          </div>
-        </div>
-      </header>
-
-      {/* --- Navigation Tabs --- */}
-      <div className="bg-white border-b border-gray-200 overflow-x-auto no-scrollbar">
-        <div className="px-6 flex gap-8 text-sm font-medium min-w-max">
-          <NavItem icon={<LayoutDashboard size={18} />} label="Dashboard" href="/dashboard" active />
-          <NavItem icon={<Users size={18} />} label="Data Karyawan" href="/employees" />
-          <NavItem icon={<UserCheck size={18} />} label="Absensi" href="/attendance" />
-          <NavItem icon={<Banknote size={18} />} label="Gaji" href="/salary" />
-          <NavItem icon={<CreditCard size={18} />} label="Pinjaman" href="/loans" />
-          <NavItem icon={<FileCheck size={18} />} label="Perizinan" href="/permissions" />
-          <NavItem icon={<Database size={18} />} label="Master Data" href="/master-data" />
-          <NavItem icon={<Settings size={18} />} label="Settings" href="/settings" />
-        </div>
-      </div>
+      {/* --- Header & Navigation --- */}
+      <Header />
+      <Navigation />
 
       <main className="p-6 max-w-[1600px] mx-auto space-y-6">
         
@@ -364,24 +329,6 @@ export default function DashboardClient({ stats }: { stats: DashboardStats | nul
 }
 
 // --- Components ---
-
-function NavItem({ icon, label, href, active = false }: { icon: React.ReactNode, label: string, href: string, active?: boolean }) {
-  return (
-    <Link 
-      href={href} 
-      className={`
-        flex items-center gap-2 py-4 px-2 cursor-pointer border-b-2 transition-all duration-200
-        ${active 
-          ? 'border-blue-600 text-blue-700 font-semibold' 
-          : 'border-transparent text-slate-500 hover:text-blue-600 hover:bg-slate-50/50 rounded-t-lg'
-        }
-      `}
-    >
-      {icon}
-      <span>{label}</span>
-    </Link>
-  );
-}
 
 function StatWidget({ title, value, subtext, icon, trend, color }: any) {
   return (

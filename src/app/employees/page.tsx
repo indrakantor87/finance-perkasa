@@ -1,8 +1,8 @@
 'use client'
-
+ 
 import React, { useState, useEffect } from 'react'
-import Link from 'next/link'
-import UserMenu from '@/components/UserMenu'
+import Header from '@/components/layout/Header'
+import Navigation from '@/components/layout/Navigation'
 import { 
   Users, Calendar, Clock, FileText, Settings, LogOut, 
   LayoutDashboard, Database, UserCheck, Banknote, 
@@ -264,39 +264,12 @@ export default function EmployeesPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
-      {/* Header */}
-      <header className="bg-blue-900 text-white px-6 py-3 flex items-center justify-between shadow-md">
-        <div className="flex items-center gap-3">
-          <div className="bg-white p-1.5 rounded-full">
-            <img src="/uploads/logo-perkasa.png" alt="Logo" className="w-6 h-6 object-contain" />
-          </div>
-          <h1 className="text-xl font-bold tracking-wide">FINANCE PERKASA</h1>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link href="/notifications" className="relative block">
-            <Bell className="w-5 h-5 cursor-pointer hover:text-gray-200" />
-            <span className="absolute -top-1 -right-1 bg-red-600 text-[10px] w-4 h-4 flex items-center justify-center rounded-full">3</span>
-          </Link>
-          <UserMenu />
-        </div>
-      </header>
-
-      {/* Navigation */}
-      <div className="bg-white shadow-sm border-b overflow-x-auto">
-        <div className="px-6 flex gap-6 text-sm font-medium min-w-max">
-          <NavItem icon={<LayoutDashboard size={16} />} label="Dashboard" href="/dashboard" />
-          <NavItem icon={<Users size={16} />} label="Data Karyawan" href="/employees" active />
-          <NavItem icon={<UserCheck size={16} />} label="Absensi" href="/attendance" />
-          <NavItem icon={<Banknote size={16} />} label="Gaji" href="/salary" />
-          <NavItem icon={<CreditCard size={16} />} label="Pinjaman" href="/loans" />
-          <NavItem icon={<FileCheck size={16} />} label="Perizinan" href="/permissions" />
-          <NavItem icon={<Database size={16} />} label="Master Data" href="#" />
-          <NavItem icon={<Settings size={16} />} label="Settings" href="/settings" />
-        </div>
-      </div>
+      {/* Header & Navigation */}
+      <Header />
+      <Navigation />
 
       {/* Main Content */}
-      <main className="p-6 max-w-6xl mx-auto space-y-6">
+      <main className="p-6 max-w-[1600px] mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-800">Data Karyawan</h1>
           <div className="flex gap-2">
@@ -622,13 +595,4 @@ export default function EmployeesPage() {
       )}
     </div>
   )
-}
-
-function NavItem({ icon, label, href, active = false }: { icon: React.ReactNode, label: string, href: string, active?: boolean }) {
-  return (
-    <Link href={href} className={`flex items-center gap-2 py-4 cursor-pointer border-b-2 transition-colors ${active ? 'border-blue-600 text-blue-700' : 'border-transparent text-gray-500 hover:text-blue-600'}`}>
-      {icon}
-      <span>{label}</span>
-    </Link>
-  );
 }
