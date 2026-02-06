@@ -161,7 +161,7 @@ export default function SalaryPage() {
             sheet.addImage(headerLogoId, {
                 tl: { col: col1 - 1, row: 0 },
                 br: { col: col2, row: 4 }
-            });
+            } as any);
         }
 
         // --- Title ---
@@ -254,7 +254,7 @@ export default function SalaryPage() {
              if (slip.mealAllowance) addRow('Uang Makan', slip.mealAllowance);
              if (slip.positionAllowance) addRow('Tunjangan Jabatan', slip.positionAllowance);
              if (slip.overtimeAmount) addRow('Overtime + Hari Libur', slip.overtimeAmount);
-             if (slip.bpjsAllowance) addRow(['Teknisi', 'Support Management', 'Management'].includes(slip.employee.department || '') ? 'BPJS Ketenagakerjaan' : 'Tunjangan Kesehatan/ BPJS Ketenagakerjaan', slip.bpjsAllowance);
+             if (slip.bpjsAllowance) addRow('BPJS Ketenagakerjaan', slip.bpjsAllowance);
              
              // Teknisi Specific
              if (slip.newCustomerIncentive) addRow('Pelanggan Baru User', slip.newCustomerIncentive);
@@ -1031,30 +1031,15 @@ export default function SalaryPage() {
 
                         <InputItem label="Tunjangan Jabatan" value={inputData.positionAllowance} onChange={(v) => updateInput('positionAllowance', v)} />
                         <InputItem label="Overtime + Hari Libur" value={inputData.overtimeAmount} onChange={(v) => updateInput('overtimeAmount', v)} />
-                        <InputItem label="Tunjangan Kesehatan" value={inputData.healthAllowance} onChange={(v) => updateInput('healthAllowance', v)} />
+                        <InputItem label="Tunjangan Kesehatan" value={inputData.healthAllowance || 0} onChange={(v) => updateInput('healthAllowance', v)} />
                         <InputItem label="BPJS Ketenagakerjaan" value={inputData.bpjsAllowance} onChange={(v) => updateInput('bpjsAllowance', v)} />
                         <InputItem label="Transport" value={inputData.transportAmount} onChange={(v) => updateInput('transportAmount', v)} />
                         <InputItem label="Kedisiplinan" value={inputData.disciplineBonus} onChange={(v) => updateInput('disciplineBonus', v)} />
 
                       </>
-                  ) : ['Teknisi', 'Support Management', 'Management'].includes(activeCategory) ? (
-                      <>
-                        <InputItem label="Kehadiran Absensi" value={inputData.baseSalary} onChange={(v) => updateInput('baseSalary', v)} />
-                        
-                        <InputItem label="Kinerja" value={inputData.performanceBonus} onChange={(v) => updateInput('performanceBonus', v)} />
-                        <InputItem label="Kedisiplinan" value={inputData.disciplineBonus} onChange={(v) => updateInput('disciplineBonus', v)} />
-                        
-                        <InputItem label="Transport" value={inputData.transportAmount} onChange={(v) => updateInput('transportAmount', v)} />
-                        <InputItem label="Uang Makan" value={inputData.mealAllowance} onChange={(v) => updateInput('mealAllowance', v)} />
-                        <InputItem label="Tunjangan Jabatan" value={inputData.positionAllowance} onChange={(v) => updateInput('positionAllowance', v)} />
-                        
-                        <InputItem label="Overtime + Hari Libur" value={inputData.overtimeAmount} onChange={(v) => updateInput('overtimeAmount', v)} />
-                        
-                        <InputItem label="Tunjangan Kesehatan" value={inputData.healthAllowance} onChange={(v) => updateInput('healthAllowance', v)} />
-                        <InputItem label="BPJS Ketenagakerjaan" value={inputData.bpjsAllowance} onChange={(v) => updateInput('bpjsAllowance', v)} />
-                      </>
                   ) : (
                       <>
+                        <InputItem label="Kehadiran Absensi" value={inputData.baseSalary} onChange={(v) => updateInput('baseSalary', v)} />
                         <InputItem label="Transport" value={inputData.transportAmount} onChange={(v) => updateInput('transportAmount', v)} />
                         
                         {/* Overtime Block */}
@@ -1062,10 +1047,9 @@ export default function SalaryPage() {
                         
                         <InputItem label="Kinerja" value={inputData.performanceBonus} onChange={(v) => updateInput('performanceBonus', v)} />
                         <InputItem label="Kedisiplinan" value={inputData.disciplineBonus} onChange={(v) => updateInput('disciplineBonus', v)} />
-                        <InputItem label="Tunjangan Kesehatan" value={inputData.healthAllowance ?? 0} onChange={(v) => updateInput('healthAllowance', v)} />
-                        <InputItem label="BPJS Ketenagakerjaan" value={inputData.bpjsAllowance} onChange={(v) => updateInput('bpjsAllowance', v)} />
                         <InputItem label="Uang Makan" value={inputData.mealAllowance} onChange={(v) => updateInput('mealAllowance', v)} />
                         <InputItem label="Tunjangan Jabatan" value={inputData.positionAllowance} onChange={(v) => updateInput('positionAllowance', v)} />
+                        <InputItem label="BPJS Ketenagakerjaan" value={inputData.bpjsAllowance} onChange={(v) => updateInput('bpjsAllowance', v)} />
                       </>
                   )}
                   
