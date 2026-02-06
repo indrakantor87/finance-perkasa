@@ -10,7 +10,7 @@ async function main() {
       data: {
         name: 'Test Employee',
         role: 'Penjualan',
-        department: 'Penjualan',
+        department: 'Pemasaran dan Pelayanan',
         status: 'Karyawan',
         baseSalary: 4000000,
         positionAllowance: 0,

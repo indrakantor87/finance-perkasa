@@ -23,39 +23,37 @@ interface Employee {
 }
 
 const ROLE_OPTIONS: Record<string, string[]> = {
-  'Pemasaran & Pelayanan': [
+  'Pemasaran dan Pelayanan': [
+    'Manager Pemasaran & Pelayanan',
     'SPV Penjualan', 
     'Penjualan', 
     'Penjualan & Event', 
-    'Creator Digital'
+    'Creator Digital',
+    'Admin CS'
   ],
-  'Teknisi': [
-    'Leader NOC',
-    'Teknisi PSB', 
-    'Teknisi Expan / jalur', 
-    'Teknisi Jointer',
-    'Staff NOC',
-    'Support Troubleshoot'
-  ],
-  'Support Management': [
-    'SPV GA',
-    'Admin CS', 
-    'Staff Finance', 
-    'Staff GA', 
+  'Operasional': [
+    'Manager Operasional',
     'Kepala Toko', 
     'Store Crew'
   ],
-  'Management': [
-    'General Manager', 
-    'Manager Pemasaran & Pelayanan', 
-    'Manager Operasional',
+  'General Affair': [
+    'SPV GA',
+    'Staff GA'
+  ],
+  'Keuangan dan HR': [
+    'Manager Finance & HRD',
+    'Staff Finance'
+  ],
+  'Teknis dan Expan': [
     'Manager Teknik',
-    'Manager Finance & HRD'
+    'Teknisi PSB', 
+    'Teknisi Expan / jalur', 
+    'Teknisi Jointer'
   ]
 }
 
 export default function EmployeesPage() {
-  const [activeCategory, setActiveCategory] = useState('Pemasaran & Pelayanan')
+  const [activeCategory, setActiveCategory] = useState('Pemasaran dan Pelayanan')
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(false)
   const [showModal, setShowModal] = useState(false)
@@ -70,7 +68,7 @@ export default function EmployeesPage() {
     id: '',
     name: '',
     role: 'Penjualan',
-    department: 'Pemasaran & Pelayanan',
+    department: 'Pemasaran dan Pelayanan',
     status: 'Karyawan',
     joinDate: new Date().toISOString().split('T')[0],
     baseSalary: 0,
@@ -175,7 +173,7 @@ export default function EmployeesPage() {
       name: '',
       role: '',
       department: activeCategory,
-      status: '',
+      status: 'Karyawan',
       joinDate: new Date().toISOString().split('T')[0],
       baseSalary: 0,
       positionAllowance: 0,
@@ -269,16 +267,16 @@ export default function EmployeesPage() {
       {/* Header */}
       <header className="bg-blue-900 text-white px-6 py-3 flex items-center justify-between shadow-md">
         <div className="flex items-center gap-3">
-          <div className="bg-white/20 p-2 rounded-full">
-            <LayoutDashboard className="w-6 h-6" />
+          <div className="bg-white p-1.5 rounded-full">
+            <img src="/uploads/logo-perkasa.png" alt="Logo" className="w-6 h-6 object-contain" />
           </div>
           <h1 className="text-xl font-bold tracking-wide">FINANCE PERKASA</h1>
         </div>
         <div className="flex items-center gap-4">
-          <div className="relative">
+          <Link href="/notifications" className="relative block">
             <Bell className="w-5 h-5 cursor-pointer hover:text-gray-200" />
             <span className="absolute -top-1 -right-1 bg-red-600 text-[10px] w-4 h-4 flex items-center justify-center rounded-full">3</span>
-          </div>
+          </Link>
           <UserMenu />
         </div>
       </header>
@@ -319,12 +317,12 @@ export default function EmployeesPage() {
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
           {/* Category Tabs */}
-          <div className="flex border-b border-gray-200">
-            {['Pemasaran & Pelayanan', 'Teknisi', 'Support Management', 'Management'].map((category) => (
+          <div className="flex border-b border-gray-200 overflow-x-auto">
+            {Object.keys(ROLE_OPTIONS).map((category) => (
               <button
                 key={category}
                 onClick={() => setActiveCategory(category)}
-                className={`flex-1 py-4 text-center text-sm font-semibold tracking-wide transition-colors border-b-2 ${
+                className={`flex-shrink-0 px-6 py-4 text-center text-sm font-semibold tracking-wide transition-colors border-b-2 whitespace-nowrap ${
                   activeCategory === category
                     ? 'border-purple-600 text-purple-700 bg-purple-50/50'
                     : 'border-transparent text-gray-500 hover:text-purple-600 hover:bg-gray-50'
@@ -484,30 +482,37 @@ export default function EmployeesPage() {
                     className="w-full p-2 border rounded bg-gray-100 text-gray-500"
                   />
                 </div>
+              </div>
+
+              {['Operasional', 'General Affair', 'Keuangan dan HR', 'Teknis dan Expan'].includes(formData.department) && (
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700">Status</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700">Status Karyawan</label>
                   <select
                     value={formData.status}
                     onChange={e => setFormData({...formData, status: e.target.value})}
-                    className={`w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none ${formData.status ? 'text-black font-semibold' : 'text-gray-400'}`}
+                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none text-black font-medium"
                   >
-                    <option value="" disabled className="text-gray-400">- Pilih Status -</option>
-                    {['Teknisi', 'Support Management', 'Management'].includes(formData.department) ? (
-                      <>
-                        <option value="Kontrak 1" className="text-black font-semibold">Kontrak 1</option>
-                        <option value="Kontrak 2" className="text-black font-semibold">Kontrak 2</option>
-                        <option value="Karyawan" className="text-black font-semibold">Karyawan</option>
-                      </>
-                    ) : (
-                      <>
-                        <option value="Training 1" className="text-black font-semibold">Training 1</option>
-                        <option value="Training 2" className="text-black font-semibold">Training 2</option>
-                        <option value="Karyawan" className="text-black font-semibold">Karyawan</option>
-                      </>
-                    )}
+                    <option value="Kontrak 1">Kontrak 1</option>
+                    <option value="Kontrak 2">Kontrak 2</option>
+                    <option value="Karyawan">Karyawan</option>
                   </select>
                 </div>
-              </div>
+              )}
+
+              {formData.department === 'Pemasaran dan Pelayanan' && (
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-gray-700">Status Karyawan</label>
+                  <select
+                    value={formData.status}
+                    onChange={e => setFormData({...formData, status: e.target.value})}
+                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none text-black font-medium"
+                  >
+                    <option value="Training 1">Training 1</option>
+                    <option value="Training 2">Training 2</option>
+                    <option value="Karyawan">Karyawan</option>
+                  </select>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium mb-1 text-gray-700">Tanggal Bergabung</label>

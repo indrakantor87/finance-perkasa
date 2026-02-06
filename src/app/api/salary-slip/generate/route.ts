@@ -77,7 +77,7 @@ export async function POST(request: Request) {
     const countHomeAdvan = getVal('countHomeAdvan', 0)
 
     // Calculate Base Salary for Marketing if specific counts are present or role is marketing
-    const isMarketing = ['PENJUALAN', 'MARKETING'].some(d => employee!.department.toUpperCase().includes(d)) || 
+    const isMarketing = ['PENJUALAN', 'MARKETING', 'PEMASARAN'].some(d => employee!.department.toUpperCase().includes(d)) || 
                         ['MARKETING'].some(r => employee!.role.toUpperCase().includes(r))
     
     let calculatedBaseSalary = baseSalary

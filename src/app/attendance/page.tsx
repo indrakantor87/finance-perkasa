@@ -7,7 +7,7 @@ import UserMenu from '@/components/UserMenu'
 import { 
   Users, Calendar, Clock, FileText, Settings, LogOut, 
   LayoutDashboard, Database, UserCheck, Banknote, 
-  CreditCard, FileCheck, Bell, Upload, Search, Filter, CheckCircle, XCircle, AlertCircle, Download, Edit3, ChevronDown
+  CreditCard, FileCheck, Bell, Upload, Search, Filter, CheckCircle, XCircle, AlertCircle, Download, Edit3, ChevronDown, Trash2, RefreshCw
 } from 'lucide-react';
 
 interface Attendance {
@@ -28,6 +28,13 @@ interface Attendance {
 interface Employee {
   id: string
   name: string
+}
+
+interface GroupedAttendance {
+  employeeId: string
+  employeeName: string
+  employeeRole: string
+  attendances: Attendance[]
 }
 
 // Komponen NavItem agar konsisten
@@ -52,9 +59,26 @@ export default function AttendancePage() {
   const [showImportModal, setShowImportModal] = useState(false)
   
   // Filter State
-  const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0])
-  const [endDate, setEndDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0])
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth())
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+
+  const getLocalISODate = (date: Date) => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  const [startDate, setStartDate] = useState(getLocalISODate(new Date(new Date().getFullYear(), new Date().getMonth(), 1)))
+  const [endDate, setEndDate] = useState(getLocalISODate(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)))
   const [searchTerm, setSearchTerm] = useState('')
+
+  useEffect(() => {
+    const start = new Date(selectedYear, selectedMonth, 1)
+    const end = new Date(selectedYear, selectedMonth + 1, 0)
+    setStartDate(getLocalISODate(start))
+    setEndDate(getLocalISODate(end))
+  }, [selectedMonth, selectedYear])
 
   // Import State
   const [importFile, setImportFile] = useState<File | null>(null)
@@ -68,6 +92,10 @@ export default function AttendancePage() {
   const [isEditing, setIsEditing] = useState(false)
   const [editingRow, setEditingRow] = useState<Attendance | null>(null)
   const [openMenuRowId, setOpenMenuRowId] = useState<string | null>(null)
+  const [selectedExportIds, setSelectedExportIds] = useState<string[]>([]) // Employee IDs
+
+  const [editingGroup, setEditingGroup] = useState<GroupedAttendance | null>(null)
+  const [isSyncing, setIsSyncing] = useState(false)
 
   useEffect(() => {
     fetchEmployees()
@@ -105,7 +133,17 @@ export default function AttendancePage() {
   }
 
   const exportToExcel = () => {
-    const dataToExport = filteredAttendances.map(att => ({
+    // If specific employees are selected, export only their data. Otherwise, export filteredAttendances.
+    const sourceData = selectedExportIds.length > 0
+      ? filteredAttendances.filter(att => selectedExportIds.includes(att.employeeId))
+      : filteredAttendances
+
+    if (sourceData.length === 0) {
+      alert('Tidak ada data untuk diexport')
+      return
+    }
+
+    const dataToExport = sourceData.map(att => ({
       Tanggal: new Date(att.date).toLocaleDateString('id-ID'),
       Nama: att.employee.name,
       Jabatan: att.employee.role,
@@ -120,6 +158,24 @@ export default function AttendancePage() {
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, "Absensi")
     XLSX.writeFile(wb, `Absensi_${startDate}_${endDate}.xlsx`)
+  }
+
+  const toggleSelectAll = (checked: boolean) => {
+    if (checked) {
+      // Select all currently visible groups
+      const allIds = groupedAttendances.map(g => g.employeeId)
+      setSelectedExportIds(allIds)
+    } else {
+      setSelectedExportIds([])
+    }
+  }
+
+  const toggleSelectOne = (employeeId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedExportIds(prev => [...prev, employeeId])
+    } else {
+      setSelectedExportIds(prev => prev.filter(id => id !== employeeId))
+    }
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -141,26 +197,50 @@ export default function AttendancePage() {
       const fileBase = (fileBaseName || '').trim()
       const normalize = (s: any) => s?.toString().toLowerCase().trim()
       const headers = (jsonData[0] as string[]).map(h => normalize(h))
+      
       const nameIdx = headers.findIndex(h => h.includes('nama') || h.includes('name') || h.includes('user') || h.includes('pegawai'))
       const dateIdx = headers.findIndex(h => h.includes('tanggal') || h.includes('date') || h.includes('tgl'))
       const inIdx = headers.findIndex(h => h.includes('masuk') || h.includes('in') || h.includes('check-in') || h.includes('jam masuk'))
       const outIdx = headers.findIndex(h => h.includes('pulang') || h.includes('out') || h.includes('keluar') || h.includes('check-out') || h.includes('jam pulang'))
       let timeIdx = headers.findIndex(h => h.includes('time') || h.includes('waktu') || h.includes('scan') || h.includes('clock') || h.includes('jam'))
       const stateIdx = headers.findIndex(h => h.includes('state') || h.includes('status') || h.includes('event'))
+      
       if (nameIdx === -1 && !fileBase) {
-        alert('Kolom Nama tidak ditemukan dan tidak bisa menebak dari nama file.')
+        alert('Kolom "Nama" tidak ditemukan dan tidak bisa menebak dari nama file.')
         return false
       }
+
+      // Helper to match employee
       const normName = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim()
       const matchEmployee = (raw: any) => {
         const n = normName(raw?.toString() || '')
         if (!n) return null
+        
+        // 1. Exact match
         const exact = employees.find(emp => normName(emp.name) === n)
         if (exact) return exact
-        const candidates = employees.filter(emp => normName(emp.name).includes(n) || n.includes(normName(emp.name)))
+        
+        // 2. Contains match (Employee name contains File name OR File name contains Employee name)
+        // Be careful with short names like "Adi" matching "Adi Susilo" and "Budi Adi"
+        const candidates = employees.filter(emp => {
+          const empN = normName(emp.name)
+          return empN.includes(n) || n.includes(empN)
+        })
+        
         if (candidates.length === 1) return candidates[0]
+        
+        // 3. Fuzzy match (Token based)
+        const nTokens = n.split(' ')
+        const fuzzy = employees.find(emp => {
+          const empTokens = normName(emp.name).split(' ')
+          // If all tokens in file name appear in employee name
+          return nTokens.every(t => empTokens.includes(t))
+        })
+        if (fuzzy) return fuzzy
+        
         return null
       }
+
       const toDateString = (val: any, fallbackFromTime?: Date) => {
         if (!val && fallbackFromTime) return fallbackFromTime.toISOString().split('T')[0]
         if (val instanceof Date) return val.toISOString().split('T')[0]
@@ -180,6 +260,7 @@ export default function AttendancePage() {
         }
         return s
       }
+
       const toTimeString = (val: any) => {
         if (!val) return null
         if (val instanceof Date) {
@@ -206,17 +287,17 @@ export default function AttendancePage() {
           const mm = m2[2].padStart(2, '0')
           return `${hh}:${mm}`
         }
-        // Jika string hanya tanggal (dd/mm/yyyy atau yyyy-mm-dd), jangan menginterpretasi sebagai waktu
-        const dmOnly = s.match(/^\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}$/) || s.match(/^\d{4}-\d{2}-\d{2}$/)
-        if (dmOnly) return null
         return null
       }
-      if (timeIdx === -1) {
+
+      // Try to guess time column if not found
+      if (timeIdx === -1 && inIdx === -1 && outIdx === -1) {
         const sampleRows = jsonData.slice(1, Math.min(jsonData.length, 21)) as any[]
         let bestIdx = -1
         let bestScore = 0
         const maxLen = Math.max(...sampleRows.map(r => Array.isArray(r) ? r.length : 0))
         for (let ci = 0; ci < maxLen; ci++) {
+          if (ci === nameIdx || ci === dateIdx) continue
           let score = 0
           for (const row of sampleRows) {
             const val = row?.[ci]
@@ -230,27 +311,49 @@ export default function AttendancePage() {
         }
         if (bestScore >= 3) timeIdx = bestIdx
       }
+
       let parsedData: any[] = []
+
+      // Strategy 1: Explicit In/Out columns
       if (inIdx !== -1 || outIdx !== -1) {
         parsedData = jsonData.slice(1).map((row: any, index) => {
           const name = nameIdx !== -1 ? row[nameIdx] : fileBase
           if (!name) return null
           const emp = matchEmployee(name)
-          let dateStr = toDateString(dateIdx !== -1 ? row[dateIdx] : (row[timeIdx] ?? null))
+          
+          let dateStr = ''
+          if (dateIdx !== -1) dateStr = toDateString(row[dateIdx])
+          
+          // If no date column, maybe date is in filename? or implied?
+          if (!dateStr) {
+             // Try to find date in filename like "Absensi_2024-01-01.xlsx"
+             const m = fileBaseName.match(/(\d{4}-\d{2}-\d{2})/)
+             if (m) dateStr = m[1]
+             else {
+               // Last resort: if In/Out are Dates, use that
+               if (row[inIdx] instanceof Date) dateStr = row[inIdx].toISOString().split('T')[0]
+             }
+          }
+
           const timeIn = toTimeString(row[inIdx])
           const timeOut = toTimeString(row[outIdx])
+          
+          if (!dateStr && !timeIn && !timeOut) return null
+
           return {
             id: index,
             employeeName: name,
             employeeId: emp?.id || null,
             date: dateStr,
-            checkIn: timeIn ? `${dateStr}T${timeIn}:00` : null,
-            checkOut: timeOut ? `${dateStr}T${timeOut}:00` : null,
+            checkIn: (dateStr && timeIn) ? `${dateStr}T${timeIn}:00` : null,
+            checkOut: (dateStr && timeOut) ? `${dateStr}T${timeOut}:00` : null,
             status: 'PRESENT',
-            isValid: !!emp
+            isValid: !!emp && !!dateStr
           }
         }).filter(Boolean)
-      } else if (timeIdx !== -1) {
+      } 
+      // Strategy 2: Single Time column (Vertical format)
+      else if (timeIdx !== -1) {
         const groups: Record<string, { name: string, empId: string | null, date: string, times: string[], inTimes: string[], outTimes: string[], hasOT: boolean }> = {}
         jsonData.slice(1).forEach((row: any) => {
           const name = nameIdx !== -1 ? row[nameIdx] : fileBase
@@ -265,6 +368,7 @@ export default function AttendancePage() {
           const dateStr = toDateString(dateIdx !== -1 ? row[dateIdx] : (timeDate || timeRaw))
           const timeStr = toTimeString(timeDate || timeRaw)
           if (!dateStr) return
+          
           const key = `${normName(name)}|${dateStr}`
           if (!groups[key]) {
             groups[key] = { name, empId: emp?.id || null, date: dateStr, times: [], inTimes: [], outTimes: [], hasOT: false }
@@ -302,7 +406,7 @@ export default function AttendancePage() {
           }
         })
       } else {
-        alert('Kolom waktu tidak ditemukan. Gunakan template yang disediakan.')
+        alert('Kolom waktu (Jam Masuk/Pulang atau Time) tidak ditemukan. Gunakan template yang disediakan.')
         return false
       }
       setImportPreview(parsedData)
@@ -322,7 +426,7 @@ export default function AttendancePage() {
               const workbook2 = XLSX.read(data2, { type: 'binary' })
               const ok2 = parseWorkbook(workbook2)
               if (!ok2) {
-                alert('File kosong atau format salah')
+                // Alert handled inside parseWorkbook or just generic
               }
             } catch (err2) {
               console.error('Error parsing file:', err2)
@@ -347,6 +451,35 @@ export default function AttendancePage() {
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, "Template")
     XLSX.writeFile(wb, "Template_Import_Absensi.xlsx")
+  }
+
+  const handleSyncMachine = async () => {
+    if (!confirm('Apakah anda yakin ingin menyinkronkan data dari mesin finger? Proses ini mungkin memakan waktu.')) return
+
+    setIsSyncing(true)
+    try {
+      const res = await fetch('/api/attendance/sync', { method: 'POST' })
+      const data = await res.json()
+      
+      if (res.ok) {
+        let msg = `Sync Berhasil!\nProcessed: ${data.details?.processed || 0}\nCreated: ${data.details?.created || 0}\nUpdated: ${data.details?.updated || 0}`
+        
+        if (data.details?.unmappedCount > 0) {
+           msg += `\n\nWARNING: ${data.details.unmappedCount} Users di mesin tidak ditemukan di database (Nama tidak cocok).\nContoh: ${data.details.unmappedNames}`
+        }
+        
+        alert(msg)
+        fetchAttendance()
+      } else {
+        console.error('Sync failed:', data)
+        alert('Sync Gagal: ' + (data.error || 'Unknown error'))
+      }
+    } catch (err) {
+      console.error('Sync error:', err)
+      alert('Terjadi kesalahan saat sync.')
+    } finally {
+      setIsSyncing(false)
+    }
   }
 
   const handleImportSubmit = async () => {
@@ -397,19 +530,48 @@ export default function AttendancePage() {
     return matchCategory && matchSearch
   })
   
+  const toMinutes = (dotFormat: number) => {
+    const h = Math.floor(dotFormat)
+    const m = Math.round((dotFormat - h) * 100)
+    return h * 60 + m
+  }
+
+  const toDotFormat = (minutes: number) => {
+    const h = Math.floor(minutes / 60)
+    const m = Math.round(minutes % 60)
+    return parseFloat(`${h}.${m.toString().padStart(2, '0')}`)
+  }
+
   const calcOvertimeHours = (inISO: string | null, outISO: string | null) => {
     if (!inISO || !outISO) return 0
     const inDate = new Date(inISO)
     const outDate = new Date(outISO)
-    let diffMin = Math.round((outDate.getTime() - inDate.getTime()) / 60000)
-    if (diffMin < 0) diffMin += 24 * 60
-    const overtimeMin = diffMin - (9 * 60)
-    return overtimeMin > 0 ? parseFloat((overtimeMin / 60).toFixed(2)) : 0
+    
+    // Check if check-in is after 17:00 (Local Time)
+    const inHour = inDate.getHours()
+    const inMinute = inDate.getMinutes()
+    const isLateCheckIn = inHour > 17 || (inHour === 17 && inMinute > 0)
+
+    if (isLateCheckIn) {
+      // Condition 2: Check-in > 17:00. Calculate duration as overtime.
+      const totalDuration = (outDate.getTime() - inDate.getTime()) / 60000
+      if (totalDuration <= 0) return 0
+      return toDotFormat(totalDuration)
+    }
+
+    // Condition 1: Normal check-in (<= 17:00). Overtime is ignored.
+    return 0
   }
 
   const calcExtra = (att: Attendance) => {
-    const computed = calcOvertimeHours(att.checkIn, att.checkOut)
-    if (computed > 0) return Math.max(0, parseFloat((att.overtimeHours - computed).toFixed(2)))
+    const computedDot = calcOvertimeHours(att.checkIn, att.checkOut)
+    const computedMin = toMinutes(computedDot)
+    const totalMin = toMinutes(att.overtimeHours)
+    
+    if (computedMin > 0) {
+      const extraMin = Math.max(0, totalMin - computedMin)
+      return toDotFormat(extraMin)
+    }
     return att.overtimeHours
   }
   const hoursToHHMM = (h: number) => {
@@ -476,13 +638,48 @@ export default function AttendancePage() {
     setOpenMenuRowId(null)
   }
 
+  const openEditModalForGroup = (group: GroupedAttendance) => {
+    setEditingGroup(group)
+    // Default to today if exists, else first record
+    const todayStr = getLocalISODate(new Date())
+    const todayAtt = group.attendances.find((a) => a.date === todayStr)
+    const att = todayAtt || group.attendances[0]
+    
+    if (att) {
+      setEditingRow(att)
+      setEditCheckIn(formatTimeForInput(att.checkIn))
+      setEditCheckOut(formatTimeForInput(att.checkOut))
+      // Use overtimeHours directly for modal input (decimal)
+      const extra = att.overtimeHours
+      // If extra is > 0, calculate manual extra part if needed? 
+      // Simplified: just show overtimeHours. 
+      // Note: previous code used calcExtra which might separate auto-calculated from manual.
+      // But for simplicity in modal, let's just use what's stored or 0.
+      setEditExtra(extra > 0 ? extra.toString() : '') 
+      setShowEditModal(true)
+      setOpenMenuRowId(null)
+    }
+  }
+
+  const handleGroupDateChange = (date: string) => {
+    if (!editingGroup) return
+    const att = editingGroup.attendances.find((a) => a.date === date)
+    if (att) {
+      setEditingRow(att)
+      setEditCheckIn(formatTimeForInput(att.checkIn))
+      setEditCheckOut(formatTimeForInput(att.checkOut))
+      const extra = att.overtimeHours
+      setEditExtra(extra > 0 ? extra.toString() : '')
+    }
+  }
+
   const openInlineEditForRow = (att: Attendance) => {
     setEditingRow(att)
     setEditCheckIn(formatTimeForInput(att.checkIn))
     setEditCheckOut(formatTimeForInput(att.checkOut))
     const extra = calcExtra(att)
     setEditExtra(extra > 0 ? hoursToHHMM(extra) : '')
-    setOpenMenuRowId(att.id)
+    // Don't change openMenuRowId, keep the group expanded
   }
 
   const toISOWithDate = (dateStr: string, timeHHMM: string | undefined) => {
@@ -548,19 +745,35 @@ export default function AttendancePage() {
       // But we use string comparison for simplicity if format is consistent, 
       // OR value comparison.
       // Since editExtra can be '01.00' and initial '01:00', better compare values.
-      const isExtraChanged = Math.abs(currentExtraVal - initialExtraVal) > 0.01
+      const isExtraChanged = Math.abs(currentExtraVal - initialExtraVal) > 0.001
       
       // Special case: if user clears the input (editExtra is empty string) and initial was > 0
       const isExtraCleared = editExtra.trim() === '' && initialExtraVal > 0
       
       if (isExtraChanged || isExtraCleared) {
+        // We need to send TOTAL overtime hours to the server (Computed + Extra)
+        // But the server logic will try to recalculate "extra" if we just send overtimeHours?
+        // Wait, the API logic says:
+        // if hasExtra (overtimeHours is present in body), use it as finalExtra.
+        // No.
+        // API logic: 
+        // if (hasExtra) { finalExtra = parseExtra(item.overtimeHours) }
+        // ...
+        // const newOT = toDotFormat(computedOTMin + finalExtraMin)
+        
+        // So here we should send the EXTRA amount as 'overtimeHours' in the payload?
+        // Re-reading API:
+        // if (hasExtra) finalExtra = parseExtra(item.overtimeHours)
+        // const newOT = computedOT + finalExtra
+        
+        // So YES, we send the EXTRA amount.
         payloadItem.overtimeHours = currentExtraVal
       }
 
       // If no changes, return early
       if (!payloadItem.hasOwnProperty('checkIn') && !payloadItem.hasOwnProperty('checkOut') && !payloadItem.hasOwnProperty('overtimeHours')) {
         setIsEditing(false)
-        setOpenMenuRowId(null)
+        // setOpenMenuRowId(null) // Don't close the group
         setEditingRow(null)
         setShowEditModal(false)
         return
@@ -581,7 +794,7 @@ export default function AttendancePage() {
         setEditCheckOut('')
         setEditExtra('')
         setEditingRow(null)
-        setOpenMenuRowId(null)
+        // setOpenMenuRowId(null) // Don't close the group
         fetchAttendance()
       } else {
         try {
@@ -606,21 +819,59 @@ export default function AttendancePage() {
     }
   }
 
+  const handleDeleteGroup = async (group: GroupedAttendance) => {
+    const monthName = new Date(selectedYear, selectedMonth).toLocaleString('id-ID', { month: 'long' });
+    if (!confirm(`Apakah Anda yakin ingin menghapus SEMUA data absensi untuk ${group.employeeName} di bulan ${monthName} ${selectedYear}?`)) return
+
+    try {
+      const res = await fetch(`/api/attendance?employeeId=${group.employeeId}&month=${selectedMonth + 1}&year=${selectedYear}`, {
+        method: 'DELETE'
+      })
+
+      if (res.ok) {
+        alert('Data berhasil dihapus')
+        fetchAttendance()
+      } else {
+        const err = await res.json()
+        alert(err.error || 'Gagal menghapus data')
+      }
+    } catch (err) {
+      console.error('Delete error', err)
+      alert('Terjadi kesalahan')
+    }
+  }
+
+  // Group filtered attendances by employee
+  const groupedAttendances = filteredAttendances.reduce((acc, curr) => {
+    const existing = acc.find(g => g.employeeId === curr.employeeId)
+    if (existing) {
+      existing.attendances.push(curr)
+    } else {
+      acc.push({
+        employeeId: curr.employeeId,
+        employeeName: curr.employee.name,
+        employeeRole: curr.employee.role,
+        attendances: [curr]
+      })
+    }
+    return acc
+  }, [] as GroupedAttendance[])
+
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
        {/* Header */}
        <header className="bg-blue-900 text-white px-6 py-3 flex items-center justify-between shadow-md">
         <div className="flex items-center gap-3">
-          <div className="bg-white/20 p-2 rounded-full">
-            <LayoutDashboard className="w-6 h-6" />
+          <div className="bg-white p-1.5 rounded-full">
+            <img src="/uploads/logo-perkasa.png" alt="Logo" className="w-6 h-6 object-contain" />
           </div>
           <h1 className="text-xl font-bold tracking-wide">FINANCE PERKASA</h1>
         </div>
         <div className="flex items-center gap-4">
-          <div className="relative">
+          <Link href="/notifications" className="relative block">
             <Bell className="w-5 h-5 cursor-pointer hover:text-gray-200" />
             <span className="absolute -top-1 -right-1 bg-red-600 text-[10px] w-4 h-4 flex items-center justify-center rounded-full">3</span>
-          </div>
+          </Link>
           <UserMenu />
         </div>
       </header>
@@ -643,12 +894,22 @@ export default function AttendancePage() {
       <main className="p-6 max-w-[1600px] mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-800">Data Absensi</h1>
-          <button 
-            onClick={() => setShowImportModal(true)}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-green-700 transition-colors shadow-sm"
-          >
-            <Upload size={18} /> Import Data Fingerprint
-          </button>
+          <div className="flex gap-2">
+            <button 
+              onClick={handleSyncMachine}
+              disabled={isSyncing}
+              className={`bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors shadow-sm ${isSyncing ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <RefreshCw size={18} className={isSyncing ? 'animate-spin' : ''} /> 
+              {isSyncing ? 'Syncing...' : 'Sync Mesin'}
+            </button>
+            <button 
+              onClick={() => setShowImportModal(true)}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-green-700 transition-colors shadow-sm"
+            >
+              <Upload size={18} /> Import Data Fingerprint
+            </button>
+          </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
@@ -657,19 +918,28 @@ export default function AttendancePage() {
              <div className="flex flex-1 gap-4 items-center flex-wrap">
                 {/* Date Range Filter */}
                 <div className="flex gap-2 items-center">
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium placeholder:text-gray-700"
-                  />
-                  <span className="text-gray-400">-</span>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium placeholder:text-gray-700"
-                  />
+                  <select
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                    className="p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium bg-white"
+                  >
+                    {Array.from({ length: 12 }, (_, i) => (
+                      <option key={i} value={i}>
+                        {new Date(0, i).toLocaleString('id-ID', { month: 'long' })}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(Number(e.target.value))}
+                    className="p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium bg-white"
+                  >
+                    {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i).map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <button
@@ -681,12 +951,12 @@ export default function AttendancePage() {
                 </button>
 
                 {/* Category Tabs inside Filter */}
-                <div className="flex bg-white rounded-lg border p-1">
-                  {['Semua', 'Pemasaran & Pelayanan', 'Teknisi', 'Management'].map((cat) => (
+                <div className="flex bg-white rounded-lg border p-1 overflow-x-auto">
+                  {['Semua', 'Pemasaran dan Pelayanan', 'Operasional', 'General Affair', 'Keuangan dan HR', 'Teknis dan Expan'].map((cat) => (
                     <button
                       key={cat}
                       onClick={() => setActiveCategory(cat)}
-                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all whitespace-nowrap ${
                         activeCategory === cat 
                           ? 'bg-blue-100 text-blue-700 shadow-sm' 
                           : 'text-gray-500 hover:bg-gray-50'
@@ -715,124 +985,221 @@ export default function AttendancePage() {
             <table className="w-full text-left">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
+                  <th className="px-6 py-3 w-10">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      onChange={(e) => toggleSelectAll(e.target.checked)}
+                      checked={groupedAttendances.length > 0 && selectedExportIds.length === groupedAttendances.length}
+                    />
+                  </th>
                   <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider"></th>
-                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Tanggal</th>
+                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">No</th>
                   <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Nama Karyawan</th>
                   <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Jabatan</th>
-                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Jam Masuk</th>
-                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Jam Pulang</th>
-                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Ekstra (Jam)</th>
-                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Lembur (Jam)</th>
+                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Absensi</th>
+                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 text-sm">
                 {loading ? (
                   <tr><td colSpan={7} className="px-6 py-4 text-center text-gray-500">Memuat data...</td></tr>
-                ) : filteredAttendances.length === 0 ? (
+                ) : groupedAttendances.length === 0 ? (
                   <tr><td colSpan={7} className="px-6 py-4 text-center text-gray-500">Tidak ada data absensi</td></tr>
                 ) : (
-                  filteredAttendances.map((att) => (
-                    <React.Fragment key={att.id}>
+                  groupedAttendances.map((group, index) => (
+                    <React.Fragment key={group.employeeId}>
                       <tr className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-3">
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            checked={selectedExportIds.includes(group.employeeId)}
+                            onChange={(e) => toggleSelectOne(group.employeeId, e.target.checked)}
+                          />
+                        </td>
                         <td className="px-6 py-3 relative">
                           <button
-                            onClick={() => openMenuRowId === att.id ? setOpenMenuRowId(null) : openInlineEditForRow(att)}
+                            onClick={() => openMenuRowId === group.employeeId ? setOpenMenuRowId(null) : setOpenMenuRowId(group.employeeId)}
                             className="p-1 rounded hover:bg-gray-100 transition-transform"
                             aria-label="Menu"
                           >
-                            <ChevronDown size={16} className={`text-gray-600 transition-transform duration-200 ${openMenuRowId === att.id ? 'rotate-180' : ''}`} />
+                            <ChevronDown size={16} className={`text-gray-600 transition-transform duration-200 ${openMenuRowId === group.employeeId ? 'rotate-180' : ''}`} />
                           </button>
                         </td>
-                        <td className="px-6 py-3 whitespace-nowrap text-gray-900 font-medium">
-                          {new Date(att.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
-                        </td>
-                        <td className="px-6 py-3 font-medium text-gray-900">{att.employee.name}</td>
-                        <td className="px-6 py-3 text-gray-500">{att.employee.role}</td>
-                        <td className="px-6 py-3 text-green-600 font-medium">
-                          {att.checkIn ? new Date(att.checkIn).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}
-                        </td>
-                        <td className="px-6 py-3 text-green-600 font-medium">
-                          {att.checkOut ? new Date(att.checkOut).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}
-                        </td>
-                        <td className="px-6 py-3 text-gray-900 font-medium">
+                        <td className="px-6 py-3 whitespace-nowrap text-gray-900 font-medium">{index + 1}</td>
+                        <td className="px-6 py-3 font-medium text-gray-900">{group.employeeName}</td>
+                        <td className="px-6 py-3 text-gray-500">{group.employeeRole}</td>
+                        <td className="px-6 py-3">
                           {(() => {
-                            const extra = calcExtra(att)
-                          return extra > 0 ? hoursToHHMMDot(extra) : '-'
+                            const totalDays = group.attendances.length
+                            const rajinCount = group.attendances.filter(a => a.checkIn && a.checkOut).length
+                            const percentage = totalDays > 0 ? (rajinCount / totalDays) * 100 : 0
+                            
+                            let status = 'Buruk'
+                            let colorClass = 'bg-red-100 text-red-700'
+                            
+                            if (percentage >= 80) {
+                              status = 'Baik'
+                              colorClass = 'bg-green-100 text-green-700'
+                            } else if (percentage >= 50) {
+                              status = 'Kurang'
+                              colorClass = 'bg-yellow-100 text-yellow-700'
+                            }
+                            
+                            return (
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${colorClass}`}>
+                                {status}
+                              </span>
+                            )
                           })()}
                         </td>
-                        <td className="px-6 py-3">
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              (!att.checkIn && !att.checkOut)
-                                ? 'bg-red-100 text-red-700'
-                                : (att.checkIn && att.checkOut)
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-yellow-100 text-yellow-700'
-                            }`}
+                        <td className="px-6 py-3 text-right">
+                          <button
+                            onClick={() => handleDeleteGroup(group)}
+                            className="p-1.5 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors"
+                            title="Hapus Semua Absensi Bulan Ini"
                           >
-                            {(!att.checkIn && !att.checkOut)
-                              ? 'Alfa'
-                              : (att.checkIn && att.checkOut)
-                              ? 'Valid'
-                              : 'Invalid'}
-                          </span>
-                        </td>
-                        <td className={`px-6 py-3 ${att.overtimeHours > 0 ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
-                          {att.overtimeHours > 0 ? `${att.overtimeHours} Jam` : '-'}
+                            <Trash2 size={16} />
+                          </button>
                         </td>
                       </tr>
-                      {openMenuRowId === att.id && (
+                      {openMenuRowId === group.employeeId && (
                         <tr>
-                          <td colSpan={9} className="px-6 pb-4">
-                            <div className="rounded-lg border shadow-sm bg-white p-4 transition-all duration-200 ease-out translate-y-0 opacity-100">
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-1">Jam Masuk</label>
-                                  <input
-                                    type="time"
-                                    value={editCheckIn}
-                                    onChange={(e) => setEditCheckIn(e.target.value)}
-                                    onKeyDown={handleEditKeyDown}
-                                    className="w-full p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium placeholder:text-gray-700"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-1">Jam Pulang</label>
-                                  <input
-                                    type="time"
-                                    value={editCheckOut}
-                                    onChange={(e) => setEditCheckOut(e.target.value)}
-                                    onKeyDown={handleEditKeyDown}
-                                    className="w-full p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium placeholder:text-gray-700"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700 mb-1">Ekstra Lembur (Jam)</label>
-                                  <input
-                                    type="time"
-                                    value={editExtra}
-                                    onChange={(e) => setEditExtra(e.target.value)}
-                                    onKeyDown={handleEditKeyDown}
-                                    className="w-full p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium placeholder:text-gray-700"
-                                  />
-                                </div>
-                              </div>
-                              <div className="mt-4 flex gap-2">
-                                <button
-                                  onClick={handleEditSubmit}
-                                  disabled={isEditing}
-                                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  {isEditing ? 'Menyimpan...' : 'Save'}
-                                </button>
-                                <button
-                                  onClick={() => { setOpenMenuRowId(null); setEditingRow(null); }}
-                                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
-                                >
-                                  Close
-                                </button>
-                              </div>
+                          <td colSpan={7} className="px-6 pb-4 pt-2 bg-gray-50/50">
+                            <div className="rounded-lg border shadow-sm bg-white overflow-hidden animate-in slide-in-from-top-2 duration-200">
+                              <table className="w-full text-left">
+                                <thead className="bg-gray-50 border-b border-gray-100">
+                                  <tr>
+                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Tanggal</th>
+                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Nama Karyawan</th>
+                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Jam Masuk</th>
+                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Jam Pulang</th>
+                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Ekstra (Jam)</th>
+                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Lembur (Jam)</th>
+                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Aksi</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                  {group.attendances.map((att) => (
+                                    <tr key={att.id}>
+                                      <td className="px-4 py-2 text-sm text-gray-900">
+                                        {new Date(att.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                      </td>
+                                      <td className="px-4 py-2 text-sm text-gray-900 font-medium">{att.employee.name}</td>
+                                      <td className="px-4 py-2">
+                                        {editingRow?.id === att.id ? (
+                                          <input
+                                            type="time"
+                                            value={editCheckIn}
+                                            onChange={(e) => setEditCheckIn(e.target.value)}
+                                            onKeyDown={handleEditKeyDown}
+                                            className="w-full p-1.5 border border-gray-300 rounded text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                          />
+                                        ) : (
+                                          <span className="text-green-600 font-medium">{att.checkIn ? new Date(att.checkIn).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}</span>
+                                        )}
+                                      </td>
+                                      <td className="px-4 py-2">
+                                        {editingRow?.id === att.id ? (
+                                          <input
+                                            type="time"
+                                            value={editCheckOut}
+                                            onChange={(e) => setEditCheckOut(e.target.value)}
+                                            onKeyDown={handleEditKeyDown}
+                                            className="w-full p-1.5 border border-gray-300 rounded text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                          />
+                                        ) : (
+                                          <span className="text-green-600 font-medium">{att.checkOut ? new Date(att.checkOut).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}</span>
+                                        )}
+                                      </td>
+                                      <td className="px-4 py-2">
+                                        {editingRow?.id === att.id ? (
+                                          <input
+                                            type="number"
+                                            step="0.25"
+                                            min="0"
+                                            value={editExtra}
+                                            onChange={(e) => setEditExtra(e.target.value)}
+                                            onKeyDown={handleEditKeyDown}
+                                            className="w-24 p-1.5 border border-gray-300 rounded text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                          />
+                                        ) : (
+                                          <span className="text-gray-900">{att.overtimeHours > calcOvertimeHours(att.checkIn, att.checkOut) ? (att.overtimeHours - calcOvertimeHours(att.checkIn, att.checkOut)).toFixed(2) : '-'}</span>
+                                        )}
+                                      </td>
+                                      <td className="px-4 py-2">
+                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                          (!att.checkIn && !att.checkOut) ? 'bg-red-100 text-red-700' :
+                                          (att.checkIn && att.checkOut) ? 'bg-green-100 text-green-700' :
+                                          'bg-yellow-100 text-yellow-700'
+                                        }`}>
+                                          {(!att.checkIn && !att.checkOut) ? 'Alfa' : (att.checkIn && att.checkOut) ? 'Valid' : 'Invalid'}
+                                        </span>
+                                      </td>
+                                      <td className="px-4 py-2 text-sm text-red-600 font-bold">
+                                        {(() => {
+                                          const calculated = calcOvertimeHours(att.checkIn, att.checkOut)
+                                          const stored = att.overtimeHours || 0
+                                          const displayValue = Math.max(stored, calculated)
+                                          return displayValue > 0 ? `${displayValue} Jam` : '-'
+                                        })()}
+                                      </td>
+                                      <td className="px-4 py-2 text-right">
+                                        <div className="flex justify-end gap-2">
+                                          {editingRow?.id === att.id ? (
+                                            <>
+                                              <button
+                                                onClick={handleEditSubmit}
+                                                disabled={isEditing}
+                                                className="p-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
+                                                title="Simpan"
+                                              >
+                                                <CheckCircle size={16} />
+                                              </button>
+                                              <button
+                                                onClick={() => { setEditingRow(null); }}
+                                                className="p-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition-colors"
+                                                title="Batal"
+                                              >
+                                                <XCircle size={16} />
+                                              </button>
+                                            </>
+                                          ) : (
+                                            <button
+                                              onClick={() => openInlineEditForRow(att)}
+                                              className="p-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition-colors"
+                                              title="Edit"
+                                            >
+                                              <Edit3 size={16} />
+                                            </button>
+                                          )}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                                <tfoot className="bg-gray-50 border-t border-gray-100">
+                                  <tr>
+                                    <td colSpan={6} className="px-4 py-2 text-sm font-bold text-gray-700 text-right">Total Lembur:</td>
+                                    <td className="px-4 py-2 text-sm font-bold text-red-600">
+            {(() => {
+              const totalMin = group.attendances.reduce((acc, curr) => {
+                const calculated = calcOvertimeHours(curr.checkIn, curr.checkOut)
+                const stored = curr.overtimeHours || 0
+                const actual = Math.max(stored, calculated)
+                return acc + toMinutes(actual)
+              }, 0)
+              const h = Math.floor(totalMin / 60)
+              const m = Math.round(totalMin % 60)
+              return `${h}.${m.toString().padStart(2, '0')}`
+            })()} Jam
+          </td>
+                                    <td></td>
+                                  </tr>
+                                </tfoot>
+                              </table>
                             </div>
                           </td>
                         </tr>
@@ -841,16 +1208,6 @@ export default function AttendancePage() {
                   ))
                 )}
               </tbody>
-              {filteredAttendances.length > 0 && (
-                <tfoot className="bg-gray-50 border-t border-gray-200 font-bold">
-                  <tr>
-                    <td colSpan={8} className="px-6 py-4 text-right text-gray-700">Total Lembur:</td>
-                    <td className="px-6 py-4 text-red-600">
-                      {filteredAttendances.reduce((acc, curr) => acc + (curr.overtimeHours || 0), 0).toFixed(2)} Jam
-                    </td>
-                  </tr>
-                </tfoot>
-              )}
             </table>
           </div>
         </div>
@@ -973,6 +1330,22 @@ export default function AttendancePage() {
               </button>
             </div>
             <div className="p-6 space-y-4">
+              {editingGroup && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Absensi</label>
+                  <select
+                    value={editingRow?.date || ''}
+                    onChange={(e) => handleGroupDateChange(e.target.value)}
+                    className="w-full p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium bg-white"
+                  >
+                    {editingGroup.attendances.map((att) => (
+                      <option key={att.id} value={att.date}>
+                        {new Date(att.date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Jam Masuk</label>
                 <input

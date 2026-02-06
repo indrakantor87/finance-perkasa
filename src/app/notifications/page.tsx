@@ -1,12 +1,18 @@
 'use client'
 
-import React from 'react'
+import { 
+  LayoutDashboard, 
+  Users, 
+  UserCheck, 
+  Banknote, 
+  CreditCard, 
+  FileCheck, 
+  Database, 
+  Settings,
+  Bell
+} from 'lucide-react'
 import Link from 'next/link'
 import UserMenu from '@/components/UserMenu'
-import { 
-  Users, LayoutDashboard, Database, UserCheck, Banknote, 
-  CreditCard, FileCheck, Bell, Settings
-} from 'lucide-react';
 
 const NavItem = ({ icon, label, href, active = false }: { icon: React.ReactNode, label: string, href: string, active?: boolean }) => (
   <Link 
@@ -22,7 +28,7 @@ const NavItem = ({ icon, label, href, active = false }: { icon: React.ReactNode,
   </Link>
 )
 
-export default function LoansPage() {
+export default function NotificationsPage() {
   return (
     <div className="min-h-screen bg-gray-100 font-sans">
       {/* Top Navigation Bar */}
@@ -49,7 +55,7 @@ export default function LoansPage() {
           <NavItem icon={<Users size={16} />} label="Data Karyawan" href="/employees" />
           <NavItem icon={<UserCheck size={16} />} label="Absensi" href="/attendance" />
           <NavItem icon={<Banknote size={16} />} label="Gaji" href="/salary" />
-          <NavItem icon={<CreditCard size={16} />} label="Pinjaman" href="/loans" active />
+          <NavItem icon={<CreditCard size={16} />} label="Pinjaman" href="/loans" />
           <NavItem icon={<FileCheck size={16} />} label="Perizinan" href="/permissions" />
           <NavItem icon={<Database size={16} />} label="Master Data" href="/master-data" />
           <NavItem icon={<Settings size={16} />} label="Settings" href="/settings" />
@@ -60,16 +66,16 @@ export default function LoansPage() {
       <main className="p-6 max-w-[1600px] mx-auto space-y-6">
         <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6">
           <div className="bg-blue-100 p-8 rounded-full animate-pulse">
-            <CreditCard className="w-20 h-20 text-blue-600" />
+            <Bell className="w-20 h-20 text-blue-600" />
           </div>
           <div className="space-y-2">
-            <h1 className="text-3xl font-bold text-gray-800">Fitur Pinjaman</h1>
+            <h1 className="text-3xl font-bold text-gray-800">Fitur Notifikasi</h1>
             <p className="text-xl text-blue-600 font-semibold bg-blue-50 px-4 py-1 rounded-full inline-block">
               Dalam Pengembangan
             </p>
           </div>
           <p className="text-gray-500 max-w-lg text-lg leading-relaxed">
-            Kami sedang bekerja keras untuk menghadirkan fitur manajemen pinjaman karyawan yang komprehensif, aman, dan mudah digunakan.
+            Kami sedang bekerja keras untuk menghadirkan fitur notifikasi yang real-time dan informatif.
           </p>
         </div>
       </main>

@@ -24,7 +24,7 @@ interface SlipHistoryItem extends SalarySlipData {
 }
 
 export default function SalaryPage() {
-  const [activeCategory, setActiveCategory] = useState('Penjualan')
+  const [activeCategory, setActiveCategory] = useState('Pemasaran dan Pelayanan')
   const [employeeId, setEmployeeId] = useState('')
   const [month, setMonth] = useState(new Date().getMonth() + 1)
   const [year, setYear] = useState(new Date().getFullYear())
@@ -52,20 +52,17 @@ export default function SalaryPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null)
 
   const getRoleLabel = (role: string) => {
-    if (activeCategory === 'Penjualan') {
+    if (activeCategory === 'Pemasaran dan Pelayanan') {
       const r = role ? role.toUpperCase() : ''
-      if (r === 'MANAGER') return 'PENJUALAN MANAGER'
-      if (r === 'LEADER') return 'PENJUALAN LEADER'
-      return 'PENJUALAN'
+      if (r === 'MANAGER') return 'PEMASARAN MANAGER'
+      if (r === 'LEADER') return 'PEMASARAN LEADER'
+      return 'PEMASARAN'
     }
     return role
   }
 
   // Filter slips based on active category
   const filteredSlips = slips.filter(slip => {
-    if (activeCategory === 'Penjualan') {
-      return slip.employee.department === 'Penjualan' || slip.employee.department === 'Pemasaran & Pelayanan'
-    }
     return slip.employee.department === activeCategory
   })
 
@@ -418,7 +415,7 @@ export default function SalaryPage() {
       if (!res.ok) throw new Error(data.error || 'Gagal mengambil data')
 
       // Marketing specific adjustments
-      if (activeCategory === 'Penjualan') {
+      if (activeCategory === 'Pemasaran dan Pelayanan') {
           // Reset standard Transport/Meal to avoid double counting if using UMT
           // But allow them to be used if UMT is just a label? 
           // Since we added umtAmount, we should use that.
@@ -604,16 +601,16 @@ export default function SalaryPage() {
       {/* Top Navigation Bar - Hidden on Print */}
       <header className="bg-blue-900 text-white px-6 py-3 flex items-center justify-between shadow-md print:hidden">
         <div className="flex items-center gap-3">
-          <div className="bg-white/20 p-2 rounded-full">
-            <LayoutDashboard className="w-6 h-6" />
+          <div className="bg-white p-1.5 rounded-full">
+            <img src="/uploads/logo-perkasa.png" alt="Logo" className="w-6 h-6 object-contain" />
           </div>
           <h1 className="text-xl font-bold tracking-wide">FINANCE PERKASA</h1>
         </div>
         <div className="flex items-center gap-4">
-          <div className="relative">
+          <Link href="/notifications" className="relative block">
             <Bell className="w-5 h-5 cursor-pointer hover:text-gray-200" />
             <span className="absolute -top-1 -right-1 bg-red-600 text-[10px] w-4 h-4 flex items-center justify-center rounded-full">3</span>
-          </div>
+          </Link>
           <UserMenu />
         </div>
       </header>
@@ -640,12 +637,12 @@ export default function SalaryPage() {
 
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 print:hidden">
           {/* Category Tabs */}
-          <div className="flex gap-4 border-b border-gray-200 mb-6">
-            {['Penjualan', 'Teknisi', 'Support Management', 'Management'].map((category) => (
+          <div className="flex gap-4 border-b border-gray-200 mb-6 overflow-x-auto pb-2">
+            {['Pemasaran dan Pelayanan', 'Teknis dan Expan', 'Operasional', 'General Affair', 'Keuangan dan HR'].map((category) => (
               <button
                 key={category}
                 onClick={() => setActiveCategory(category)}
-                className={`pb-2 px-4 font-medium transition-colors border-b-2 ${
+                className={`pb-2 px-4 font-medium transition-colors border-b-2 whitespace-nowrap ${
                   activeCategory === category
                     ? 'border-blue-600 text-blue-700'
                     : 'border-transparent text-gray-500 hover:text-blue-600'
@@ -656,11 +653,11 @@ export default function SalaryPage() {
             ))}
           </div>
 
-          {['Penjualan', 'Teknisi', 'Support Management', 'Management'].includes(activeCategory) ? (
+          {['Pemasaran dan Pelayanan', 'Teknis dan Expan', 'Operasional', 'General Affair', 'Keuangan dan HR'].includes(activeCategory) ? (
             <>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700">Nama Karyawan ({activeCategory === 'Support Management' ? 'Sup Management' : activeCategory})</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700">Nama Karyawan</label>
                   <input
                     type="text"
                     value={employeeId}
@@ -928,7 +925,7 @@ export default function SalaryPage() {
                 <div className="space-y-4">
                   <h4 className="font-bold text-gray-700 border-b pb-2">Penghasilan</h4>
                   
-                  {activeCategory === 'Penjualan' ? (
+                  {activeCategory === 'Pemasaran dan Pelayanan' ? (
                       <>
                         <InputItem label="Kehadiran Absensi" value={inputData.attendanceAllowance || 0} onChange={(v) => updateInput('attendanceAllowance', v)} />
                         <InputItem label="Gaji" value={inputData.baseSalary} onChange={(v) => updateInput('baseSalary', v)} />

@@ -14,7 +14,7 @@ model Employee {
   id        String   @id @default(cuid())
   name      String
   role      String   @default("STAFF") // STAFF, LEADER, MANAGER, ADMIN
-  department String  @default("Penjualan") // Penjualan, Teknisi, Management
+  department String  @default("Pemasaran dan Pelayanan") // Penjualan, Teknisi, Management
   status    String   @default("Karyawan") // Training 1, Training 2, Karyawan, Kontrak 1, Kontrak 2
   joinDate  DateTime @default(now())
   baseSalary Float   @default(0) // Gaji Pokok / Kehadiran Absensi Base

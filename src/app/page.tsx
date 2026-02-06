@@ -1,11 +1,13 @@
 'use client'
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function Home() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -59,13 +61,22 @@ export default function Home() {
           </div>
           <div className="mb-4">
             <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Kata Sandi</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="minimal 6 karakter"
-              className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="minimal 6 karakter"
+                className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700 pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
           </div>
           <div className="mb-4 flex items-center gap-2">
             <input

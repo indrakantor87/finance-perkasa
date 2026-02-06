@@ -80,16 +80,16 @@ export default function SettingsPage() {
       {/* Header */}
       <header className="bg-blue-900 text-white px-6 py-3 flex items-center justify-between shadow-md">
         <div className="flex items-center gap-3">
-          <div className="bg-white/20 p-2 rounded-full">
-            <LayoutDashboard className="w-6 h-6" />
+          <div className="bg-white p-1.5 rounded-full">
+            <img src="/uploads/logo-perkasa.png" alt="Logo" className="w-6 h-6 object-contain" />
           </div>
           <h1 className="text-xl font-bold tracking-wide">FINANCE PERKASA</h1>
         </div>
         <div className="flex items-center gap-4">
-          <div className="relative">
+          <Link href="/notifications" className="relative block">
             <Bell className="w-5 h-5 cursor-pointer hover:text-gray-200" />
             <span className="absolute -top-1 -right-1 bg-red-600 text-[10px] w-4 h-4 flex items-center justify-center rounded-full">3</span>
-          </div>
+          </Link>
           <UserMenu />
         </div>
       </header>
