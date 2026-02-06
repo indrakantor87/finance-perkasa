@@ -104,26 +104,26 @@ export default function DashboardClient({ stats }: { stats: DashboardStats | nul
     <div className="min-h-screen bg-gray-50/50 font-sans text-slate-800">
       
       {/* --- Header --- */}
-      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+      <header className="sticky top-0 z-30 bg-blue-900 text-white border-b border-blue-800 px-6 py-4 flex items-center justify-between shadow-md">
         <div className="flex items-center gap-3">
-          <div className="bg-blue-600 p-1.5 rounded-lg shadow-lg shadow-blue-600/20">
-            <img src="/uploads/logo-perkasa.png" alt="Logo" className="w-6 h-6 object-contain filter brightness-0 invert" />
+          <div className="bg-white p-1.5 rounded-full shadow-lg">
+            <img src="/uploads/logo-perkasa.png" alt="Logo" className="w-6 h-6 object-contain" />
           </div>
           <div>
-             <h1 className="text-lg font-bold tracking-tight text-slate-900 leading-none">FINANCE PERKASA</h1>
-             <p className="text-[10px] text-slate-500 font-medium tracking-wide">DASHBOARD SYSTEM</p>
+             <h1 className="text-lg font-bold tracking-tight text-white leading-none">FINANCE PERKASA</h1>
+             <p className="text-[10px] text-blue-200 font-medium tracking-wide">DASHBOARD SYSTEM</p>
           </div>
         </div>
         <div className="flex items-center gap-6">
           <div className="hidden md:flex flex-col items-end mr-2">
-            <span className="text-xs font-semibold text-slate-700">{formattedDate}</span>
-            <span className="text-[10px] text-slate-400">Selamat Datang, Admin</span>
+            <span className="text-xs font-semibold text-white">{formattedDate}</span>
+            <span className="text-[10px] text-blue-200">Selamat Datang, Admin</span>
           </div>
-          <Link href="/notifications" className="relative p-2 hover:bg-gray-100 rounded-full transition-colors group">
-            <Bell className="w-5 h-5 text-slate-600 group-hover:text-blue-600 transition-colors" />
+          <Link href="/notifications" className="relative p-2 hover:bg-blue-800 rounded-full transition-colors group">
+            <Bell className="w-5 h-5 text-blue-200 group-hover:text-white transition-colors" />
             <span className="absolute top-1.5 right-1.5 bg-red-500 ring-2 ring-white w-2.5 h-2.5 rounded-full"></span>
           </Link>
-          <div className="pl-6 border-l border-gray-200">
+          <div className="pl-6 border-l border-blue-700">
              <UserMenu />
           </div>
         </div>
