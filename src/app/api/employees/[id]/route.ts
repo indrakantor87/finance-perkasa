@@ -7,7 +7,6 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params
     const body = await request.json()
-    console.log('PUT Request Body:', body) // Debug log
 
     const { name, role, department, status, baseSalary, positionAllowance, joinDate, identityPhoto } = body
 

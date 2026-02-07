@@ -82,6 +82,12 @@ export default function AttendancePage() {
   const [editingGroup, setEditingGroup] = useState<GroupedAttendance | null>(null)
   const [isSyncing, setIsSyncing] = useState(false)
 
+  // -- Theme --
+  // We can use standard Tailwind dark: classes for most things.
+  // For dynamic values if needed:
+  // const { resolvedTheme } = useTheme() 
+  // const isDark = resolvedTheme === 'dark'
+
   useEffect(() => {
     fetchEmployees()
   }, [])
@@ -843,7 +849,7 @@ export default function AttendancePage() {
   }, [] as GroupedAttendance[])
 
   return (
-    <div className="min-h-screen bg-gray-100 font-sans">
+    <div className="min-h-screen bg-gray-100 dark:bg-black font-sans">
       {/* Header & Navigation */}
       <Header />
       <Navigation />
@@ -851,7 +857,7 @@ export default function AttendancePage() {
       {/* Main Content */}
       <main className="p-6 max-w-[1600px] mx-auto space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-800">Data Absensi</h1>
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-zinc-50">Data Absensi</h1>
           <div className="flex gap-2">
             <button 
               onClick={handleSyncMachine}
@@ -870,16 +876,16 @@ export default function AttendancePage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
           {/* Filters */}
-          <div className="p-4 border-b border-gray-100 bg-gray-50 flex flex-col md:flex-row gap-4 justify-between items-center">
+          <div className="p-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 flex flex-col md:flex-row gap-4 justify-between items-center">
              <div className="flex flex-1 gap-4 items-center flex-wrap">
                 {/* Date Range Filter */}
                 <div className="flex gap-2 items-center">
                   <select
                     value={selectedMonth}
                     onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                    className="p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium bg-white"
+                    className="p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-zinc-100 font-medium bg-white dark:bg-gray-800 dark:border-gray-700"
                   >
                     {Array.from({ length: 12 }, (_, i) => (
                       <option key={i} value={i}>
@@ -890,7 +896,7 @@ export default function AttendancePage() {
                   <select
                     value={selectedYear}
                     onChange={(e) => setSelectedYear(Number(e.target.value))}
-                    className="p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium bg-white"
+                    className="p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-zinc-100 font-medium bg-white dark:bg-gray-800 dark:border-gray-700"
                   >
                     {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - 5 + i).map((year) => (
                       <option key={year} value={year}>
@@ -902,22 +908,22 @@ export default function AttendancePage() {
 
                 <button
                   onClick={exportToExcel}
-                  className="flex items-center gap-2 px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-sm font-medium"
+                  className="flex items-center gap-2 px-3 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors text-sm font-medium"
                 >
                   <Download size={16} />
                   Export Excel
                 </button>
 
                 {/* Category Tabs inside Filter */}
-                <div className="flex bg-white rounded-lg border p-1 overflow-x-auto">
+                <div className="flex bg-white dark:bg-gray-800 rounded-lg border dark:border-gray-700 p-1 overflow-x-auto">
                   {['Semua', 'Pemasaran dan Pelayanan', 'Operasional', 'General Affair', 'Keuangan dan HR', 'Teknis dan Expan'].map((cat) => (
                     <button
                       key={cat}
                       onClick={() => setActiveCategory(cat)}
                       className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all whitespace-nowrap ${
                         activeCategory === cat 
-                          ? 'bg-blue-100 text-blue-700 shadow-sm' 
-                          : 'text-gray-500 hover:bg-gray-50'
+                          ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 shadow-sm' 
+                          : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
                       }`}
                     >
                       {cat}
@@ -933,7 +939,7 @@ export default function AttendancePage() {
                   placeholder="Cari nama karyawan..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-900 font-medium placeholder:text-gray-600"
+                  className="w-full pl-9 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-900 dark:text-zinc-100 font-medium placeholder:text-gray-600 dark:placeholder:text-gray-500 dark:bg-gray-800 dark:border-gray-700"
                 />
               </div>
           </div>
@@ -941,7 +947,7 @@ export default function AttendancePage() {
           {/* Table */}
           <div className="overflow-x-auto">
             <table className="w-full text-left">
-              <thead className="bg-gray-50 border-b border-gray-100">
+              <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
                 <tr>
                   <th className="px-6 py-3 w-10">
                     <input
@@ -951,23 +957,23 @@ export default function AttendancePage() {
                       checked={groupedAttendances.length > 0 && selectedExportIds.length === groupedAttendances.length}
                     />
                   </th>
-                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider"></th>
-                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">No</th>
-                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Nama Karyawan</th>
-                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Jabatan</th>
-                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Absensi</th>
-                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Aksi</th>
+                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"></th>
+                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">No</th>
+                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Karyawan</th>
+                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Jabatan</th>
+                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Absensi</th>
+                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 text-sm">
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
                 {loading ? (
-                  <tr><td colSpan={7} className="px-6 py-4 text-center text-gray-500">Memuat data...</td></tr>
+                  <tr><td colSpan={7} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Memuat data...</td></tr>
                 ) : groupedAttendances.length === 0 ? (
-                  <tr><td colSpan={7} className="px-6 py-4 text-center text-gray-500">Tidak ada data absensi</td></tr>
+                  <tr><td colSpan={7} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Tidak ada data absensi</td></tr>
                 ) : (
                   groupedAttendances.map((group, index) => (
                     <React.Fragment key={group.employeeId}>
-                      <tr className="hover:bg-gray-50 transition-colors">
+                      <tr className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                         <td className="px-6 py-3">
                           <input
                             type="checkbox"
@@ -979,15 +985,15 @@ export default function AttendancePage() {
                         <td className="px-6 py-3 relative">
                           <button
                             onClick={() => openMenuRowId === group.employeeId ? setOpenMenuRowId(null) : setOpenMenuRowId(group.employeeId)}
-                            className="p-1 rounded hover:bg-gray-100 transition-transform"
+                            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-transform"
                             aria-label="Menu"
                           >
-                            <ChevronDown size={16} className={`text-gray-600 transition-transform duration-200 ${openMenuRowId === group.employeeId ? 'rotate-180' : ''}`} />
+                            <ChevronDown size={16} className={`text-gray-600 dark:text-gray-400 transition-transform duration-200 ${openMenuRowId === group.employeeId ? 'rotate-180' : ''}`} />
                           </button>
                         </td>
-                        <td className="px-6 py-3 whitespace-nowrap text-gray-900 font-medium">{index + 1}</td>
-                        <td className="px-6 py-3 font-medium text-gray-900">{group.employeeName}</td>
-                        <td className="px-6 py-3 text-gray-500">{group.employeeRole}</td>
+                        <td className="px-6 py-3 whitespace-nowrap text-gray-900 dark:text-zinc-100 font-medium">{index + 1}</td>
+                        <td className="px-6 py-3 font-medium text-gray-900 dark:text-zinc-100">{group.employeeName}</td>
+                        <td className="px-6 py-3 text-gray-500 dark:text-gray-400">{group.employeeRole}</td>
                         <td className="px-6 py-3">
                           {(() => {
                             const totalDays = group.attendances.length
@@ -995,14 +1001,14 @@ export default function AttendancePage() {
                             const percentage = totalDays > 0 ? (rajinCount / totalDays) * 100 : 0
                             
                             let status = 'Buruk'
-                            let colorClass = 'bg-red-100 text-red-700'
+                            let colorClass = 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                             
                             if (percentage >= 80) {
                               status = 'Baik'
-                              colorClass = 'bg-green-100 text-green-700'
+                              colorClass = 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                             } else if (percentage >= 50) {
                               status = 'Kurang'
-                              colorClass = 'bg-yellow-100 text-yellow-700'
+                              colorClass = 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
                             }
                             
                             return (
@@ -1015,7 +1021,7 @@ export default function AttendancePage() {
                         <td className="px-6 py-3 text-right">
                           <button
                             onClick={() => handleDeleteGroup(group)}
-                            className="p-1.5 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors"
+                            className="p-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-md hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
                             title="Hapus Semua Absensi Bulan Ini"
                           >
                             <Trash2 size={16} />
@@ -1024,28 +1030,28 @@ export default function AttendancePage() {
                       </tr>
                       {openMenuRowId === group.employeeId && (
                         <tr>
-                          <td colSpan={7} className="px-6 pb-4 pt-2 bg-gray-50/50">
-                            <div className="rounded-lg border shadow-sm bg-white overflow-hidden animate-in slide-in-from-top-2 duration-200">
+                          <td colSpan={7} className="px-6 pb-4 pt-2 bg-gray-50/50 dark:bg-gray-800/30">
+                            <div className="rounded-lg border dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900 overflow-hidden animate-in slide-in-from-top-2 duration-200">
                               <table className="w-full text-left">
-                                <thead className="bg-gray-50 border-b border-gray-100">
+                                <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
                                   <tr>
-                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Tanggal</th>
-                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Nama Karyawan</th>
-                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Jam Masuk</th>
-                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Jam Pulang</th>
-                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Ekstra (Jam)</th>
-                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Lembur (Jam)</th>
-                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Aksi</th>
+                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tanggal</th>
+                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Karyawan</th>
+                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Jam Masuk</th>
+                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Jam Pulang</th>
+                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ekstra (Jam)</th>
+                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Lembur (Jam)</th>
+                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Aksi</th>
                                   </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100">
+                                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                                   {group.attendances.map((att) => (
                                     <tr key={att.id}>
-                                      <td className="px-4 py-2 text-sm text-gray-900">
+                                      <td className="px-4 py-2 text-sm text-gray-900 dark:text-zinc-100">
                                         {new Date(att.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
                                       </td>
-                                      <td className="px-4 py-2 text-sm text-gray-900 font-medium">{att.employee.name}</td>
+                                      <td className="px-4 py-2 text-sm text-gray-900 dark:text-zinc-100 font-medium">{att.employee.name}</td>
                                       <td className="px-4 py-2">
                                         {editingRow?.id === att.id ? (
                                           <input
@@ -1053,10 +1059,10 @@ export default function AttendancePage() {
                                             value={editCheckIn}
                                             onChange={(e) => setEditCheckIn(e.target.value)}
                                             onKeyDown={handleEditKeyDown}
-                                            className="w-full p-1.5 border border-gray-300 rounded text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            className="w-full p-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-900 dark:text-zinc-100 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                           />
                                         ) : (
-                                          <span className="text-green-600 font-medium">{att.checkIn ? new Date(att.checkIn).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}</span>
+                                          <span className="text-green-600 dark:text-green-400 font-medium">{att.checkIn ? new Date(att.checkIn).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}</span>
                                         )}
                                       </td>
                                       <td className="px-4 py-2">
@@ -1066,10 +1072,10 @@ export default function AttendancePage() {
                                             value={editCheckOut}
                                             onChange={(e) => setEditCheckOut(e.target.value)}
                                             onKeyDown={handleEditKeyDown}
-                                            className="w-full p-1.5 border border-gray-300 rounded text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            className="w-full p-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-900 dark:text-zinc-100 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                           />
                                         ) : (
-                                          <span className="text-green-600 font-medium">{att.checkOut ? new Date(att.checkOut).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}</span>
+                                          <span className="text-green-600 dark:text-green-400 font-medium">{att.checkOut ? new Date(att.checkOut).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}</span>
                                         )}
                                       </td>
                                       <td className="px-4 py-2">
@@ -1081,22 +1087,22 @@ export default function AttendancePage() {
                                             value={editExtra}
                                             onChange={(e) => setEditExtra(e.target.value)}
                                             onKeyDown={handleEditKeyDown}
-                                            className="w-24 p-1.5 border border-gray-300 rounded text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            className="w-24 p-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-900 dark:text-zinc-100 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                           />
                                         ) : (
-                                          <span className="text-gray-900">{att.overtimeHours > calcOvertimeHours(att.checkIn, att.checkOut) ? (att.overtimeHours - calcOvertimeHours(att.checkIn, att.checkOut)).toFixed(2) : '-'}</span>
+                                          <span className="text-gray-900 dark:text-zinc-100">{att.overtimeHours > calcOvertimeHours(att.checkIn, att.checkOut) ? (att.overtimeHours - calcOvertimeHours(att.checkIn, att.checkOut)).toFixed(2) : '-'}</span>
                                         )}
                                       </td>
                                       <td className="px-4 py-2">
                                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                          (!att.checkIn && !att.checkOut) ? 'bg-red-100 text-red-700' :
-                                          (att.checkIn && att.checkOut) ? 'bg-green-100 text-green-700' :
-                                          'bg-yellow-100 text-yellow-700'
+                                          (!att.checkIn && !att.checkOut) ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                                          (att.checkIn && att.checkOut) ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                          'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
                                         }`}>
                                           {(!att.checkIn && !att.checkOut) ? 'Alfa' : (att.checkIn && att.checkOut) ? 'Valid' : 'Invalid'}
                                         </span>
                                       </td>
-                                      <td className="px-4 py-2 text-sm text-red-600 font-bold">
+                                      <td className="px-4 py-2 text-sm text-red-600 dark:text-red-400 font-bold">
                                         {(() => {
                                           const calculated = calcOvertimeHours(att.checkIn, att.checkOut)
                                           const stored = att.overtimeHours || 0
@@ -1174,54 +1180,55 @@ export default function AttendancePage() {
       {/* Import Modal */}
       {showImportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-800">
+              <h2 className="text-xl font-bold text-gray-800 dark:text-zinc-100 flex items-center gap-2">
                 <Upload className="text-green-600" /> Import Data Fingerprint
               </h2>
-              <button onClick={() => setShowImportModal(false)} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => setShowImportModal(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                 <XCircle size={24} />
               </button>
             </div>
             
             <div className="p-6 overflow-y-auto flex-1">
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Upload File</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Upload File</label>
                 <div className="flex items-center gap-4">
                   <input 
                     type="file" 
                     accept=".csv, .xlsx, .xls"
                     onChange={handleFileChange}
-                    className="block w-full text-sm text-gray-500
+                    className="block w-full text-sm text-gray-500 dark:text-gray-400
                       file:mr-4 file:py-2 file:px-4
                       file:rounded-full file:border-0
                       file:text-sm file:font-semibold
                       file:bg-blue-50 file:text-blue-700
-                      hover:file:bg-blue-100
+                      dark:file:bg-blue-900/30 dark:file:text-blue-400
+                      hover:file:bg-blue-100 dark:hover:file:bg-blue-900/50
                     "
                   />
                   <a 
                     href="#" 
                     onClick={(e) => { e.preventDefault(); downloadTemplate(); }}
-                    className="text-sm text-blue-600 hover:underline whitespace-nowrap"
+                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap"
                   >
                     Download Template
                   </a>
                 </div>
-                <p className="mt-2 text-xs text-gray-500">
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                   Format Excel/CSV: Nama, Tanggal (YYYY-MM-DD), Jam Masuk (HH:MM), Jam Pulang (HH:MM)
                 </p>
               </div>
 
               {importPreview.length > 0 && (
-                <div className="border rounded-lg overflow-hidden">
-                  <div className="bg-gray-50 px-4 py-2 border-b text-sm font-semibold text-gray-700 flex justify-between">
+                <div className="border dark:border-gray-700 rounded-lg overflow-hidden">
+                  <div className="bg-gray-50 dark:bg-gray-800 px-4 py-2 border-b dark:border-gray-700 text-sm font-semibold text-gray-700 dark:text-gray-300 flex justify-between">
                     <span>Preview Data ({importPreview.length} baris)</span>
-                    <span className="text-xs font-normal text-gray-500">Hanya data valid yang akan diimport</span>
+                    <span className="text-xs font-normal text-gray-500 dark:text-gray-400">Hanya data valid yang akan diimport</span>
                   </div>
                   <div className="max-h-60 overflow-y-auto">
                     <table className="w-full text-sm text-left">
-                      <thead className="bg-gray-50 text-gray-500 sticky top-0">
+                      <thead className="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 sticky top-0">
                         <tr>
                           <th className="px-4 py-2">Nama</th>
                           <th className="px-4 py-2">Tanggal</th>
@@ -1230,21 +1237,21 @@ export default function AttendancePage() {
                           <th className="px-4 py-2">Status</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100">
+                      <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                         {importPreview.map((item, idx) => (
-                          <tr key={idx} className={item.isValid ? 'bg-white' : 'bg-red-50'}>
+                          <tr key={idx} className={item.isValid ? 'bg-white dark:bg-gray-900' : 'bg-red-50 dark:bg-red-900/20'}>
                             <td className="px-4 py-2 flex items-center gap-2">
                               {item.isValid ? <CheckCircle size={14} className="text-green-500" /> : <AlertCircle size={14} className="text-red-500" />}
-                              <span className={item.isValid ? 'text-gray-900 font-medium' : 'text-red-600 font-medium'}>{item.employeeName}</span>
+                              <span className={item.isValid ? 'text-gray-900 dark:text-zinc-100 font-medium' : 'text-red-600 dark:text-red-400 font-medium'}>{item.employeeName}</span>
                             </td>
-                            <td className="px-4 py-2 text-gray-900 font-medium">{item.date}</td>
-                            <td className="px-4 py-2 text-gray-900 font-medium">{item.checkIn ? item.checkIn.split('T')[1].substring(0, 5) : '-'}</td>
-                            <td className="px-4 py-2 text-gray-900 font-medium">{item.checkOut ? item.checkOut.split('T')[1].substring(0, 5) : '-'}</td>
+                            <td className="px-4 py-2 text-gray-900 dark:text-zinc-100 font-medium">{item.date}</td>
+                            <td className="px-4 py-2 text-gray-900 dark:text-zinc-100 font-medium">{item.checkIn ? item.checkIn.split('T')[1].substring(0, 5) : '-'}</td>
+                            <td className="px-4 py-2 text-gray-900 dark:text-zinc-100 font-medium">{item.checkOut ? item.checkOut.split('T')[1].substring(0, 5) : '-'}</td>
                             <td className="px-4 py-2">
                               {item.isValid ? (
-                                <span className="text-green-600 text-xs">Ready</span>
+                                <span className="text-green-600 dark:text-green-400 text-xs">Ready</span>
                               ) : (
-                                <span className="text-red-600 text-xs">Name Not Match</span>
+                                <span className="text-red-600 dark:text-red-400 text-xs">Name Not Match</span>
                               )}
                             </td>
                           </tr>
@@ -1256,10 +1263,10 @@ export default function AttendancePage() {
               )}
             </div>
 
-            <div className="p-6 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
+            <div className="p-6 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 flex justify-end gap-3">
               <button 
                 onClick={() => setShowImportModal(false)}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
+                className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-medium"
               >
                 Batal
               </button>
@@ -1278,23 +1285,23 @@ export default function AttendancePage() {
       {/* Edit Modal */}
       {showEditModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-800">
+              <h2 className="text-xl font-bold text-gray-800 dark:text-zinc-100 flex items-center gap-2">
                 <Edit3 className="text-blue-600" /> Edit Jam Absensi
               </h2>
-              <button onClick={() => setShowEditModal(false)} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => setShowEditModal(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                 <XCircle size={24} />
               </button>
             </div>
             <div className="p-6 space-y-4">
               {editingGroup && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tanggal Absensi</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tanggal Absensi</label>
                   <select
                     value={editingRow?.date || ''}
                     onChange={(e) => handleGroupDateChange(e.target.value)}
-                    className="w-full p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium bg-white"
+                    className="w-full p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-zinc-100 font-medium bg-white dark:bg-gray-800 dark:border-gray-700"
                   >
                     {editingGroup.attendances.map((att) => (
                       <option key={att.id} value={att.date}>
@@ -1305,40 +1312,40 @@ export default function AttendancePage() {
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Jam Masuk</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Jam Masuk</label>
                 <input
                   type="time"
                   value={editCheckIn}
                   onChange={(e) => setEditCheckIn(e.target.value)}
-                  className="w-full p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium placeholder:text-gray-700"
+                  className="w-full p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-zinc-100 font-medium placeholder:text-gray-700 dark:bg-gray-800 dark:border-gray-700"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Jam Pulang</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Jam Pulang</label>
                 <input
                   type="time"
                   value={editCheckOut}
                   onChange={(e) => setEditCheckOut(e.target.value)}
-                  className="w-full p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium placeholder:text-gray-700"
+                  className="w-full p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-zinc-100 font-medium placeholder:text-gray-700 dark:bg-gray-800 dark:border-gray-700"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ekstra Lembur (Jam)</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Ekstra Lembur (Jam)</label>
                 <input
                   type="number"
                   step="0.25"
                   min="0"
                   value={editExtra}
                   onChange={(e) => setEditExtra(e.target.value)}
-                  className="w-full p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-medium placeholder:text-gray-700"
+                  className="w-full p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-zinc-100 font-medium placeholder:text-gray-700 dark:bg-gray-800 dark:border-gray-700"
                 />
-                <p className="mt-1 text-xs text-gray-500">Ditambahkan di atas lembur hasil hitung jam masuk/pulang</p>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Ditambahkan di atas lembur hasil hitung jam masuk/pulang</p>
               </div>
             </div>
-            <div className="p-6 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
+            <div className="p-6 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 flex justify-end gap-3">
               <button 
                 onClick={() => setShowEditModal(false)}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
+                className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-medium"
               >
                 Batal
               </button>

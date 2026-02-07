@@ -32,7 +32,6 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    console.log('POST Request Body:', body) // Debug log
 
     const { name, role, department, status, baseSalary, positionAllowance, joinDate, identityPhoto } = body
 

@@ -12,33 +12,25 @@ export async function GET() {
     const ip = '103.162.16.14'
     const port = 4370
     const timeout = 10000 // 10 seconds
-
-    console.log(`[ZK] Attempting to connect to ${ip}:${port}...`)
     
     zkInstance = new ZKLib(ip, port, timeout, 4000)
     
     // Create socket
     try {
         await zkInstance.createSocket()
-        console.log('[ZK] Socket created successfully')
     } catch (err) {
         console.error('[ZK] Create Socket Failed:', err)
         throw new Error('Failed to create socket: ' + err)
     }
     
-    console.log('[ZK] Getting users...')
     const users = await zkInstance.getUsers()
-    console.log(`[ZK] Users found: ${users?.data?.length}`)
 
-    console.log('[ZK] Getting logs...')
     const logs = await zkInstance.getAttendances()
-    console.log(`[ZK] Logs found: ${logs?.data?.length}`)
     
     // Get device time
     let time = 'Unknown'
     try {
         time = await zkInstance.getTime()
-        console.log(`[ZK] Device time: ${time}`)
     } catch (e) {
         console.warn('[ZK] Failed to get time:', e)
     }
@@ -63,9 +55,7 @@ export async function GET() {
   } finally {
       if (zkInstance) {
           try {
-              console.log('[ZK] Disconnecting...')
               await zkInstance.disconnect()
-              console.log('[ZK] Disconnected')
           } catch (e) {
               console.error('[ZK] Disconnect error:', e)
           }

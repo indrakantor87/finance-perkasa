@@ -597,7 +597,7 @@ export default function SalaryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 font-sans print:bg-white">
+    <div className="min-h-screen bg-gray-100 dark:bg-black font-sans print:bg-white">
       {/* Header & Navigation */}
       <Header />
       <Navigation />
@@ -605,20 +605,20 @@ export default function SalaryPage() {
       {/* Main Content */}
       <main className="p-6 max-w-[1600px] mx-auto space-y-6 print:p-0 print:max-w-none">
         <div className="flex items-center justify-between print:hidden">
-          <h1 className="text-2xl font-bold text-gray-800">Penggajian & Slip Gaji</h1>
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-zinc-100">Penggajian & Slip Gaji</h1>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 print:hidden">
+        <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-sm border border-gray-100 dark:border-gray-800 print:hidden">
           {/* Category Tabs */}
-          <div className="flex gap-4 border-b border-gray-200 mb-6 overflow-x-auto pb-2">
+          <div className="flex gap-4 border-b border-gray-200 dark:border-gray-700 mb-6 overflow-x-auto pb-2">
             {['Pemasaran dan Pelayanan', 'Teknis dan Expan', 'Operasional', 'General Affair', 'Keuangan dan HR'].map((category) => (
               <button
                 key={category}
                 onClick={() => setActiveCategory(category)}
                 className={`pb-2 px-4 font-medium transition-colors border-b-2 whitespace-nowrap ${
                   activeCategory === category
-                    ? 'border-blue-600 text-blue-700'
-                    : 'border-transparent text-gray-500 hover:text-blue-600'
+                    ? 'border-blue-600 text-blue-700 dark:text-blue-400'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400'
                 }`}
               >
                 {category}
@@ -630,21 +630,21 @@ export default function SalaryPage() {
             <>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700">Nama Karyawan</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Nama Karyawan</label>
                   <input
                     type="text"
                     value={employeeId}
                     onChange={(e) => setEmployeeId(e.target.value)}
-                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900 placeholder:text-gray-400"
+                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900 dark:text-zinc-100 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 placeholder:text-gray-400 dark:placeholder:text-gray-500"
                     placeholder={`contoh: Budi Santoso`}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700">Bulan</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Bulan</label>
                   <select
                     value={month}
                     onChange={(e) => setMonth(parseInt(e.target.value))}
-                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900"
+                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900 dark:text-zinc-100 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
                   >
                     {[...Array(12)].map((_, i) => (
                       <option key={i + 1} value={i + 1}>{new Date(0, i).toLocaleString('id-ID', { month: 'long' })}</option>
@@ -652,12 +652,12 @@ export default function SalaryPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700">Tahun</label>
+                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Tahun</label>
                   <input
                     type="number"
                     value={year}
                     onChange={(e) => setYear(parseInt(e.target.value))}
-                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900 placeholder:text-gray-400"
+                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900 dark:text-zinc-100 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 placeholder:text-gray-400 dark:placeholder:text-gray-500"
                   />
                 </div>
               </div>
@@ -665,30 +665,30 @@ export default function SalaryPage() {
               <button
                 onClick={handleInputRincian}
                 disabled={loading || !employeeId}
-                className="w-full bg-blue-700 text-white py-2 rounded hover:bg-blue-800 disabled:opacity-50 font-bold transition-colors"
+                className="w-full bg-blue-700 dark:bg-blue-600 text-white py-2 rounded hover:bg-blue-800 dark:hover:bg-blue-700 disabled:opacity-50 font-bold transition-colors"
               >
                 {loading ? 'Memuat...' : 'Input Rincian & Buat Slip'}
               </button>
               
-              {error && <p className="text-red-500 mt-4 text-sm bg-red-50 p-2 rounded">{error}</p>}
+              {error && <p className="text-red-500 mt-4 text-sm bg-red-50 dark:bg-red-900/20 p-2 rounded">{error}</p>}
             </>
           ) : (
-            <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-              <div className="bg-white inline-block p-4 rounded-full mb-4 shadow-sm">
-                <Clock className="w-8 h-8 text-gray-400" />
+            <div className="text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-dashed border-gray-300 dark:border-gray-700">
+              <div className="bg-white dark:bg-gray-800 inline-block p-4 rounded-full mb-4 shadow-sm">
+                <Clock className="w-8 h-8 text-gray-400 dark:text-gray-500" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900">Fitur Belum Tersedia</h3>
-              <p className="text-gray-500 mt-1">
-                Modul penggajian untuk kategori <span className="font-bold text-blue-600">{activeCategory}</span> sedang dalam pengembangan.
+              <h3 className="text-lg font-medium text-gray-900 dark:text-zinc-100">Fitur Belum Tersedia</h3>
+              <p className="text-gray-500 dark:text-gray-400 mt-1">
+                Modul penggajian untuk kategori <span className="font-bold text-blue-600 dark:text-blue-400">{activeCategory}</span> sedang dalam pengembangan.
               </p>
             </div>
           )}
         </div>
 
         {/* History List */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden print:hidden">
-          <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-             <h2 className="text-lg font-bold text-gray-800">Riwayat Slip Gaji</h2>
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden print:hidden">
+          <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
+             <h2 className="text-lg font-bold text-gray-800 dark:text-zinc-100">Riwayat Slip Gaji</h2>
              <div className="flex items-center gap-4">
                  <button 
                     onClick={handleExportExcel}
@@ -700,13 +700,13 @@ export default function SalaryPage() {
                  <button 
                     onClick={handleBulkPrint}
                     disabled={selectedSlipIds.length === 0}
-                    className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded transition-colors font-medium ${selectedSlipIds.length > 0 ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
+                    className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded transition-colors font-medium ${selectedSlipIds.length > 0 ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'}`}
                  >
                     <Printer size={16} />
                     <span>Print {selectedSlipIds.length > 0 ? `${selectedSlipIds.length} Terpilih` : 'Terpilih'}</span>
                  </button>
-                 <div className="h-6 w-px bg-gray-200 mx-2"></div>
-                 <div className="text-sm text-gray-500">
+                 <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-2"></div>
+                 <div className="text-sm text-gray-500 dark:text-gray-400">
                     Periode: {new Date(year, month - 1).toLocaleString('id-ID', { month: 'long', year: 'numeric' })}
                  </div>
              </div>
@@ -714,14 +714,14 @@ export default function SalaryPage() {
           
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="bg-gray-50 text-gray-600 font-medium border-b border-gray-100">
+              <thead className="bg-gray-50 dark:bg-gray-800/50 text-gray-600 dark:text-gray-400 font-medium border-b border-gray-100 dark:border-gray-800">
                 <tr>
                   <th className="px-6 py-3 w-10">
                     <input 
                         type="checkbox" 
                         onChange={handleSelectAll}
                         checked={filteredSlips.length > 0 && selectedSlipIds.length === filteredSlips.length}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-700"
                     />
                   </th>
                   <th className="px-6 py-3">Tanggal</th>
@@ -731,35 +731,35 @@ export default function SalaryPage() {
                   <th className="px-6 py-3 text-right">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                 {loadingHistory ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500">Memuat data...</td>
+                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">Memuat data...</td>
                   </tr>
                 ) : filteredSlips.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
                       {slips.length === 0 ? 'Belum ada slip gaji untuk periode ini.' : 'Belum ada slip gaji untuk kategori ini.'}
                     </td>
                   </tr>
                 ) : (
                   filteredSlips.map((slip) => (
-                    <tr key={slip.id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={slip.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                       <td className="px-6 py-3">
                         <input 
                             type="checkbox" 
                             checked={selectedSlipIds.includes(slip.id)}
                             onChange={() => handleSelectSlip(slip.id)}
-                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-700"
                         />
                       </td>
-                      <td className="px-6 py-3 text-gray-900 font-medium">
+                      <td className="px-6 py-3 text-gray-900 dark:text-zinc-100 font-medium">
                         {new Date(slip.createdAt).toLocaleDateString('id-ID')}
                       </td>
-                      <td className="px-6 py-3 font-medium text-gray-900">{slip.employee.name}</td>
-                      <td className="px-6 py-3 text-gray-500">{getRoleLabel(slip.employee.role)}</td>
+                      <td className="px-6 py-3 font-medium text-gray-900 dark:text-zinc-100">{slip.employee.name}</td>
+                      <td className="px-6 py-3 text-gray-500 dark:text-gray-400">{getRoleLabel(slip.employee.role)}</td>
                       <td 
-                        className="px-6 py-3 font-medium text-green-600 cursor-pointer hover:text-green-800 hover:underline"
+                        className="px-6 py-3 font-medium text-green-600 dark:text-green-400 cursor-pointer hover:text-green-800 dark:hover:text-green-300 hover:underline"
                         onClick={() => handlePreview(slip)}
                         title="Klik untuk lihat detail"
                       >
@@ -769,14 +769,14 @@ export default function SalaryPage() {
                         <div className="flex items-center justify-end gap-2">
                           <button 
                             onClick={() => handleEdit(slip)}
-                            className="p-2 text-amber-600 hover:bg-amber-50 rounded-full transition-colors"
+                            className="p-2 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-full transition-colors"
                             title="Edit"
                           >
                             <Edit size={16} />
                           </button>
                           <button 
                             onClick={() => handleDeleteClick(slip.id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                            className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors"
                             title="Hapus"
                           >
                             <Trash2 size={16} />
@@ -793,20 +793,20 @@ export default function SalaryPage() {
 
         {/* Delete Confirmation Modal */}
         {showDeleteModal && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 transform transition-all scale-100">
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-sm p-6 transform transition-all scale-100 border border-gray-100 dark:border-gray-800">
               <div className="flex flex-col items-center text-center">
-                <div className="bg-red-100 p-3 rounded-full mb-4">
-                    <Trash2 className="w-8 h-8 text-red-600" />
+                <div className="bg-red-100 dark:bg-red-900/30 p-3 rounded-full mb-4">
+                    <Trash2 className="w-8 h-8 text-red-600 dark:text-red-500" />
                 </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Hapus Slip Gaji?</h3>
-                <p className="text-gray-500 mb-6 text-sm">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-zinc-100 mb-2">Hapus Slip Gaji?</h3>
+                <p className="text-gray-500 dark:text-gray-400 mb-6 text-sm">
                   Apakah Anda yakin ingin menghapus data ini? Tindakan ini tidak dapat dibatalkan.
                 </p>
                 <div className="flex gap-3 w-full">
                   <button 
                     onClick={() => setShowDeleteModal(false)}
-                    className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors"
+                    className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 font-medium transition-colors"
                   >
                     Batal
                   </button>
@@ -824,18 +824,18 @@ export default function SalaryPage() {
 
         {/* Bulk Print Preview Modal */}
         {showBulkPreview && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 print:bg-white print:static print:h-auto print:w-full print:block print:p-0">
-             <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl h-[90vh] flex flex-col print:shadow-none print:w-full print:max-w-none print:h-auto print:rounded-none print:block">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm print:bg-white print:static print:h-auto print:w-full print:block print:p-0">
+             <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-4xl h-[90vh] flex flex-col print:shadow-none print:w-full print:max-w-none print:h-auto print:rounded-none print:block border border-gray-100 dark:border-gray-800">
                 {/* Modal Header - Hidden on Print */}
-                <div className="flex justify-between items-center p-4 border-b border-gray-100 print:hidden shrink-0">
+                <div className="flex justify-between items-center p-4 border-b border-gray-100 dark:border-gray-800 print:hidden shrink-0">
                     <div>
-                        <h3 className="font-bold text-gray-800 text-lg">Preview Cetak Slip Gaji</h3>
-                        <p className="text-sm text-gray-500">{selectedSlipIds.length} slip gaji terpilih</p>
+                        <h3 className="font-bold text-gray-800 dark:text-zinc-100 text-lg">Preview Cetak Slip Gaji</h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{selectedSlipIds.length} slip gaji terpilih</p>
                     </div>
                     <div className="flex items-center gap-2">
                         <button 
                             onClick={() => setShowBulkPreview(false)}
-                            className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded font-medium"
+                            className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded font-medium"
                         >
                             Batal
                         </button>
@@ -850,7 +850,7 @@ export default function SalaryPage() {
                 </div>
 
                 {/* Modal Content - Visible on Print */}
-                <div className="flex-1 overflow-y-auto p-8 bg-gray-50 print:bg-white print:p-0 print:overflow-visible print:block">
+                <div className="flex-1 overflow-y-auto p-8 bg-gray-50 dark:bg-black/50 print:bg-white print:p-0 print:overflow-visible print:block">
                     <div className="max-w-7xl mx-auto print:max-w-none print:mx-0">
                         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-4 print:grid-cols-3 print:gap-4 print:w-full">
                             {slips.filter(s => selectedSlipIds.includes(s.id)).map((slip) => (
@@ -876,18 +876,18 @@ export default function SalaryPage() {
 
         {/* Input/Edit Modal */}
         {showInputModal && inputData && (
-          <div className="fixed inset-0 z-50 flex items-start justify-center p-4 bg-black/50 overflow-y-auto">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl my-8">
-              <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-lg">
+          <div className="fixed inset-0 z-50 flex items-start justify-center p-4 bg-black/50 overflow-y-auto backdrop-blur-sm">
+            <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-2xl my-8 border border-gray-100 dark:border-gray-800">
+              <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 rounded-t-lg">
                 <div>
-                  <h3 className="text-lg font-bold text-gray-800">Rincian Slip Gaji</h3>
-                  <p className="text-sm text-gray-500">
+                  <h3 className="text-lg font-bold text-gray-800 dark:text-zinc-100">Rincian Slip Gaji</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
                     {inputData.employee?.name} - {getRoleLabel(inputData.employee?.role || '')}
                   </p>
                 </div>
                 <button 
                   onClick={() => setShowInputModal(false)}
-                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-full transition-colors"
+                  className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
                 >
                   <X size={20} />
                 </button>
@@ -896,15 +896,15 @@ export default function SalaryPage() {
               <div className="p-6 grid grid-cols-1 gap-8">
                 {/* Penghasilan */}
                 <div className="space-y-4">
-                  <h4 className="font-bold text-gray-700 border-b pb-2">Penghasilan</h4>
+                  <h4 className="font-bold text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 pb-2">Penghasilan</h4>
                   
                   {activeCategory === 'Pemasaran dan Pelayanan' ? (
                       <>
                         <InputItem label="Kehadiran Absensi" value={inputData.attendanceAllowance || 0} onChange={(v) => updateInput('attendanceAllowance', v)} />
                         <InputItem label="Gaji" value={inputData.baseSalary} onChange={(v) => updateInput('baseSalary', v)} />
                         {/* Package Counts for Gaji Calculation (Optional/Reference) */}
-                        <details className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
-                            <summary className="text-sm font-bold text-blue-800 cursor-pointer">Kalkulator Gaji Otomatis (Opsional)</summary>
+                        <details className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800/30">
+                            <summary className="text-sm font-bold text-blue-800 dark:text-blue-300 cursor-pointer">Kalkulator Gaji Otomatis (Opsional)</summary>
                             <div className="mt-3 grid grid-cols-2 gap-4">
                                 <PackageInput label="Home Lite" price="337.800" value={inputData.countHomeLite} onChange={(v) => updateInput('countHomeLite', v)} />
                                 <PackageInput label="Home Basic" price="150.000" value={inputData.countHomeBasic} onChange={(v) => updateInput('countHomeBasic', v)} />
@@ -913,20 +913,20 @@ export default function SalaryPage() {
                                 <PackageInput label="Home Small" price="292.793" value={inputData.countHomeSmall} onChange={(v) => updateInput('countHomeSmall', v)} />
                                 <PackageInput label="Home Advan" price="418.919" value={inputData.countHomeAdvan} onChange={(v) => updateInput('countHomeAdvan', v)} />
                             </div>
-                            <div className="mt-2 text-xs text-blue-600 text-right font-medium">
+                            <div className="mt-2 text-xs text-blue-600 dark:text-blue-400 text-right font-medium">
                                 * Mengisi ini akan menimpa field "Gaji" di atas (20% x Total)
                             </div>
                         </details>
                         
                         <div className="grid grid-cols-3 gap-2 items-center">
-                            <label className="text-sm font-medium text-gray-600 col-span-1">Incentive PSB</label>
+                            <label className="text-sm font-medium text-gray-600 dark:text-gray-400 col-span-1">Incentive PSB</label>
                             <div className="col-span-2 grid grid-cols-[80px_1fr] gap-2">
                                 <div className="relative">
                                     <input 
                                         type="number" 
                                         value={inputData.psbCount || 0}
                                         onChange={(e) => updateInput('psbCount', Math.round(Number(e.target.value)))}
-                                        className="w-full p-2 border rounded text-center font-medium text-blue-600 text-lg"
+                                        className="w-full p-2 border rounded text-center font-medium text-blue-600 dark:text-blue-400 text-lg bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                         placeholder="0"
                                         step="1"
                                     />
@@ -937,7 +937,7 @@ export default function SalaryPage() {
                         </div>
 
                         <div className="grid grid-cols-3 gap-2 items-start">
-                            <label className="text-sm font-medium text-gray-600 col-span-1 pt-2">Incentive Instalasi</label>
+                            <label className="text-sm font-medium text-gray-600 dark:text-gray-400 col-span-1 pt-2">Incentive Instalasi</label>
                             <div className="col-span-2 space-y-2">
                                 {/* 5.000 Rate */}
                                 <div className="grid grid-cols-[80px_1fr] gap-2 items-center">
@@ -946,7 +946,7 @@ export default function SalaryPage() {
                                             type="number" 
                                             value={inputData.installationCount5k || 0}
                                             onChange={(e) => updateInput('installationCount5k', Math.round(Number(e.target.value)))}
-                                            className="w-full p-2 border rounded text-center font-medium text-blue-600 text-lg"
+                                            className="w-full p-2 border rounded text-center font-medium text-blue-600 dark:text-blue-400 text-lg bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                             placeholder="0"
                                             step="1"
                                         />
@@ -964,7 +964,7 @@ export default function SalaryPage() {
                                             type="number" 
                                             value={inputData.installationCount10k || 0}
                                             onChange={(e) => updateInput('installationCount10k', Math.round(Number(e.target.value)))}
-                                            className="w-full p-2 border rounded text-center font-medium text-blue-600 text-lg"
+                                            className="w-full p-2 border rounded text-center font-medium text-blue-600 dark:text-blue-400 text-lg bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                             placeholder="0"
                                             step="1"
                                         />
@@ -975,7 +975,7 @@ export default function SalaryPage() {
                                     </div>
                                 </div>
                                 
-                                <div className="pt-1 border-t">
+                                <div className="pt-1 border-t border-gray-200 dark:border-gray-700">
                                      <InputCurrency value={inputData.incentiveInstalasi || 0} onChange={(v) => updateInput('incentiveInstalasi', v)} />
                                 </div>
                             </div>
@@ -985,14 +985,14 @@ export default function SalaryPage() {
                         
                         {/* UMT Section with Days Input */}
                         <div className="grid grid-cols-3 gap-2 items-center">
-                            <label className="text-sm font-medium text-gray-600 col-span-1">UMT</label>
+                            <label className="text-sm font-medium text-gray-600 dark:text-gray-400 col-span-1">UMT</label>
                             <div className="col-span-2 grid grid-cols-[80px_1fr] gap-2">
                                 <div className="relative">
                                     <input 
                                         type="number" 
                                         value={inputData.presentDays || 0}
                                         onChange={(e) => updateInput('presentDays', Math.round(Number(e.target.value)))}
-                                        className="w-full p-2 border rounded text-center font-medium text-blue-600 text-lg"
+                                        className="w-full p-2 border rounded text-center font-medium text-blue-600 dark:text-blue-400 text-lg bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                                         placeholder="0"
                                         step="1"
                                     />
@@ -1026,9 +1026,9 @@ export default function SalaryPage() {
                       </>
                   )}
                   
-                  <div className="pt-4 border-t flex justify-between items-center font-black text-lg text-black">
+                  <div className="pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center font-black text-lg text-black dark:text-zinc-100">
                     <span>TOTAL</span>
-                    <span className="text-green-700">
+                    <span className="text-green-700 dark:text-green-400">
                       {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(inputData.totalIncome)}
                     </span>
                   </div>
@@ -1036,32 +1036,32 @@ export default function SalaryPage() {
 
                 {/* Potongan */}
                 <div className="space-y-4">
-                  <h4 className="font-bold text-gray-700 border-b pb-2">Potongan</h4>
+                  <h4 className="font-bold text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700 pb-2">Potongan</h4>
                   
                   <InputItem label="Arisan" value={inputData.arisanDeduction} onChange={(v) => updateInput('arisanDeduction', v)} />
                   <InputItem label="Potongan JHT" value={inputData.jhtDeduction} onChange={(v) => updateInput('jhtDeduction', v)} />
                   <InputItem label="BON (Pinjaman)" value={inputData.loanDeduction} onChange={(v) => updateInput('loanDeduction', v)} />
                   
-                  <div className="pt-4 border-t flex justify-between items-center font-black text-lg text-red-700">
+                  <div className="pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center font-black text-lg text-red-700 dark:text-red-400">
                     <span>TOTAL POTONGAN</span>
                     <span>
                       {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(inputData.totalDeduction)}
                     </span>
                   </div>
 
-                   <div className="mt-8 p-4 bg-gray-100 rounded-lg flex justify-between items-center font-black text-xl text-black">
+                   <div className="mt-8 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg flex justify-between items-center font-black text-xl text-black dark:text-zinc-100">
                     <span>TOTAL DITERIMA</span>
-                    <span className="text-blue-800">
+                    <span className="text-blue-800 dark:text-blue-400">
                       {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(inputData.netSalary)}
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="p-6 border-t bg-gray-50 rounded-b-lg flex justify-end gap-3">
+              <div className="p-6 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 rounded-b-lg flex justify-end gap-3">
                 <button 
                   onClick={() => setShowInputModal(false)}
-                  className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded font-medium"
+                  className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded font-medium"
                 >
                   Batal
                 </button>
@@ -1080,36 +1080,38 @@ export default function SalaryPage() {
 
         {/* Preview Modal */}
         {showPreview && selectedSlip && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 print:bg-white print:p-0 print:static">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto print:shadow-none print:w-full print:max-w-none print:max-h-none print:rounded-none print:overflow-visible">
-              <div className="flex justify-between items-center p-4 border-b border-gray-100 print:hidden">
-                <h3 className="font-bold text-gray-800">Preview Slip Gaji</h3>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 print:bg-white print:p-0 print:static backdrop-blur-sm">
+            <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto print:shadow-none print:w-full print:max-w-none print:max-h-none print:rounded-none print:overflow-visible border border-gray-100 dark:border-gray-800">
+              <div className="flex justify-between items-center p-4 border-b border-gray-100 dark:border-gray-800 print:hidden sticky top-0 bg-white dark:bg-gray-900 z-10">
+                <h3 className="font-bold text-gray-800 dark:text-zinc-100">Preview Slip Gaji</h3>
                 <div className="flex items-center gap-2">
                    <button 
                     onClick={() => {
                         window.print()
                     }}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 text-sm font-medium"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-sm font-medium transition-colors"
                    >
                      <Printer size={14} /> Print
                    </button>
                    <button 
                     onClick={() => setShowPreview(false)}
-                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full"
+                    className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
                    >
                      <X size={20} />
                    </button>
                 </div>
               </div>
-              <div className="p-6 print:p-0">
-                <SalarySlip 
-                        data={selectedSlip} 
-                        employeeName={selectedSlip.employee.name} 
-                        role={selectedSlip.employee.role}
-                        department={selectedSlip.employee.department}
-                        month={selectedSlip.month}
-                        year={selectedSlip.year}
-                    />
+              <div className="p-8 bg-gray-50 dark:bg-black/50 print:bg-white print:p-0 min-h-[500px] flex justify-center">
+                <div className="bg-white shadow-lg w-full max-w-2xl print:shadow-none print:w-full">
+                    <SalarySlip 
+                            data={selectedSlip} 
+                            employeeName={selectedSlip.employee.name} 
+                            role={selectedSlip.employee.role}
+                            department={selectedSlip.employee.department}
+                            month={selectedSlip.month}
+                            year={selectedSlip.year}
+                        />
+                </div>
               </div>
             </div>
           </div>
@@ -1131,7 +1133,7 @@ function NavItem({ icon, label, href, active = false }: { icon: React.ReactNode,
 function InputItem({ label, value, onChange, readOnly = false }: { label: string, value: number, onChange: (val: number) => void, readOnly?: boolean }) {
   return (
     <div className="grid grid-cols-3 gap-2 items-center">
-      <label className="text-sm font-medium text-gray-600 col-span-1">{label}</label>
+      <label className="text-sm font-medium text-gray-600 dark:text-gray-400 col-span-1">{label}</label>
       <div className="col-span-2">
         <InputCurrency value={value} onChange={onChange} />
       </div>
@@ -1143,15 +1145,15 @@ function PackageInput({ label, price, value, onChange }: { label: string, price:
     return (
         <div className="flex flex-col">
             <div className="flex justify-between text-xs mb-1">
-                <span className="font-medium text-gray-700">{label}</span>
-                <span className="text-gray-400">@{price}</span>
+                <span className="font-medium text-gray-700 dark:text-gray-300">{label}</span>
+                <span className="text-gray-400 dark:text-gray-500">@{price}</span>
             </div>
             <div className="relative">
                  <input 
                     type="number" 
                     value={value || 0}
                     onChange={(e) => onChange(Math.round(Number(e.target.value)))}
-                    className="w-full p-2 border rounded text-center font-medium text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    className="w-full p-2 border rounded text-center font-medium text-gray-800 dark:text-zinc-100 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                     placeholder="0"
                     step="1"
                 />
@@ -1179,12 +1181,12 @@ function InputCurrency({ value, onChange }: { value: number, onChange: (val: num
 
     return (
         <div className="relative">
-            <span className="absolute left-3 top-2 text-gray-700 font-medium text-sm">Rp</span>
+            <span className="absolute left-3 top-2 text-gray-700 dark:text-gray-400 font-medium text-sm">Rp</span>
             <input 
                 type="text" 
                 value={displayValue}
                 onChange={handleChange}
-                className="w-full p-2 pl-10 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none text-right font-mono font-medium text-black text-lg"
+                className="w-full p-2 pl-10 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none text-right font-mono font-medium text-black dark:text-zinc-100 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-lg"
                 placeholder="0"
             />
         </div>

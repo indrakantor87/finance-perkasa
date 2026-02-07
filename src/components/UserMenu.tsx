@@ -1,12 +1,20 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react'
-import { User, LogOut, ChevronDown, Shield, Mail, Phone, Calendar, X } from 'lucide-react'
+import { User, LogOut, ChevronDown, Shield, Mail, Phone, Calendar, X, Sun, Moon, Monitor } from 'lucide-react'
+import { useTheme } from 'next-themes'
 
 export default function UserMenu() {
   const [isOpen, setIsOpen] = useState(false)
   const [showProfileModal, setShowProfileModal] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  // Ensure hydration match
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Close on click outside
   useEffect(() => {
@@ -38,15 +46,15 @@ export default function UserMenu() {
       </div>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="px-4 py-3 border-b border-gray-100 md:hidden">
-             <p className="text-sm font-semibold text-gray-800">Administrator</p>
-             <p className="text-xs text-gray-500">Super Admin</p>
+        <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-neutral-900 rounded-xl shadow-xl border border-gray-100 dark:border-neutral-800 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="px-4 py-3 border-b border-gray-100 dark:border-neutral-800 md:hidden">
+             <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">Administrator</p>
+             <p className="text-xs text-gray-500 dark:text-gray-400">Super Admin</p>
           </div>
           
           <div className="px-2">
             <button 
-              className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-lg flex items-center gap-3 transition-colors"
+              className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-neutral-800 hover:text-blue-700 dark:hover:text-blue-400 rounded-lg flex items-center gap-3 transition-colors"
               onClick={() => {
                 setIsOpen(false)
                 setShowProfileModal(true)
@@ -56,10 +64,45 @@ export default function UserMenu() {
               <span>Profil Saya</span>
             </button>
             
-            <div className="border-t border-gray-100 my-1"></div>
+            <div className="border-t border-gray-100 dark:border-neutral-800 my-1"></div>
+
+            <div className="px-4 py-2">
+              <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Tema</p>
+              <div className="grid grid-cols-3 gap-1">
+                <button
+                  onClick={() => setTheme('light')}
+                  className={`p-1.5 rounded-md flex flex-col items-center justify-center gap-1 transition-colors ${
+                    theme === 'light' ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : 'hover:bg-gray-50 dark:hover:bg-neutral-800 text-gray-500 dark:text-gray-400'
+                  }`}
+                >
+                  <Sun size={14} />
+                  <span className="text-[10px] font-medium">Terang</span>
+                </button>
+                <button
+                  onClick={() => setTheme('dark')}
+                  className={`p-1.5 rounded-md flex flex-col items-center justify-center gap-1 transition-colors ${
+                    theme === 'dark' ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : 'hover:bg-gray-50 dark:hover:bg-neutral-800 text-gray-500 dark:text-gray-400'
+                  }`}
+                >
+                  <Moon size={14} />
+                  <span className="text-[10px] font-medium">Gelap</span>
+                </button>
+                <button
+                  onClick={() => setTheme('system')}
+                  className={`p-1.5 rounded-md flex flex-col items-center justify-center gap-1 transition-colors ${
+                    theme === 'system' ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : 'hover:bg-gray-50 dark:hover:bg-neutral-800 text-gray-500 dark:text-gray-400'
+                  }`}
+                >
+                  <Monitor size={14} />
+                  <span className="text-[10px] font-medium">Sistem</span>
+                </button>
+              </div>
+            </div>
+            
+            <div className="border-t border-gray-100 dark:border-neutral-800 my-1"></div>
             
             <button 
-              className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-3 transition-colors"
+              className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg flex items-center gap-3 transition-colors"
               onClick={() => {
                 setIsOpen(false)
                 try {

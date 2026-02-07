@@ -24,7 +24,7 @@ export default function Navigation() {
   ];
 
   return (
-    <div className="bg-white border-b border-gray-200 overflow-x-auto no-scrollbar print:hidden">
+    <div className="bg-white dark:bg-neutral-900 border-b border-gray-200 dark:border-neutral-800 overflow-x-auto no-scrollbar print:hidden">
       <div className="px-6 flex gap-8 text-sm font-medium min-w-max">
         {navItems.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -35,8 +35,8 @@ export default function Navigation() {
               className={`
                 flex items-center gap-2 py-4 px-2 cursor-pointer border-b-2 transition-all duration-200
                 ${isActive 
-                  ? 'border-blue-600 text-blue-700 font-semibold' 
-                  : 'border-transparent text-slate-500 hover:text-blue-600 hover:bg-slate-50/50 rounded-t-lg'
+                  ? 'border-blue-600 dark:border-blue-500 text-blue-700 dark:text-blue-400 font-semibold' 
+                  : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-50/50 dark:hover:bg-neutral-800/50 rounded-t-lg'
                 }
               `}
             >
