@@ -1,0 +1,260 @@
+{
+  "metadata": {
+    "timestamp": "2026-02-07T06:42:14.414Z",
+    "version": "1.0"
+  },
+  "data": {
+    "Employee": [
+      {
+        "id": "cmlan083i0000vhoex5jxg1i1",
+        "name": "Yusuf",
+        "role": "Teknisi Jointer",
+        "department": "Teknis dan Expan",
+        "status": "Karyawan",
+        "joinDate": "2026-02-06T00:00:00.000Z",
+        "baseSalary": 0,
+        "positionAllowance": 0,
+        "identityPhoto": "/uploads/1770367341316-438305279-WhatsApp-Image-2026-02-05-at-14.31.21.jpeg"
+      },
+      {
+        "id": "cmlbwnh9y0000x86r1hpgpdkt",
+        "name": "MOC AGUS UMAR",
+        "role": "Manager Operasional",
+        "department": "Operasional",
+        "status": "Karyawan",
+        "joinDate": "2023-01-01T00:00:00.000Z",
+        "baseSalary": 0,
+        "positionAllowance": 0,
+        "identityPhoto": ""
+      }
+    ],
+    "Attendance": [
+      {
+        "id": "cmlaqrrc50001w4v0iiv757sv",
+        "date": "2026-01-02T00:00:00.000Z",
+        "checkIn": "2026-01-02T01:28:00.000Z",
+        "checkOut": "2026-01-02T11:21:00.000Z",
+        "status": "PRESENT",
+        "employeeId": "cmlan083i0000vhoex5jxg1i1",
+        "overtimeHours": 0,
+        "createdAt": "2026-02-06T10:27:46.085Z",
+        "updatedAt": "2026-02-06T10:28:15.719Z"
+      },
+      {
+        "id": "cmlaqrrcl0003w4v01a8vjt09",
+        "date": "2026-01-05T00:00:00.000Z",
+        "checkIn": "2026-01-05T01:21:00.000Z",
+        "checkOut": "2026-01-05T10:22:00.000Z",
+        "status": "PRESENT",
+        "employeeId": "cmlan083i0000vhoex5jxg1i1",
+        "overtimeHours": 0,
+        "createdAt": "2026-02-06T10:27:46.101Z",
+        "updatedAt": "2026-02-06T10:28:15.733Z"
+      },
+      {
+        "id": "cmlaqrrcw0005w4v0grudtiag",
+        "date": "2026-01-06T00:00:00.000Z",
+        "checkIn": "2026-01-06T01:06:00.000Z",
+        "checkOut": "2026-01-06T10:07:00.000Z",
+        "status": "PRESENT",
+        "employeeId": "cmlan083i0000vhoex5jxg1i1",
+        "overtimeHours": 0,
+        "createdAt": "2026-02-06T10:27:46.112Z",
+        "updatedAt": "2026-02-06T10:28:15.739Z"
+      },
+      {
+        "id": "cmlaqrrd80007w4v06teptmob",
+        "date": "2026-01-07T00:00:00.000Z",
+        "checkIn": "2026-01-07T01:21:00.000Z",
+        "checkOut": null,
+        "status": "PRESENT",
+        "employeeId": "cmlan083i0000vhoex5jxg1i1",
+        "overtimeHours": 0,
+        "createdAt": "2026-02-06T10:27:46.124Z",
+        "updatedAt": "2026-02-06T10:28:15.744Z"
+      },
+      {
+        "id": "cmlaqrrdo0009w4v0s6o3vnlt",
+        "date": "2026-01-08T00:00:00.000Z",
+        "checkIn": "2026-01-08T01:03:00.000Z",
+        "checkOut": "2026-01-08T10:10:00.000Z",
+        "status": "PRESENT",
+        "employeeId": "cmlan083i0000vhoex5jxg1i1",
+        "overtimeHours": 0,
+        "createdAt": "2026-02-06T10:27:46.140Z",
+        "updatedAt": "2026-02-06T10:28:15.750Z"
+      },
+      {
+        "id": "cmlaqrrdy000bw4v0tlfhrh6c",
+        "date": "2026-01-10T00:00:00.000Z",
+        "checkIn": "2026-01-10T01:16:00.000Z",
+        "checkOut": null,
+        "status": "PRESENT",
+        "employeeId": "cmlan083i0000vhoex5jxg1i1",
+        "overtimeHours": 0,
+        "createdAt": "2026-02-06T10:27:46.151Z",
+        "updatedAt": "2026-02-06T10:28:15.755Z"
+      },
+      {
+        "id": "cmlaqrres000dw4v05ku13etl",
+        "date": "2026-01-12T00:00:00.000Z",
+        "checkIn": "2026-01-12T01:29:00.000Z",
+        "checkOut": null,
+        "status": "PRESENT",
+        "employeeId": "cmlan083i0000vhoex5jxg1i1",
+        "overtimeHours": 0,
+        "createdAt": "2026-02-06T10:27:46.180Z",
+        "updatedAt": "2026-02-06T10:28:15.762Z"
+      },
+      {
+        "id": "cmlaqrrf4000fw4v0zvur5p84",
+        "date": "2026-01-13T00:00:00.000Z",
+        "checkIn": null,
+        "checkOut": "2026-01-13T02:26:00.000Z",
+        "status": "PRESENT",
+        "employeeId": "cmlan083i0000vhoex5jxg1i1",
+        "overtimeHours": 0,
+        "createdAt": "2026-02-06T10:27:46.192Z",
+        "updatedAt": "2026-02-06T10:28:15.767Z"
+      },
+      {
+        "id": "cmlaqrrfh000hw4v03vh78f7s",
+        "date": "2026-01-14T00:00:00.000Z",
+        "checkIn": "2026-01-14T01:17:00.000Z",
+        "checkOut": "2026-01-14T10:22:00.000Z",
+        "status": "PRESENT",
+        "employeeId": "cmlan083i0000vhoex5jxg1i1",
+        "overtimeHours": 0,
+        "createdAt": "2026-02-06T10:27:46.205Z",
+        "updatedAt": "2026-02-06T10:28:15.787Z"
+      },
+      {
+        "id": "cmlaqrrfr000jw4v0dy1a9pin",
+        "date": "2026-01-15T00:00:00.000Z",
+        "checkIn": "2026-01-15T01:17:00.000Z",
+        "checkOut": "2026-01-15T11:02:00.000Z",
+        "status": "PRESENT",
+        "employeeId": "cmlan083i0000vhoex5jxg1i1",
+        "overtimeHours": 0,
+        "createdAt": "2026-02-06T10:27:46.215Z",
+        "updatedAt": "2026-02-06T10:28:15.807Z"
+      },
+      {
+        "id": "cmlaqrrg2000lw4v0iupigyok",
+        "date": "2026-01-17T00:00:00.000Z",
+        "checkIn": "2026-01-17T01:25:00.000Z",
+        "checkOut": null,
+        "status": "PRESENT",
+        "employeeId": "cmlan083i0000vhoex5jxg1i1",
+        "overtimeHours": 0,
+        "createdAt": "2026-02-06T10:27:46.226Z",
+        "updatedAt": "2026-02-06T10:28:15.812Z"
+      },
+      {
+        "id": "cmlaqrrht000nw4v0gq1i4f18",
+        "date": "2026-01-20T00:00:00.000Z",
+        "checkIn": "2026-01-20T01:40:00.000Z",
+        "checkOut": "2026-01-20T11:30:00.000Z",
+        "status": "PRESENT",
+        "employeeId": "cmlan083i0000vhoex5jxg1i1",
+        "overtimeHours": 0,
+        "createdAt": "2026-02-06T10:27:46.289Z",
+        "updatedAt": "2026-02-06T10:28:15.832Z"
+      },
+      {
+        "id": "cmlaqrrkh000pw4v0cmhi7gon",
+        "date": "2026-01-21T00:00:00.000Z",
+        "checkIn": "2026-01-21T00:38:00.000Z",
+        "checkOut": "2026-01-21T14:53:00.000Z",
+        "status": "PRESENT",
+        "employeeId": "cmlan083i0000vhoex5jxg1i1",
+        "overtimeHours": 0,
+        "createdAt": "2026-02-06T10:27:46.386Z",
+        "updatedAt": "2026-02-06T10:28:15.851Z"
+      },
+      {
+        "id": "cmlaqrrnp000rw4v0cs4mytsp",
+        "date": "2026-01-22T00:00:00.000Z",
+        "checkIn": "2026-01-22T01:05:00.000Z",
+        "checkOut": null,
+        "status": "PRESENT",
+        "employeeId": "cmlan083i0000vhoex5jxg1i1",
+        "overtimeHours": 0,
+        "createdAt": "2026-02-06T10:27:46.501Z",
+        "updatedAt": "2026-02-06T10:28:15.870Z"
+      },
+      {
+        "id": "cmlaqrrr2000tw4v09tmp9ape",
+        "date": "2026-01-23T00:00:00.000Z",
+        "checkIn": "2026-01-23T01:09:00.000Z",
+        "checkOut": "2026-01-23T11:37:00.000Z",
+        "status": "PRESENT",
+        "employeeId": "cmlan083i0000vhoex5jxg1i1",
+        "overtimeHours": 0,
+        "createdAt": "2026-02-06T10:27:46.622Z",
+        "updatedAt": "2026-02-06T10:28:15.889Z"
+      },
+      {
+        "id": "cmlaqrrt2000vw4v0ka5aokrl",
+        "date": "2026-01-24T00:00:00.000Z",
+        "checkIn": "2026-01-24T01:11:00.000Z",
+        "checkOut": "2026-01-24T10:53:00.000Z",
+        "status": "PRESENT",
+        "employeeId": "cmlan083i0000vhoex5jxg1i1",
+        "overtimeHours": 0,
+        "createdAt": "2026-02-06T10:27:46.694Z",
+        "updatedAt": "2026-02-06T10:28:15.894Z"
+      },
+      {
+        "id": "cmlaqrrur000xw4v0xgnhd1yv",
+        "date": "2026-01-26T00:00:00.000Z",
+        "checkIn": null,
+        "checkOut": "2026-01-26T10:32:00.000Z",
+        "status": "PRESENT",
+        "employeeId": "cmlan083i0000vhoex5jxg1i1",
+        "overtimeHours": 0,
+        "createdAt": "2026-02-06T10:27:46.756Z",
+        "updatedAt": "2026-02-06T10:28:15.924Z"
+      },
+      {
+        "id": "cmlaqrrxf000zw4v0uiw497a4",
+        "date": "2026-01-27T00:00:00.000Z",
+        "checkIn": "2026-01-27T01:27:00.000Z",
+        "checkOut": null,
+        "status": "PRESENT",
+        "employeeId": "cmlan083i0000vhoex5jxg1i1",
+        "overtimeHours": 0,
+        "createdAt": "2026-02-06T10:27:46.851Z",
+        "updatedAt": "2026-02-06T10:28:15.946Z"
+      }
+    ],
+    "SalarySlip": [],
+    "Loan": [],
+    "LoanPayment": [],
+    "LeaveRequest": [],
+    "SystemSetting": [
+      {
+        "id": "cml845fql0000kl64zumpvj90",
+        "companyName": "PSB PERKASA",
+        "companyAddress": "Jl. Raya Perusahaan No. 1",
+        "companyPhone": "0812-3456-7890",
+        "companyEmail": "admin@psbperkasa.co.id",
+        "payrollCutoffDate": 25,
+        "defaultWorkDays": 26,
+        "updatedAt": "2026-02-04T14:19:00.718Z"
+      }
+    ],
+    "User": [],
+    "Notification": [
+      {
+        "id": "cmlbwnhaj0001x86rcv5bsxoh",
+        "title": "Karyawan Baru Ditambahkan",
+        "message": "Karyawan MOC AGUS UMAR telah berhasil ditambahkan ke departemen Operasional.",
+        "type": "success",
+        "category": "employee",
+        "isRead": true,
+        "createdAt": "2026-02-07T06:00:10.315Z"
+      }
+    ]
+  }
+}
