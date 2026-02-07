@@ -284,7 +284,7 @@ export default function MachineManagementPage() {
           <table className="w-full text-sm text-left">
             <thead className="bg-gray-50 dark:bg-neutral-800 text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-neutral-700">
               <tr>
-                <th className="px-6 py-3 font-medium">UID (Internal)</th>
+                {/* <th className="px-6 py-3 font-medium">UID (Internal)</th> */}
                 <th className="px-6 py-3 font-medium">User ID (Display)</th>
                 <th className="px-6 py-3 font-medium">Nama</th>
                 <th className="px-6 py-3 font-medium">Role</th>
@@ -294,7 +294,7 @@ export default function MachineManagementPage() {
             <tbody className="divide-y divide-gray-200 dark:divide-neutral-800">
               {loading && users.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
                     <div className="flex flex-col items-center gap-2">
                       <RefreshCw className="w-6 h-6 animate-spin text-blue-500" />
                       <p>Menghubungkan ke mesin...</p>
@@ -303,14 +303,14 @@ export default function MachineManagementPage() {
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
                     Tidak ada data user ditemukan
                   </td>
                 </tr>
               ) : (
                 filteredUsers.map((user) => (
                   <tr key={user.uid} className="hover:bg-gray-50 dark:hover:bg-neutral-800/50 transition-colors">
-                    <td className="px-6 py-4 text-gray-500 dark:text-gray-400">{user.uid}</td>
+                    {/* <td className="px-6 py-4 text-gray-500 dark:text-gray-400">{user.uid}</td> */}
                     <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{user.userId}</td>
                     <td className="px-6 py-4 text-gray-700 dark:text-gray-300">
                         {/^\d+$/.test(user.name) ? (
