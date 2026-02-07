@@ -2,8 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Header from '@/components/layout/Header';
-import Navigation from '@/components/layout/Navigation';
 import { 
   PieChart, Pie, Cell, AreaChart, Area, Tooltip, ResponsiveContainer 
 } from 'recharts';
@@ -108,12 +106,7 @@ export default function DashboardClient({ stats }: { stats: DashboardStats | nul
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/50 dark:bg-black font-sans text-slate-800 dark:text-slate-100">
-      
-      {/* --- Header & Navigation --- */}
-      <Header />
-      <Navigation />
-
+    <div className="font-sans text-slate-800 dark:text-slate-100">
       <main className="p-6 max-w-[1600px] mx-auto space-y-6">
         
         {/* --- Top Stats Row (Bento Style) --- */}

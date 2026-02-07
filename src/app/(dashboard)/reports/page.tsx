@@ -5,8 +5,6 @@ import {
   FileBarChart, TrendingUp, TrendingDown, Calendar, 
   Download, Printer, DollarSign, Users, PieChart
 } from 'lucide-react'
-import Header from '@/components/layout/Header'
-import Navigation from '@/components/layout/Navigation'
 import { useTheme } from 'next-themes'
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
@@ -141,10 +139,7 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-neutral-950 font-sans transition-colors duration-300">
-      <Header />
-      <Navigation />
-
+    <div className="font-sans text-gray-900 dark:text-slate-100">
       <main className="p-6 max-w-[1600px] mx-auto space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>

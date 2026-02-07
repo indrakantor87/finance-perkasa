@@ -1,8 +1,6 @@
 'use client'
  
 import React, { useState, useEffect } from 'react'
-import Header from '@/components/layout/Header'
-import Navigation from '@/components/layout/Navigation'
 import { 
   Users, Calendar, Clock, FileText, Settings, LogOut, 
   LayoutDashboard, Database, UserCheck, Banknote, 
@@ -261,11 +259,7 @@ export default function EmployeesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-neutral-950 font-sans transition-colors duration-300">
-      {/* Header & Navigation */}
-      <Header />
-      <Navigation />
-
+    <div className="font-sans">
       {/* Main Content */}
       <main className="p-6 max-w-[1600px] mx-auto space-y-6">
         <div className="flex items-center justify-between">

@@ -2,16 +2,10 @@
 
 import React from 'react'
 import { CreditCard } from 'lucide-react';
-import Header from '@/components/layout/Header';
-import Navigation from '@/components/layout/Navigation';
 
 export default function LoansPage() {
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-black font-sans transition-colors duration-300">
-      {/* Header & Navigation */}
-      <Header />
-      <Navigation />
-
+    <div className="font-sans transition-colors duration-300">
       {/* Main Content */}
       <main className="p-6 max-w-[1600px] mx-auto space-y-6">
         <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6">

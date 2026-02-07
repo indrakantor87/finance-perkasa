@@ -8,8 +8,7 @@ import {
   CreditCard, FileCheck, Bell, Edit, Printer, X, Save, Trash2, FileSpreadsheet
 } from 'lucide-react';
 import ExcelJS from 'exceljs';
-import Header from '@/components/layout/Header';
-import Navigation from '@/components/layout/Navigation';
+
 
 interface SlipHistoryItem extends SalarySlipData {
   id: string
@@ -597,12 +596,7 @@ export default function SalaryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-black font-sans print:bg-white">
-      {/* Header & Navigation */}
-      <Header />
-      <Navigation />
-
-      {/* Main Content */}
+    <div className="font-sans text-gray-900 dark:text-slate-100 print:bg-white">
       <main className="p-6 max-w-[1600px] mx-auto space-y-6 print:p-0 print:max-w-none">
         <div className="flex items-center justify-between print:hidden">
           <h1 className="text-2xl font-bold text-gray-800 dark:text-zinc-100">Penggajian & Slip Gaji</h1>

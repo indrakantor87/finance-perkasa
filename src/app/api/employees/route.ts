@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
+import { createNotification } from '@/lib/notification-service'
 
 const prisma = new PrismaClient()
 
@@ -50,6 +51,13 @@ export async function POST(request: Request) {
         identityPhoto
       }
     })
+
+    await createNotification(
+      'Karyawan Baru Ditambahkan',
+      `Karyawan ${name} telah berhasil ditambahkan ke departemen ${department}.`,
+      'success',
+      'employee'
+    );
 
     return NextResponse.json(employee)
   } catch (error) {

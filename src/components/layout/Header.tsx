@@ -7,18 +7,38 @@ import UserMenu from '@/components/UserMenu';
 
 export default function Header() {
   const [formattedDate, setFormattedDate] = useState('');
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchUnreadCount = async () => {
+    try {
+      const res = await fetch('/api/notifications');
+      if (res.ok) {
+        const data = await res.json();
+        const unread = data.filter((n: any) => !n.isRead).length;
+        setUnreadCount(unread);
+      }
+    } catch (error) {
+      console.error('Failed to fetch notifications', error);
+    }
+  };
 
   useEffect(() => {
     const today = new Date();
     const dateOptions: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     setFormattedDate(today.toLocaleDateString('id-ID', dateOptions));
+    
+    fetchUnreadCount();
+
+    // Listen for updates
+    window.addEventListener('notifications-updated', fetchUnreadCount);
+    return () => window.removeEventListener('notifications-updated', fetchUnreadCount);
   }, []);
 
   return (
     <header className="sticky top-0 z-30 bg-blue-900 dark:bg-slate-900 text-white border-b border-blue-800 dark:border-slate-800 px-6 py-4 flex items-center justify-between shadow-md print:hidden">
       <div className="flex items-center gap-3">
-        <div className="bg-white dark:bg-slate-800 p-1.5 rounded-full shadow-lg">
-          <img src="/uploads/logo-perkasa.png" alt="Logo" className="w-6 h-6 object-contain" />
+        <div className="bg-white p-1.5 rounded-full shadow-lg">
+          <img src="/uploads/logo-perkasa.png" alt="Logo" className="w-8 h-8 object-contain" />
         </div>
         <div>
            <h1 className="text-lg font-bold tracking-tight text-white leading-none">FINANCE PERKASA</h1>
@@ -32,7 +52,9 @@ export default function Header() {
         </div>
         <Link href="/notifications" className="relative p-2 hover:bg-blue-800 dark:hover:bg-slate-800 rounded-full transition-colors group">
           <Bell className="w-5 h-5 text-blue-200 dark:text-slate-400 group-hover:text-white transition-colors" />
-          <span className="absolute top-1.5 right-1.5 bg-red-500 ring-2 ring-white dark:ring-slate-900 w-2.5 h-2.5 rounded-full"></span>
+          {unreadCount > 0 && (
+            <span className="absolute top-1.5 right-1.5 bg-red-500 ring-2 ring-white dark:ring-slate-900 w-2.5 h-2.5 rounded-full"></span>
+          )}
         </Link>
         <div className="pl-6 border-l border-blue-700 dark:border-slate-800">
            <UserMenu />

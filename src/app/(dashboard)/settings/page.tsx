@@ -2,8 +2,6 @@
 
 import React, { useState, useEffect } from 'react'
 import { Building, Banknote, Shield, Save, Settings, Trash2, Plus, User, Check, X } from 'lucide-react';
-import Header from '@/components/layout/Header';
-import Navigation from '@/components/layout/Navigation';
 
 interface UserData {
   id: string
@@ -145,10 +143,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-neutral-950 font-sans transition-colors duration-300">
-      <Header />
-      <Navigation />
-
+    <div className="font-sans transition-colors duration-300">
       {/* Main Content */}
       <main className="p-6 max-w-[1600px] mx-auto space-y-6">
         <div className="flex items-center justify-between">

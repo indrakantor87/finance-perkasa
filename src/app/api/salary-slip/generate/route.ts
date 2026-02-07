@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { createNotification } from '@/lib/notification-service'
 
 export async function POST(request: Request) {
   try {
@@ -240,6 +241,15 @@ export async function POST(request: Request) {
         employee: true
       }
     })
+
+    // Create notification
+    const monthName = new Date(year, month - 1).toLocaleString('id-ID', { month: 'long' });
+    await createNotification(
+      'Slip Gaji Dibuat/Diupdate',
+      `Slip gaji periode ${monthName} ${year} untuk ${employee.name} berhasil disimpan.`,
+      'info',
+      'salary'
+    );
 
     return NextResponse.json(salarySlip)
   } catch (error: any) {
