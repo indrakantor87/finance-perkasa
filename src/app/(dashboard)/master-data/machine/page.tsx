@@ -87,7 +87,7 @@ export default function MachineManagementPage() {
   };
 
   const handleClearLogs = async () => {
-    if (!confirm('PERINGATAN KERAS: Apakah Anda yakin ingin MENGHAPUS SEMUA LOG ABSENSI di mesin?\n\nTindakan ini tidak dapat dibatalkan. Pastikan data sudah tersinkronisasi atau dibackup sebelumnya.')) return;
+    if (!confirm('PERINGATAN KERAS: Apakah Anda yakin ingin MENGHAPUS SEMUA LOG ABSENSI di mesin?\n\nCATATAN PENTING: Tindakan ini HANYA menghapus riwayat absen. Data Karyawan, Wajah, dan Sidik Jari TETAP AMAN.\n\nTindakan ini tidak dapat dibatalkan. Pastikan data sudah tersinkronisasi atau dibackup sebelumnya.')) return;
     if (!confirm('Konfirmasi ke-2: Yakin hapus log? Data yang hilang tidak bisa dikembalikan.')) return;
 
     setIsClearing(true);
