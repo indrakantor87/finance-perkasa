@@ -142,13 +142,23 @@ async function main() {
                     const checkOut = times.length > 1 ? times[times.length - 1] : null
                     
                     let overtimeHours = 0
-                    if (checkIn) {
-                        const h = checkIn.getHours()
-                        const m = checkIn.getMinutes()
-                        const isLate = h > 17 || (h === 17 && m > 0)
+                    if (checkOut) {
+                        const outH = checkOut.getHours()
+                        const outM = checkOut.getMinutes()
                         
-                        if (isLate && checkOut) {
-                            const durMin = (checkOut - checkIn) / 60000
+                        // Rule: Overtime if CheckOut > 17:00
+                        if (outH > 17 || (outH === 17 && outM > 0)) {
+                            const limitTime = new Date(checkOut)
+                            limitTime.setHours(17, 0, 0, 0)
+                            
+                            // If checkIn is after 17:00 (Late Shift), count from checkIn
+                            // Otherwise count from 17:00
+                            let startTime = limitTime
+                            if (checkIn && checkIn > limitTime) {
+                                startTime = checkIn
+                            }
+
+                            const durMin = (checkOut - startTime) / 60000
                             if (durMin > 0) {
                                 const hh = Math.floor(durMin / 60)
                                 const mm = Math.round(durMin % 60)
