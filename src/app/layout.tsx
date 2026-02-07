@@ -5,6 +5,9 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 export const metadata: Metadata = {
   title: "Finance Perkasa",
   description: "Sistem Keuangan & Penggajian PSB Perkasa",
+  icons: {
+    icon: '/images/logo-company.jpeg',
+  },
 };
 
 export default function RootLayout({
