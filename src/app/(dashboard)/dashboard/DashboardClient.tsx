@@ -240,7 +240,7 @@ export default function DashboardClient({ stats }: { stats: DashboardStats | nul
                     </defs>
                     <Tooltip 
                       contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                      formatter={(value: number) => [`Rp ${value} Jt`, 'Total']}
+                      formatter={(value: any) => [`Rp ${value} Jt`, 'Total']}
                     />
                     <Area type="monotone" dataKey="value" stroke="#f59e0b" strokeWidth={2} fillOpacity={1} fill="url(#colorSalary)" />
                   </AreaChart>

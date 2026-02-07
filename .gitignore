@@ -46,3 +46,6 @@ next-env.d.ts
 # local database and uploads
 prisma/dev.db
 public/uploads/
+
+# local storage/backups
+/storage/

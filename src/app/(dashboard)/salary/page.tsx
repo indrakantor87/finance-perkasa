@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { SalarySlip, type SalarySlipData } from '@/components/SalarySlip'
 import { 
   Users, Calendar, Clock, FileText, Settings, LogOut, 

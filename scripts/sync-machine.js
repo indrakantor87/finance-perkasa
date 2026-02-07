@@ -1,46 +1,68 @@
-const ZKLib = require('zkteco-js')
+const ZKLib = require('node-zklib')
 const { PrismaClient } = require('@prisma/client')
 const prisma = new PrismaClient()
 
 async function main() {
-    let zkInstance = null
+    let zk = null
     try {
         console.log('Starting sync process...')
         
+        // Setup connection
         const ip = '103.162.16.14'
         const port = 4370
-        const timeout = 20000 // 20 seconds
+        // Increase timeout for slow connections
+        zk = new ZKLib(ip, port, 20000, 4000)
 
         console.log(`Connecting to ${ip}:${port}...`)
-        zkInstance = new ZKLib(ip, port, timeout, 4000)
-        
-        await zkInstance.createSocket()
+        await zk.createSocket()
         console.log('Connected.')
+
+        // Get Machine Info (Log Count)
+        let logCount = 0
+        let logCapacity = 0
+        try {
+            const info = await zk.getInfo()
+            logCount = info.logCounts
+            logCapacity = info.logCapacity
+            console.log(`Machine Info: ${logCount} logs / ${logCapacity} capacity`)
+        } catch (e) {
+            console.error('Failed to get machine info:', e)
+        }
 
         // Get Users
         console.log('Fetching users...')
-        const users = await zkInstance.getUsers()
+        const users = await zk.getUsers()
         console.log(`Fetched ${users?.data?.length || 0} users.`)
 
-        // Get Log Count first? zkteco-js might not have getAttendanceSize exposed directly in all versions
-        // but let's try getAttendances() again.
-        
+        // Fetch Logs with Timeout
         console.log('Fetching attendance logs...')
         let logs = { data: [] }
+        
+        // Define a max time based on log count (e.g., 1000 logs = 1 sec?)
+        // 63k logs might take 60s+
+        const timeoutMs = 60000 
+        
         try {
-            // Race the fetch with a timeout
-            const fetchPromise = zkInstance.getAttendances()
-            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Fetch timeout')), 30000))
+            const fetchPromise = zk.getAttendances()
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error(`Fetch timeout (${timeoutMs}ms). Data too large?`)), timeoutMs)
+            )
             
             logs = await Promise.race([fetchPromise, timeoutPromise])
             console.log(`Fetched ${logs?.data?.length || 0} logs.`)
         } catch (err) {
-            console.error('Failed to fetch logs:', err)
+            console.error('Failed to fetch logs:', err.message)
+            if (logCount > 10000) {
+                console.log(`SUGGESTION: The machine has ${logCount} logs. Please clear old logs manually to enable sync.`)
+                // We can exit here or continue with empty logs (pointless)
+                // But let's throw to notify frontend
+                throw new Error(`Gagal mengambil data. Mesin memiliki ${logCount} log (Terlalu banyak). Harap hapus log lama di mesin.`)
+            }
+            throw err
         }
         
         if (!logs?.data?.length) {
-            console.log('No logs to process (or fetch failed).')
-            // Still process users?
+            console.log('No logs to process.')
         }
 
         // Process logs if any
@@ -52,6 +74,7 @@ async function main() {
             
             if (users?.data) {
                 for (const u of users.data) {
+                    // Match by name (insensitive)
                     const emp = employees.find(e => e.name.toLowerCase() === u.name.toLowerCase())
                     if (emp) {
                         employeeMap[u.userId] = emp.id
@@ -158,12 +181,13 @@ async function main() {
         }
 
     } catch (e) {
-        console.error('Sync Error:', e)
+        console.error('Sync Error:', e.message)
+        // Ensure non-zero exit code for error
         process.exit(1)
     } finally {
-        if (zkInstance) {
+        if (zk) {
             try {
-                await zkInstance.disconnect()
+                await zk.disconnect()
             } catch (e) {}
         }
         await prisma.$disconnect()
