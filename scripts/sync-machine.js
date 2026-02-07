@@ -34,6 +34,13 @@ async function main() {
         const users = await zk.getUsers()
         console.log(`Fetched ${users?.data?.length || 0} users.`)
 
+        // Early exit if no logs
+        if (logCount === 0) {
+            console.log('No logs on machine. Sync skipped.')
+            await zk.disconnect()
+            return
+        }
+
         // Fetch Logs with Timeout
         console.log('Fetching attendance logs...')
         let logs = { data: [] }
@@ -51,11 +58,25 @@ async function main() {
             logs = await Promise.race([fetchPromise, timeoutPromise])
             console.log(`Fetched ${logs?.data?.length || 0} logs.`)
         } catch (err) {
-            console.error('Failed to fetch logs:', err.message)
+            const errorMsg = err instanceof Error ? err.message : String(err)
+            console.error('Failed to fetch logs:', errorMsg)
+            
+            // Log full error for debugging
+            try {
+                // Check if it's a ZKError (has .err property)
+                if (err && err.err) {
+                    console.error('Underlying ZK Error:', err.err)
+                    if (err.err.code) console.error('Error Code:', err.err.code)
+                    if (err.err.message) console.error('Error Message:', err.err.message)
+                }
+                
+                console.error('Full Error Details:', JSON.stringify(err, Object.getOwnPropertyNames(err)))
+            } catch (jsonErr) {
+                console.error('Could not stringify error:', jsonErr)
+            }
+
             if (logCount > 10000) {
                 console.log(`SUGGESTION: The machine has ${logCount} logs. Please clear old logs manually to enable sync.`)
-                // We can exit here or continue with empty logs (pointless)
-                // But let's throw to notify frontend
                 throw new Error(`Gagal mengambil data. Mesin memiliki ${logCount} log (Terlalu banyak). Harap hapus log lama di mesin.`)
             }
             throw err
@@ -181,7 +202,8 @@ async function main() {
         }
 
     } catch (e) {
-        console.error('Sync Error:', e.message)
+        const errorMsg = e instanceof Error ? e.message : String(e)
+        console.error('Sync Error:', errorMsg)
         // Ensure non-zero exit code for error
         process.exit(1)
     } finally {
