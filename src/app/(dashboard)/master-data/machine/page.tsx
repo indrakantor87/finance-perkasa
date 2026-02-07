@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Users, RefreshCw, Plus, Trash2, Search, 
-  AlertCircle, CheckCircle2, X, Pencil, Download 
+  AlertCircle, CheckCircle2, X, Pencil, Download, FileSpreadsheet 
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 type MachineUser = {
   uid: number;
@@ -193,6 +194,38 @@ export default function MachineManagementPage() {
     user.userId.toString().includes(searchTerm)
   );
 
+  const handleExportExcel = () => {
+    if (users.length === 0) {
+      setError('Tidak ada data user untuk diexport');
+      return;
+    }
+
+    const dataToExport = users.map(user => ({
+      'User ID': user.userId,
+      'Nama': user.name,
+      'Role': user.role === 14 ? 'Admin' : 'User',
+      'Card No': user.cardno || '-',
+      'Password': user.password || '-'
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Machine Users");
+    
+    // Auto-width columns
+    const wscols = [
+        { wch: 15 }, // User ID
+        { wch: 30 }, // Nama
+        { wch: 10 }, // Role
+        { wch: 15 }, // Card No
+        { wch: 15 }  // Password
+    ];
+    ws['!cols'] = wscols;
+
+    XLSX.writeFile(wb, `Machine_Users_${new Date().toISOString().split('T')[0]}.xlsx`);
+    setSuccess('Data berhasil diexport ke Excel');
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -225,6 +258,16 @@ export default function MachineManagementPage() {
           >
             <Download className={`w-4 h-4 ${isSyncing ? 'animate-bounce' : ''}`} />
             {isSyncing ? 'Menarik Data...' : 'Tarik Data'}
+          </button>
+
+          <button 
+            onClick={handleExportExcel}
+            disabled={loading || users.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors shadow-sm disabled:opacity-50"
+            title="Export Data ke Excel"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            Export Excel
           </button>
           
           <button 
