@@ -252,14 +252,70 @@ export default function MachineManagementPage() {
       const logs = result.data || [];
       console.log(`Fetched ${logs.length} logs for export`);
 
-      // 3. Common Column Settings
+      // 3. Common Column Settings (Matches ZKTime Format)
       const wscols = [
-        { wch: 15 }, // User ID
-        { wch: 30 }, // Nama
-        { wch: 20 }, // Waktu
-        { wch: 10 }, // IP
-        { wch: 10 }  // Verify Mode
+        { wch: 15 }, // AC-No.
+        { wch: 8 },  // No.
+        { wch: 30 }, // Name
+        { wch: 20 }, // Time
+        { wch: 10 }, // State
+        { wch: 15 }, // New State
+        { wch: 15 }, // Exception
+        { wch: 10 }  // Operation
       ];
+
+      // Helper to map status to State string
+      const getStateLabel = (status: number | string) => {
+          const s = Number(status);
+          switch(s) {
+              case 0: return 'C/In';
+              case 1: return 'C/Out';
+              case 2: return 'Break Out';
+              case 3: return 'Break In';
+              case 4: return 'OT-In';
+              case 5: return 'OT-Out';
+              default: return 'C/In'; // Default to C/In if unknown
+          }
+      };
+
+      // Helper to detect Exceptions (Simple logic)
+      const processLogsWithExceptions = (userLogs: any[]) => {
+          // Sort by time
+          const sorted = [...userLogs].sort((a: any, b: any) => 
+            new Date(a.recordTime).getTime() - new Date(b.recordTime).getTime()
+          );
+
+          return sorted.map((log, idx) => {
+              const currentMsg = new Date(log.recordTime);
+              let exception = '';
+              
+              // Check for Repeat (within 2 minutes of previous log)
+              if (idx > 0) {
+                  const prevLog = sorted[idx-1];
+                  const prevMsg = new Date(prevLog.recordTime);
+                  const diffMs = currentMsg.getTime() - prevMsg.getTime();
+                  if (diffMs < 2 * 60 * 1000) { // 2 minutes
+                      exception = 'Repeat';
+                  }
+              }
+
+              // Simple OverTime detection (if after 17:00 and is Check Out)
+              // Note: This is just a visual approximation to match the user's screenshot style
+              const hour = currentMsg.getHours();
+              const state = getStateLabel(log.deviceUserId === undefined ? log.state : (log.status ?? log.state)); // status or state
+              
+              if (state === 'C/Out' && hour >= 17) {
+                  if (exception) exception += ', OverTime';
+                  else exception = 'OverTime';
+              }
+
+              return {
+                  ...log,
+                  _stateLabel: state,
+                  _exception: exception
+              };
+          });
+      };
 
       // 4. Scenario 1: Export Selected Users (Separate Files)
       if (selectedUids.length > 0) {
@@ -267,25 +323,30 @@ export default function MachineManagementPage() {
         // Process sequentially to stagger downloads
         targetUsers.forEach((user, index) => {
           // Filter logs for this user
-          // Note: ZK logs might use 'deviceUserId' or 'user_id' depending on lib
-          const userLogs = logs.filter((l: any) => 
+          const rawUserLogs = logs.filter((l: any) => 
               l.deviceUserId === user.userId || l.user_id === user.userId
           );
           
-          // Sort by time
-          userLogs.sort((a: any, b: any) => new Date(a.recordTime).getTime() - new Date(b.recordTime).getTime());
+          const processedLogs = processLogsWithExceptions(rawUserLogs);
 
-          const dataToExport = userLogs.length > 0 ? userLogs.map((l: any) => ({
-            'User ID': user.userId,
-            'Nama': user.name,
-            'Waktu': new Date(l.recordTime).toLocaleString('id-ID'),
-            'IP Mesin': l.ip || '-',
-            //'Verify Type': l.verifyType || '-'
+          const dataToExport = processedLogs.length > 0 ? processedLogs.map((l: any) => ({
+            'AC-No.': user.userId,
+            'No.': '',
+            'Name': user.name,
+            'Time': new Date(l.recordTime).toLocaleString('id-ID'), // e.g. 02/02/2026 08:00:00
+            'State': l._stateLabel,
+            'New State': '',
+            'Exception': l._exception,
+            'Operation': ''
           })) : [{
-             'User ID': user.userId,
-             'Nama': user.name,
-             'Waktu': 'TIDAK ADA DATA LOG',
-             'IP Mesin': '-',
+             'AC-No.': user.userId,
+             'No.': '',
+             'Name': user.name,
+             'Time': 'TIDAK ADA DATA LOG',
+             'State': '',
+             'New State': '',
+             'Exception': '',
+             'Operation': ''
           }];
 
           const ws = XLSX.utils.json_to_sheet(dataToExport);
@@ -304,21 +365,42 @@ export default function MachineManagementPage() {
       } 
       // 5. Scenario 2: Export All Users (Single File)
       else {
-        const dataToExport = logs.map((l: any) => {
-            const user = users.find(u => u.userId === l.deviceUserId || u.userId === l.user_id);
-            return {
-                'User ID': l.deviceUserId || l.user_id,
-                'Nama': user ? user.name : 'Unknown',
-                'Waktu': new Date(l.recordTime).toLocaleString('id-ID'),
-                'IP Mesin': l.ip || '-',
-            };
+        // Group by user to process exceptions correctly per user
+        let allProcessedLogs: any[] = [];
+        
+        users.forEach(user => {
+            const rawUserLogs = logs.filter((l: any) => 
+                l.deviceUserId === user.userId || l.user_id === user.userId
+            );
+            const processed = processLogsWithExceptions(rawUserLogs).map(l => ({
+                ...l,
+                _userName: user.name,
+                _userId: user.userId
+            }));
+            allProcessedLogs = [...allProcessedLogs, ...processed];
         });
 
-        // Sort by Time
-        dataToExport.sort((a: any, b: any) => new Date(a.Waktu).getTime() - new Date(b.Waktu).getTime());
+        // Sort all by time eventually, or keep grouped? Usually global log is sorted by time.
+        // But for "Repeat" check, we needed per-user sorting.
+        // Let's sort the final result by Time.
+        allProcessedLogs.sort((a: any, b: any) => new Date(a.recordTime).getTime() - new Date(b.recordTime).getTime());
+
+        const dataToExport = allProcessedLogs.map((l: any) => ({
+            'AC-No.': l._userId,
+            'No.': '',
+            'Name': l._userName,
+            'Time': new Date(l.recordTime).toLocaleString('id-ID'),
+            'State': l._stateLabel,
+            'New State': '',
+            'Exception': l._exception,
+            'Operation': ''
+        }));
 
         if (dataToExport.length === 0) {
-             dataToExport.push({ 'User ID': '-', 'Nama': '-', 'Waktu': 'TIDAK ADA DATA LOG', 'IP Mesin': '-' });
+             dataToExport.push({ 
+                 'AC-No.': '-', 'No.': '', 'Name': '-', 'Time': 'TIDAK ADA DATA LOG', 
+                 'State': '', 'New State': '', 'Exception': '', 'Operation': '' 
+            });
         }
 
         const ws = XLSX.utils.json_to_sheet(dataToExport);
