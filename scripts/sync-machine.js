@@ -132,6 +132,7 @@ async function main() {
             let processedCount = 0
             let createdCount = 0
             let updatedCount = 0
+            let skippedCount = 0
 
             for (const uid in groupedLogs) {
                 const employeeId = employeeMap[uid]
@@ -141,30 +142,41 @@ async function main() {
                     const checkIn = times[0]
                     const checkOut = times.length > 1 ? times[times.length - 1] : null
                     
+                    // Calculate Overtime (WIB Aware)
                     let overtimeHours = 0
-                    if (checkOut) {
-                        const outH = checkOut.getHours()
-                        const outM = checkOut.getMinutes()
-                        
-                        // Rule: Overtime if CheckOut > 17:00
-                        if (outH > 17 || (outH === 17 && outM > 0)) {
-                            const limitTime = new Date(checkOut)
-                            limitTime.setHours(17, 0, 0, 0)
+                    if (checkIn && checkOut) {
+                         const WIB_OFFSET = 7 * 60 * 60 * 1000
+                         const inDateWIB = new Date(checkIn.getTime() + WIB_OFFSET)
+                         const outDateWIB = new Date(checkOut.getTime() + WIB_OFFSET)
+                         
+                         const inHour = inDateWIB.getUTCHours()
+                         const inMinute = inDateWIB.getUTCMinutes()
+                         
+                         const durationMillis = checkOut.getTime() - checkIn.getTime()
+                         let overtimeMinutes = 0
+                         
+                         // Case 1: Late Shift (CheckIn >= 17:00 WIB)
+                         if (inHour > 17 || (inHour === 17 && inMinute >= 0)) {
+                            overtimeMinutes = Math.floor(durationMillis / 60000)
+                         } else {
+                            // Case 2: Normal Shift
+                            const standardExitWIB = new Date(inDateWIB)
+                            standardExitWIB.setUTCHours(17, 0, 0, 0)
                             
-                            // If checkIn is after 17:00 (Late Shift), count from checkIn
-                            // Otherwise count from 17:00
-                            let startTime = limitTime
-                            if (checkIn && checkIn > limitTime) {
-                                startTime = checkIn
+                            if (outDateWIB.getTime() > standardExitWIB.getTime()) {
+                                if (inDateWIB.getTime() > standardExitWIB.getTime()) {
+                                    overtimeMinutes = Math.floor(durationMillis / 60000)
+                                } else {
+                                    overtimeMinutes = Math.floor((outDateWIB.getTime() - standardExitWIB.getTime()) / 60000)
+                                }
                             }
-
-                            const durMin = (checkOut - startTime) / 60000
-                            if (durMin > 0) {
-                                const hh = Math.floor(durMin / 60)
-                                const mm = Math.round(durMin % 60)
-                                overtimeHours = parseFloat(`${hh}.${mm.toString().padStart(2, '0')}`)
-                            }
-                        }
+                         }
+                         
+                         if (overtimeMinutes > 0) {
+                            const hh = Math.floor(overtimeMinutes / 60)
+                            const mm = Math.round(overtimeMinutes % 60)
+                            overtimeHours = parseFloat(`${hh}.${mm.toString().padStart(2, '0')}`)
+                         }
                     }
 
                     const startOfDay = new Date(dateStr)
@@ -183,15 +195,8 @@ async function main() {
                     })
 
                     if (existing) {
-                        await prisma.attendance.update({
-                            where: { id: existing.id },
-                            data: {
-                                checkIn: checkIn,
-                                checkOut: checkOut,
-                                overtimeHours: overtimeHours
-                            }
-                        })
-                        updatedCount++
+                        // User requested to NOT overwrite existing data
+                        skippedCount++
                     } else {
                         await prisma.attendance.create({
                             data: {
@@ -208,7 +213,7 @@ async function main() {
                     processedCount++
                 }
             }
-            console.log(`Sync Complete. Processed: ${processedCount}, Created: ${createdCount}, Updated: ${updatedCount}`)
+            console.log(`Sync Complete. Processed: ${processedCount}, Created: ${createdCount}, Updated: ${updatedCount}, Skipped: ${skippedCount}`)
         }
 
     } catch (e) {

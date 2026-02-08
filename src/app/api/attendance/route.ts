@@ -84,42 +84,49 @@ export async function POST(request: Request) {
     const calcOvertimeHours = (inDate: Date | null, outDate: Date | null) => {
       if (!inDate || !outDate) return 0
       
-      // Convert to WIB (UTC+7) to check for 17:00 limit
+      // Calculate duration in minutes
+      const durationMillis = outDate.getTime() - inDate.getTime()
+      if (durationMillis <= 0) return 0
+      
+      // Convert to WIB (UTC+7) for accurate daily calculation
       const WIB_OFFSET = 7 * 60 * 60 * 1000
       const inDateWIB = new Date(inDate.getTime() + WIB_OFFSET)
+      const outDateWIB = new Date(outDate.getTime() + WIB_OFFSET)
+      
       const inHour = inDateWIB.getUTCHours()
       const inMinute = inDateWIB.getUTCMinutes()
       
-      const isLateCheckIn = inHour > 17 || (inHour === 17 && inMinute > 0)
-      
-      if (isLateCheckIn) {
-        const totalDuration = (outDate.getTime() - inDate.getTime()) / 60000
-        if (totalDuration <= 0) return 0
-        return toDotFormat(totalDuration)
+      let overtimeMinutes = 0
+
+      // Case 1: Late Shift (CheckIn >= 17:00 WIB)
+      if (inHour > 17 || (inHour === 17 && inMinute >= 0)) {
+        overtimeMinutes = Math.floor(durationMillis / 60000)
+      } 
+      // Case 2: Normal Shift (CheckIn < 17:00 WIB)
+      else {
+        // Standard Exit is 17:00 WIB on the SAME WIB DAY as CheckIn
+        const standardExitWIB = new Date(inDateWIB)
+        standardExitWIB.setUTCHours(17, 0, 0, 0)
+        
+        // If CheckOut is after Standard Exit
+        if (outDateWIB.getTime() > standardExitWIB.getTime()) {
+           // Check if CheckIn was also after Standard Exit (should be covered by Case 1, but for safety)
+           if (inDateWIB.getTime() > standardExitWIB.getTime()) {
+              overtimeMinutes = Math.floor(durationMillis / 60000)
+           } else {
+              overtimeMinutes = Math.floor((outDateWIB.getTime() - standardExitWIB.getTime()) / 60000)
+           }
+        }
       }
-      
-      return 0
+
+      if (overtimeMinutes <= 0) return 0
+      return toDotFormat(overtimeMinutes)
     }
 
     const calcOvertimeDecimal = (inDate: Date | null, outDate: Date | null) => {
       if (!inDate || !outDate) return 0
-      
-      // Convert to WIB (UTC+7) to check for 17:00 limit
-      const WIB_OFFSET = 7 * 60 * 60 * 1000
-      const inDateWIB = new Date(inDate.getTime() + WIB_OFFSET)
-      const inHour = inDateWIB.getUTCHours()
-      const inMinute = inDateWIB.getUTCMinutes()
-      
-      const isLateCheckIn = inHour > 17 || (inHour === 17 && inMinute > 0)
-      
-      if (isLateCheckIn) {
-        let diffMin = Math.round((outDate.getTime() - inDate.getTime()) / 60000)
-        if (diffMin < 0) diffMin += 24 * 60
-        // Entire duration is overtime for late shift
-        return diffMin > 0 ? parseFloat((diffMin / 60).toFixed(2)) : 0
-      }
-      
-      return 0
+      const dotFormat = calcOvertimeHours(inDate, outDate)
+      return toMinutes(dotFormat) / 60
     }
 
     const parseExtra = (val: any) => {

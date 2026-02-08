@@ -34,28 +34,40 @@ export async function POST(request: Request) {
     }
 
     // Calculate overtime if applicable
-    // Rule: Only if CheckIn > 17:00
-    
     let overtimeHours = 0
     if (attendance.checkIn) {
         const checkInDate = new Date(attendance.checkIn)
+        const checkOutDate = today // Now
         
         // WIB Conversion (UTC+7)
         const WIB_OFFSET = 7 * 60 * 60 * 1000
         const inDateWIB = new Date(checkInDate.getTime() + WIB_OFFSET)
+        const outDateWIB = new Date(checkOutDate.getTime() + WIB_OFFSET)
+        
         const inHour = inDateWIB.getUTCHours()
         const inMinute = inDateWIB.getUTCMinutes()
         
-        const isLateCheckIn = inHour > 17 || (inHour === 17 && inMinute > 0)
+        const isLateCheckIn = inHour > 17 || (inHour === 17 && inMinute >= 0)
+        let overtimeMinutes = 0
 
         if (isLateCheckIn) {
-            const durationMillis = today.getTime() - checkInDate.getTime()
-            const durationMinutes = durationMillis / 60000
-            if (durationMinutes > 0) {
-                const h = Math.floor(durationMinutes / 60)
-                const m = Math.round(durationMinutes % 60)
-                overtimeHours = parseFloat(`${h}.${m.toString().padStart(2, '0')}`)
-            }
+             // Late Shift: All duration is overtime
+             overtimeMinutes = Math.floor((checkOutDate.getTime() - checkInDate.getTime()) / 60000)
+        } else {
+             // Normal Shift: Only after 17:00 WIB
+             const standardExitWIB = new Date(inDateWIB)
+             standardExitWIB.setUTCHours(17, 0, 0, 0)
+             
+             if (outDateWIB.getTime() > standardExitWIB.getTime()) {
+                 // Ensure we don't count negative if checkIn > standardExit (covered by isLateCheckIn)
+                 overtimeMinutes = Math.floor((outDateWIB.getTime() - standardExitWIB.getTime()) / 60000)
+             }
+        }
+        
+        if (overtimeMinutes > 0) {
+            const h = Math.floor(overtimeMinutes / 60)
+            const m = Math.round(overtimeMinutes % 60)
+            overtimeHours = parseFloat(`${h}.${m.toString().padStart(2, '0')}`)
         }
     }
 

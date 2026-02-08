@@ -24,7 +24,7 @@ export async function POST() {
     child.on('close', (code) => {
       if (code === 0) {
         // Try to parse the output for counts
-        const match = stdout.match(/Sync Complete\. Processed: (\d+), Created: (\d+), Updated: (\d+)/)
+        const match = stdout.match(/Sync Complete\. Processed: (\d+), Created: (\d+), Updated: (\d+)(?:, Skipped: (\d+))?/)
         const mappingMatch = stdout.match(/User Mapping: Matched (\d+) users\. Unmapped: (\d+)/)
         const unmappedNamesMatch = stdout.match(/Unmapped Names: (.*)/)
 
@@ -34,6 +34,7 @@ export async function POST() {
                 processed: parseInt(match[1]),
                 created: parseInt(match[2]),
                 updated: parseInt(match[3]),
+                skipped: match[4] ? parseInt(match[4]) : 0,
                 unmappedCount: mappingMatch ? parseInt(mappingMatch[2]) : 0,
                 unmappedNames: unmappedNamesMatch ? unmappedNamesMatch[1] : ''
             }

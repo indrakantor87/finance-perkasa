@@ -38,6 +38,7 @@ export default function MachineManagementPage() {
     cardno: 0
   });
 
+  const [selectedUids, setSelectedUids] = useState<number[]>([]);
   const [warning, setWarning] = useState('');
 
   const fetchUsers = async () => {
@@ -194,12 +195,74 @@ export default function MachineManagementPage() {
     user.userId.toString().includes(searchTerm)
   );
 
+  const toggleSelection = (uid: number) => {
+    setSelectedUids(prev => 
+      prev.includes(uid) ? prev.filter(id => id !== uid) : [...prev, uid]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    const visibleUids = filteredUsers.map(u => u.uid);
+    const allSelected = visibleUids.length > 0 && visibleUids.every(uid => selectedUids.includes(uid));
+    
+    if (allSelected) {
+      setSelectedUids(prev => prev.filter(uid => !visibleUids.includes(uid)));
+    } else {
+      // Add all visible UIDs that aren't already selected
+      const newSelected = [...selectedUids];
+      visibleUids.forEach(uid => {
+        if (!newSelected.includes(uid)) newSelected.push(uid);
+      });
+      setSelectedUids(newSelected);
+    }
+  };
+
   const handleExportExcel = () => {
     if (users.length === 0) {
       setError('Tidak ada data user untuk diexport');
       return;
     }
 
+    // Common column settings
+    const wscols = [
+      { wch: 15 }, // User ID
+      { wch: 30 }, // Nama
+      { wch: 10 }, // Role
+      { wch: 15 }, // Card No
+      { wch: 15 }  // Password
+    ];
+
+    // Scenario 1: Export Selected Users (Separate Files)
+    if (selectedUids.length > 0) {
+      const targetUsers = users.filter(u => selectedUids.includes(u.uid));
+      
+      targetUsers.forEach((user, index) => {
+        const dataToExport = [{
+          'User ID': user.userId,
+          'Nama': user.name,
+          'Role': user.role === 14 ? 'Admin' : 'User',
+          'Card No': user.cardno || '-',
+          'Password': user.password || '-'
+        }];
+
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
+        const wb = XLSX.utils.book_new();
+        ws['!cols'] = wscols;
+        XLSX.utils.book_append_sheet(wb, ws, "User Data");
+        
+        // Stagger downloads to prevent browser blocking
+        setTimeout(() => {
+           // Sanitize filename
+           const safeName = user.name.replace(/[^a-zA-Z0-9\s-_]/g, '').trim();
+           XLSX.writeFile(wb, `${safeName || 'User'}_${new Date().toISOString().split('T')[0]}.xlsx`);
+        }, index * 500);
+      });
+      
+      setSuccess(`Sedang memproses download ${targetUsers.length} file Excel...`);
+      return;
+    }
+
+    // Scenario 2: Export All Users (Single File)
     const dataToExport = users.map(user => ({
       'User ID': user.userId,
       'Nama': user.name,
@@ -210,20 +273,11 @@ export default function MachineManagementPage() {
 
     const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
+    ws['!cols'] = wscols;
     XLSX.utils.book_append_sheet(wb, ws, "Machine Users");
     
-    // Auto-width columns
-    const wscols = [
-        { wch: 15 }, // User ID
-        { wch: 30 }, // Nama
-        { wch: 10 }, // Role
-        { wch: 15 }, // Card No
-        { wch: 15 }  // Password
-    ];
-    ws['!cols'] = wscols;
-
-    XLSX.writeFile(wb, `Machine_Users_${new Date().toISOString().split('T')[0]}.xlsx`);
-    setSuccess('Data berhasil diexport ke Excel');
+    XLSX.writeFile(wb, `Machine_Users_All_${new Date().toISOString().split('T')[0]}.xlsx`);
+    setSuccess(`Berhasil mengexport ${users.length} data ke Excel`);
   };
 
   return (
@@ -264,10 +318,10 @@ export default function MachineManagementPage() {
             onClick={handleExportExcel}
             disabled={loading || users.length === 0}
             className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors shadow-sm disabled:opacity-50"
-            title="Export Data ke Excel"
+            title={selectedUids.length > 0 ? `Export ${selectedUids.length} User Terpilih` : "Export Semua User"}
           >
             <FileSpreadsheet className="w-4 h-4" />
-            Export Excel
+            {selectedUids.length > 0 ? `Export (${selectedUids.length})` : 'Export Excel'}
           </button>
           
           <button 
@@ -327,6 +381,14 @@ export default function MachineManagementPage() {
           <table className="w-full text-sm text-left">
             <thead className="bg-gray-50 dark:bg-neutral-800 text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-neutral-700">
               <tr>
+                <th className="px-6 py-3 font-medium w-10">
+                  <input 
+                    type="checkbox" 
+                    checked={filteredUsers.length > 0 && filteredUsers.every(u => selectedUids.includes(u.uid))}
+                    onChange={toggleSelectAll}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                  />
+                </th>
                 {/* <th className="px-6 py-3 font-medium">UID (Internal)</th> */}
                 <th className="px-6 py-3 font-medium">User ID (Display)</th>
                 <th className="px-6 py-3 font-medium">Nama</th>
@@ -337,7 +399,7 @@ export default function MachineManagementPage() {
             <tbody className="divide-y divide-gray-200 dark:divide-neutral-800">
               {loading && users.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
                     <div className="flex flex-col items-center gap-2">
                       <RefreshCw className="w-6 h-6 animate-spin text-blue-500" />
                       <p>Menghubungkan ke mesin...</p>
@@ -346,13 +408,21 @@ export default function MachineManagementPage() {
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
                     Tidak ada data user ditemukan
                   </td>
                 </tr>
               ) : (
                 filteredUsers.map((user) => (
                   <tr key={user.uid} className="hover:bg-gray-50 dark:hover:bg-neutral-800/50 transition-colors">
+                    <td className="px-6 py-4">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedUids.includes(user.uid)}
+                        onChange={() => toggleSelection(user.uid)}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                      />
+                    </td>
                     {/* <td className="px-6 py-4 text-gray-500 dark:text-gray-400">{user.uid}</td> */}
                     <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{user.userId}</td>
                     <td className="px-6 py-4 text-gray-700 dark:text-gray-300">

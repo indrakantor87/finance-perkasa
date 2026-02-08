@@ -1,5 +1,5 @@
 'use client'
- 
+
 import React, { useState, useEffect } from 'react'
 import { 
   Users, Calendar, Clock, FileText, Settings, LogOut, 
@@ -27,7 +27,10 @@ const ROLE_OPTIONS: Record<string, string[]> = {
     'Penjualan', 
     'Penjualan & Event', 
     'Creator Digital',
-    'Admin CS'
+    'Admin CS',
+    'Leader NOC',
+    'Staff NOC',
+    'Support Troubleshoot'
   ],
   'Operasional': [
     'Manager Operasional',
