@@ -330,10 +330,10 @@ export default function AIAssistant() {
       {/* Floating Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`fixed bottom-6 right-6 w-16 h-16 rounded-full shadow-xl transition-all duration-300 z-50 flex items-center justify-center border border-white/20 ${
+        className={`fixed bottom-6 right-6 w-16 h-16 rounded-full shadow-xl transition-all duration-300 z-50 flex items-center justify-center border border-white/20 backdrop-blur-sm ${
           isOpen 
-            ? 'bg-red-500 rotate-90 text-white hover:bg-red-600' 
-            : 'bg-gradient-to-br from-red-600 to-blue-600 hover:scale-110 text-white hover:shadow-blue-500/50'
+            ? 'bg-red-500/80 rotate-90 text-white hover:bg-red-600/90' 
+            : 'bg-gradient-to-br from-red-600/80 to-blue-600/80 hover:scale-110 text-white hover:shadow-blue-500/50'
         }`}
         title="Perkasa AI Assistant"
       >
@@ -352,10 +352,10 @@ export default function AIAssistant() {
 
       {/* Main Panel */}
       {isOpen && (
-        <div className="fixed bottom-24 right-6 w-80 md:w-96 bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-neutral-800 z-50 overflow-hidden animate-in slide-in-from-bottom-5 fade-in duration-200 flex flex-col max-h-[80vh]">
+        <div className="fixed bottom-24 right-6 w-80 md:w-96 bg-white/60 dark:bg-neutral-900/60 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 dark:border-neutral-800/50 z-50 overflow-hidden animate-in slide-in-from-bottom-5 fade-in duration-200 flex flex-col max-h-[80vh]">
           
           {/* Header */}
-          <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-4 relative overflow-hidden shrink-0">
+          <div className="bg-gradient-to-r from-indigo-600/80 to-purple-600/80 backdrop-blur-md p-4 relative overflow-hidden shrink-0">
             <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
                 <img 
                   src="/uploads/logo-ai.png" 
@@ -390,7 +390,7 @@ export default function AIAssistant() {
                   onClick={() => setActiveTab('menu')}
                   className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-medium rounded-md transition-all ${
                     activeTab === 'menu' 
-                      ? 'bg-white text-indigo-600 shadow-sm' 
+                      ? 'bg-white/90 text-indigo-600 shadow-sm backdrop-blur-sm' 
                       : 'text-indigo-100 hover:bg-white/10'
                   }`}
                 >
@@ -401,7 +401,7 @@ export default function AIAssistant() {
                   onClick={() => setActiveTab('chat')}
                   className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-medium rounded-md transition-all ${
                     activeTab === 'chat' 
-                      ? 'bg-white text-indigo-600 shadow-sm' 
+                      ? 'bg-white/90 text-indigo-600 shadow-sm backdrop-blur-sm' 
                       : 'text-indigo-100 hover:bg-white/10'
                   }`}
                 >
@@ -412,25 +412,25 @@ export default function AIAssistant() {
           </div>
 
           {/* Content Body */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar bg-gray-50/50 dark:bg-neutral-900/50">
+          <div className="flex-1 overflow-y-auto custom-scrollbar bg-gray-50/20 dark:bg-neutral-900/20 backdrop-blur-sm">
             
             {/* MENU TAB */}
             {activeTab === 'menu' && (
               <div className="p-4 space-y-4">
                 {/* Status Card */}
-                <div className="bg-white dark:bg-neutral-800 p-3 rounded-xl border border-gray-100 dark:border-neutral-700 shadow-sm">
+                <div className="bg-white/60 dark:bg-neutral-800/60 backdrop-blur-sm p-3 rounded-xl border border-gray-100/50 dark:border-neutral-700/50 shadow-sm">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[10px] font-bold tracking-wider text-gray-500 dark:text-gray-400 uppercase">STATUS SISTEM</span>
-                    <span className="text-xs text-green-600 dark:text-green-400 font-medium bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded-full border border-green-100 dark:border-green-900/30">
+                    <span className="text-xs text-green-600 dark:text-green-400 font-medium bg-green-50/50 dark:bg-green-900/20 px-2 py-0.5 rounded-full border border-green-100/50 dark:border-green-900/30">
                       100% Operasional
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-2 mt-3">
-                    <div className="bg-gray-50 dark:bg-neutral-700/50 p-2 rounded-lg">
+                    <div className="bg-gray-50/50 dark:bg-neutral-700/30 p-2 rounded-lg">
                        <span className="text-[10px] text-gray-400 block">Database</span>
                        <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">Terhubung</span>
                     </div>
-                    <div className="bg-gray-50 dark:bg-neutral-700/50 p-2 rounded-lg">
+                    <div className="bg-gray-50/50 dark:bg-neutral-700/30 p-2 rounded-lg">
                        <span className="text-[10px] text-gray-400 block">Latensi</span>
                        <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">24ms</span>
                     </div>
@@ -451,9 +451,9 @@ export default function AIAssistant() {
                           action.action();
                           setIsOpen(false);
                         }}
-                        className="flex flex-col items-center gap-2 p-3 rounded-xl bg-white dark:bg-neutral-800 hover:bg-gray-50 dark:hover:bg-neutral-700 transition-all border border-gray-100 dark:border-neutral-700 shadow-sm hover:shadow-md group text-center"
+                        className="flex flex-col items-center gap-2 p-3 rounded-xl bg-white/60 dark:bg-neutral-800/60 backdrop-blur-sm hover:bg-white/80 dark:hover:bg-neutral-700/80 transition-all border border-gray-100/50 dark:border-neutral-700/50 shadow-sm hover:shadow-md group text-center"
                       >
-                        <div className={`p-2 rounded-full ${action.bg} ${action.color} group-hover:scale-110 transition-transform`}>
+                        <div className={`p-2 rounded-full ${action.bg} ${action.color} group-hover:scale-110 transition-transform bg-opacity-80`}>
                           <action.icon size={20} />
                         </div>
                         <span className="text-xs font-medium text-gray-600 dark:text-gray-300">{action.label}</span>
@@ -463,7 +463,7 @@ export default function AIAssistant() {
                 </div>
 
                 {/* Context Tip */}
-                <div className="bg-indigo-50 dark:bg-indigo-900/10 p-3 rounded-xl border border-indigo-100 dark:border-indigo-900/20 flex gap-3">
+                <div className="bg-indigo-50/60 dark:bg-indigo-900/10 backdrop-blur-sm p-3 rounded-xl border border-indigo-100/50 dark:border-indigo-900/20 flex gap-3">
                   <div className="shrink-0 mt-0.5">
                     <Sparkles size={16} className="text-indigo-500" />
                   </div>
@@ -494,7 +494,7 @@ export default function AIAssistant() {
                         <div className={`rounded-2xl p-3 text-sm shadow-sm ${
                           msg.sender === 'user' 
                             ? 'bg-indigo-600 text-white rounded-br-none' 
-                            : 'bg-white dark:bg-neutral-800 text-gray-700 dark:text-gray-200 border border-gray-100 dark:border-neutral-700 rounded-bl-none'
+                            : 'bg-white/70 dark:bg-neutral-800/70 backdrop-blur-sm text-gray-700 dark:text-gray-200 border border-gray-100/50 dark:border-neutral-700/50 rounded-bl-none'
                         }`}>
                           <div className="mb-1">{msg.text}</div>
                         </div>
@@ -528,7 +528,7 @@ export default function AIAssistant() {
                   
                   {isTyping && (
                     <div className="flex justify-start">
-                       <div className="bg-white dark:bg-neutral-800 border border-gray-100 dark:border-neutral-700 rounded-2xl rounded-bl-none p-3 shadow-sm flex gap-1 items-center">
+                       <div className="bg-white/70 dark:bg-neutral-800/70 backdrop-blur-sm border border-gray-100/50 dark:border-neutral-700/50 rounded-2xl rounded-bl-none p-3 shadow-sm flex gap-1 items-center">
                           <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
                           <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
                           <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"></div>
@@ -538,14 +538,14 @@ export default function AIAssistant() {
                   <div ref={messagesEndRef} />
                 </div>
 
-                <form onSubmit={handleSendMessage} className="p-3 bg-white dark:bg-neutral-900 border-t border-gray-100 dark:border-neutral-800 shrink-0">
+                <form onSubmit={handleSendMessage} className="p-3 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md border-t border-gray-100/50 dark:border-neutral-800/50 shrink-0">
                   <div className="relative flex items-center gap-2">
                     <input
                       type="text"
                       value={inputValue}
                       onChange={(e) => setInputValue(e.target.value)}
                       placeholder={isListening ? "Mendengarkan..." : "Ketik perintah..."}
-                      className={`w-full bg-gray-100 dark:bg-neutral-800 text-gray-800 dark:text-gray-200 text-sm rounded-full py-2.5 pl-4 pr-10 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all ${isListening ? 'ring-2 ring-red-500/50 bg-red-50 dark:bg-red-900/10' : ''}`}
+                      className={`w-full bg-gray-100/50 dark:bg-neutral-800/50 backdrop-blur-sm text-gray-800 dark:text-gray-200 text-sm rounded-full py-2.5 pl-4 pr-10 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all ${isListening ? 'ring-2 ring-red-500/50 bg-red-50/50 dark:bg-red-900/10' : ''}`}
                     />
                     
                     {/* Voice Button */}

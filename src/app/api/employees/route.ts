@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import prisma from '@/lib/prisma'
 import { createNotification } from '@/lib/notification-service'
-
-const prisma = new PrismaClient()
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -15,11 +13,6 @@ export async function GET(request: Request) {
       where: whereClause,
       orderBy: {
         name: 'asc'
-      },
-      include: {
-        _count: {
-          select: { attendances: true }
-        }
       }
     })
 
@@ -34,7 +27,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
 
-    const { name, role, department, status, baseSalary, positionAllowance, joinDate, identityPhoto } = body
+    const { name, role, department, status, baseSalary, positionAllowance, joinDate, identityPhoto, whatsapp } = body
 
     const parsedBaseSalary = Number(baseSalary) || 0
     const parsedPositionAllowance = Number(positionAllowance) || 0
@@ -48,7 +41,8 @@ export async function POST(request: Request) {
         baseSalary: parsedBaseSalary,
         positionAllowance: parsedPositionAllowance,
         joinDate: new Date(joinDate),
-        identityPhoto
+        identityPhoto,
+        whatsapp
       }
     })
 

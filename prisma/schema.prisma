@@ -20,6 +20,7 @@ model Employee {
   baseSalary Float   @default(0) // Gaji Pokok / Kehadiran Absensi Base
   positionAllowance Float @default(0) // Tunjangan Jabatan Default
   identityPhoto String? // Foto Identitas URL/Path
+  whatsapp      String? // Nomor WhatsApp
   
   attendances Attendance[]
   salarySlips SalarySlip[]

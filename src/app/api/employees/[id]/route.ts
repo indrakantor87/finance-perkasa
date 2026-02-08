@@ -8,7 +8,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const { id } = await params
     const body = await request.json()
 
-    const { name, role, department, status, baseSalary, positionAllowance, joinDate, identityPhoto } = body
+    const { name, role, department, status, baseSalary, positionAllowance, joinDate, identityPhoto, whatsapp } = body
 
     // Validation for numbers
     const parsedBaseSalary = Number(baseSalary)
@@ -27,7 +27,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
         baseSalary: parsedBaseSalary,
         positionAllowance: parsedPositionAllowance,
         joinDate: new Date(joinDate),
-        identityPhoto
+        identityPhoto,
+        whatsapp
       }
     })
 

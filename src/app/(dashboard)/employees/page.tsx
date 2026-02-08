@@ -4,9 +4,8 @@ import React, { useState, useEffect } from 'react'
 import { 
   Users, Calendar, Clock, FileText, Settings, LogOut, 
   LayoutDashboard, Database, UserCheck, Banknote, 
-  CreditCard, FileCheck, Bell, Plus, Edit, Trash2, Search, X, FileSpreadsheet
+  CreditCard, FileCheck, Bell, Plus, Edit, Trash2, Search, X, FileSpreadsheet, MessageCircle
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
 
 interface Employee {
   id: string
@@ -18,6 +17,7 @@ interface Employee {
   baseSalary: number
   positionAllowance: number
   identityPhoto?: string
+  whatsapp?: string
 }
 
 const ROLE_OPTIONS: Record<string, string[]> = {
@@ -61,8 +61,17 @@ export default function EmployeesPage() {
   const [deleteModal, setDeleteModal] = useState<{show: boolean, id: string | null}>({ show: false, id: null })
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [filterRole, setFilterRole] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+  
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchTerm])
   
   // Form State
   const [formData, setFormData] = useState({
@@ -74,7 +83,8 @@ export default function EmployeesPage() {
     joinDate: new Date().toISOString().split('T')[0],
     baseSalary: 0,
     positionAllowance: 0,
-    identityPhoto: ''
+    identityPhoto: '',
+    whatsapp: ''
   })
 
   const fetchEmployees = async () => {
@@ -161,7 +171,8 @@ export default function EmployeesPage() {
       joinDate: new Date(emp.joinDate).toISOString().split('T')[0],
       baseSalary: emp.baseSalary,
       positionAllowance: emp.positionAllowance,
-      identityPhoto: emp.identityPhoto || ''
+      identityPhoto: emp.identityPhoto || '',
+      whatsapp: emp.whatsapp || ''
     })
     setShowModal(true)
   }
@@ -176,7 +187,8 @@ export default function EmployeesPage() {
       joinDate: new Date().toISOString().split('T')[0],
       baseSalary: 0,
       positionAllowance: 0,
-      identityPhoto: ''
+      identityPhoto: '',
+      whatsapp: ''
     })
   }
 
@@ -208,18 +220,19 @@ export default function EmployeesPage() {
     }
   }
 
-  const uniqueRoles = Array.from(new Set(employees.map(emp => emp.role))).filter(Boolean)
-  const uniqueStatuses = Array.from(new Set(employees.map(emp => emp.status))).filter(Boolean)
+  const uniqueRoles = React.useMemo(() => Array.from(new Set(employees.map(emp => emp.role))).filter(Boolean), [employees])
+  const uniqueStatuses = React.useMemo(() => Array.from(new Set(employees.map(emp => emp.status))).filter(Boolean), [employees])
 
-  const filteredEmployees = employees.filter(emp => {
-    const matchesSearch = emp.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredEmployees = React.useMemo(() => employees.filter(emp => {
+    const matchesSearch = emp.name.toLowerCase().includes(debouncedSearch.toLowerCase())
     const matchesRole = filterRole ? emp.role === filterRole : true
     const matchesStatus = filterStatus ? emp.status === filterStatus : true
     return matchesSearch && matchesRole && matchesStatus
-  })
+  }), [employees, debouncedSearch, filterRole, filterStatus])
 
   const handleExportExcel = async () => {
     try {
+      const XLSX = await import('xlsx');
       const res = await fetch('/api/employees') // Fetch all employees without filter
       if (!res.ok) throw new Error('Failed to fetch data')
       
