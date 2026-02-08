@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import prisma from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,8 +10,9 @@ export async function GET() {
     // Dynamic require to avoid build-time issues and ensure runtime execution
     const ZKLib = require('zkteco-js')
     
-    const ip = '103.162.16.14'
-    const port = 4370
+    const settings = await prisma.systemSetting.findFirst()
+    const ip = settings?.machineIp || '103.162.16.14'
+    const port = settings?.machinePort || 4370
     const timeout = 10000 // 10 seconds
     
     zkInstance = new ZKLib(ip, port, timeout, 4000)

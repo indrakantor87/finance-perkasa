@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Users, RefreshCw, Plus, Trash2, Search, 
-  AlertCircle, CheckCircle2, X, Pencil, Download, FileSpreadsheet 
+  AlertCircle, CheckCircle2, X, Pencil, Download, FileSpreadsheet, Settings 
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -16,12 +16,23 @@ type MachineUser = {
   cardno?: string;
 };
 
+type MachineSettings = {
+  id?: string;
+  machineIp: string;
+  machinePort: number;
+};
+
 export default function MachineManagementPage() {
   const [users, setUsers] = useState<MachineUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Settings state
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [machineSettings, setMachineSettings] = useState<MachineSettings>({ machineIp: '', machinePort: 4370 });
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
   
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -114,9 +125,63 @@ export default function MachineManagementPage() {
     }
   };
 
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch('/api/settings');
+      const data = await res.json();
+      if (data) {
+        setMachineSettings({
+            id: data.id,
+            machineIp: data.machineIp || '103.162.16.14',
+            machinePort: data.machinePort || 4370
+        });
+      }
+    } catch (err) {
+      console.error('Failed to fetch settings', err);
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
+    fetchSettings();
   }, []);
+
+  const handleSaveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingSettings(true);
+    setError('');
+    
+    try {
+        // We need to fetch current settings first to preserve other fields? 
+        // Or rely on Prisma ignoring undefined.
+        // But to be safe, let's just send what we have.
+        // We need ID.
+        if (!machineSettings.id) throw new Error("Settings ID not found");
+
+        const res = await fetch('/api/settings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id: machineSettings.id,
+                machineIp: machineSettings.machineIp,
+                machinePort: machineSettings.machinePort
+            })
+        });
+        
+        const data = await res.json();
+        if (data.id) {
+            setSuccess('Konfigurasi mesin berhasil disimpan');
+            setIsSettingsOpen(false);
+            fetchSettings(); // Refresh
+        } else {
+            throw new Error(data.error || 'Gagal menyimpan pengaturan');
+        }
+    } catch (err: any) {
+        setError(err.message);
+    } finally {
+        setIsSavingSettings(false);
+    }
+  };
 
   const openAddModal = () => {
     setIsEditMode(false);
@@ -441,53 +506,69 @@ export default function MachineManagementPage() {
           </p>
         </div>
         
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={handleClearLogs}
-            disabled={isClearing || isSyncing || loading}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors shadow-sm disabled:opacity-50"
-            title="Hapus Log Absensi di Mesin"
-          >
-            <Trash2 className={`w-4 h-4 ${isClearing ? 'animate-pulse' : ''}`} />
-            {isClearing ? 'Menghapus...' : 'Hapus Log'}
-          </button>
+        <div className="flex flex-wrap items-center gap-3">
+            {/* Machine Controls Group */}
+            <div className="flex items-center gap-1 bg-gray-100 dark:bg-neutral-800 p-1 rounded-lg">
+                <button 
+                    onClick={fetchUsers}
+                    disabled={loading}
+                    className="p-2 text-gray-600 hover:text-blue-600 hover:bg-white dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-neutral-700 rounded-md transition-all"
+                    title="Refresh Data dari Mesin"
+                >
+                    <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                </button>
+                <button
+                    onClick={() => setIsSettingsOpen(true)}
+                    className="p-2 text-gray-600 hover:text-blue-600 hover:bg-white dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-neutral-700 rounded-md transition-all"
+                    title="Konfigurasi IP Mesin"
+                >
+                    <Settings className="w-5 h-5" />
+                </button>
+            </div>
 
-          <button 
-            onClick={handleSync}
-            disabled={isSyncing || loading}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-sm disabled:opacity-50"
-            title="Tarik Data User dari Mesin ke Database"
-          >
-            <Download className={`w-4 h-4 ${isSyncing ? 'animate-bounce' : ''}`} />
-            {isSyncing ? 'Menarik Data...' : 'Tarik Data'}
-          </button>
+            <div className="h-8 w-px bg-gray-300 dark:bg-neutral-700 mx-1 hidden md:block"></div>
 
-          <button 
-            onClick={handleExportExcel}
-            disabled={loading || users.length === 0 || isExporting}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors shadow-sm disabled:opacity-50"
-            title={selectedUids.length > 0 ? `Export Log ${selectedUids.length} User Terpilih` : "Export Semua Log"}
-          >
-            <FileSpreadsheet className="w-4 h-4" />
-            {isExporting ? 'Proses...' : (selectedUids.length > 0 ? `Export Log (${selectedUids.length})` : 'Export Log')}
-          </button>
+            {/* Data Operations Group */}
+            <button 
+                onClick={handleSync}
+                disabled={isSyncing || loading}
+                className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-neutral-700 rounded-lg transition-all shadow-sm disabled:opacity-50 text-sm font-medium"
+                title="Tarik Data User dari Mesin ke Database"
+            >
+                <Download className={`w-4 h-4 ${isSyncing ? 'animate-bounce' : ''}`} />
+                <span className="hidden sm:inline">{isSyncing ? 'Menarik...' : 'Tarik Data'}</span>
+            </button>
+
+            <button 
+                onClick={handleExportExcel}
+                disabled={loading || users.length === 0 || isExporting}
+                className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-neutral-800 border border-gray-300 dark:border-neutral-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-neutral-700 rounded-lg transition-all shadow-sm disabled:opacity-50 text-sm font-medium"
+                title={selectedUids.length > 0 ? `Export Log ${selectedUids.length} User Terpilih` : "Export Semua Log"}
+            >
+                <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                <span className="hidden sm:inline">{isExporting ? 'Proses...' : 'Export Log'}</span>
+            </button>
+
+            <div className="h-8 w-px bg-gray-300 dark:bg-neutral-700 mx-1 hidden md:block"></div>
+
+            {/* Primary Actions Group */}
+            <button 
+                onClick={handleClearLogs}
+                disabled={isClearing || isSyncing || loading}
+                className="flex items-center gap-2 px-3 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 border border-transparent hover:border-red-200 rounded-lg transition-all disabled:opacity-50 text-sm font-medium"
+                title="Hapus Log Absensi di Mesin"
+            >
+                <Trash2 className={`w-4 h-4 ${isClearing ? 'animate-pulse' : ''}`} />
+                <span className="hidden sm:inline">{isClearing ? 'Menghapus...' : 'Hapus Log'}</span>
+            </button>
           
-          <button 
-            onClick={fetchUsers}
-            disabled={loading}
-            className="p-2 text-gray-600 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400 transition-colors"
-            title="Refresh Data"
-          >
-            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-          
-          <button 
-            onClick={openAddModal}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            Tambah User
-          </button>
+            <button 
+                onClick={openAddModal}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all shadow-md hover:shadow-lg text-sm font-medium"
+            >
+                <Plus className="w-4 h-4" />
+                <span>Tambah User</span>
+            </button>
         </div>
       </div>
 
@@ -617,6 +698,66 @@ export default function MachineManagementPage() {
           </table>
         </div>
       </div>
+
+      {/* Settings Modal */}
+      {isSettingsOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-neutral-800 rounded-xl p-6 w-full max-w-md shadow-2xl border border-gray-200 dark:border-neutral-700">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold dark:text-white flex items-center gap-2">
+                <Settings className="w-5 h-5" />
+                Konfigurasi Mesin
+              </h2>
+              <button onClick={() => setIsSettingsOpen(false)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                <X size={24} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveSettings} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1 dark:text-gray-200">IP Address Mesin</label>
+                <input
+                  type="text"
+                  required
+                  value={machineSettings.machineIp}
+                  onChange={(e) => setMachineSettings({ ...machineSettings, machineIp: e.target.value })}
+                  className="w-full p-2 border rounded-lg dark:bg-neutral-700 dark:border-neutral-600 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="Contoh: 103.162.16.14"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1 dark:text-gray-200">Port</label>
+                <input
+                  type="number"
+                  required
+                  value={machineSettings.machinePort}
+                  onChange={(e) => setMachineSettings({ ...machineSettings, machinePort: parseInt(e.target.value) })}
+                  className="w-full p-2 border rounded-lg dark:bg-neutral-700 dark:border-neutral-600 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                  placeholder="4370"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setIsSettingsOpen(false)}
+                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg dark:text-gray-300 dark:hover:bg-neutral-700 transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingSettings}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+                >
+                  {isSavingSettings ? 'Menyimpan...' : 'Simpan Konfigurasi'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Add/Edit User Modal */}
       {isModalOpen && (

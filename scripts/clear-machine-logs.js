@@ -1,15 +1,19 @@
-const ZKLib = require('node-zklib')
+const ZKLib = require('zkteco-js')
 const fs = require('fs')
 const path = require('path')
+const { PrismaClient } = require('@prisma/client')
+const prisma = new PrismaClient()
 
 async function main() {
     let zk = null
     try {
         console.log('Starting clear logs process...')
         
+        const settings = await prisma.systemSetting.findFirst()
+        const ip = settings?.machineIp || '103.162.16.14'
+        const port = settings?.machinePort || 4370
+
         // Setup connection
-        const ip = '103.162.16.14'
-        const port = 4370
         zk = new ZKLib(ip, port, 20000, 4000)
 
         console.log(`Connecting to ${ip}:${port}...`)

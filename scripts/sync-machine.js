@@ -7,9 +7,12 @@ async function main() {
     try {
         console.log('Starting sync process (zkteco-js)...')
         
+        // Fetch settings
+        const settings = await prisma.systemSetting.findFirst()
+        const ip = settings?.machineIp || '103.162.16.14'
+        const port = settings?.machinePort || 4370
+
         // Setup connection
-        const ip = '103.162.16.14'
-        const port = 4370
         // Increase timeout for slow connections
         zk = new ZKLib(ip, port, 20000, 4000)
 

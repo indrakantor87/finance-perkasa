@@ -14,7 +14,9 @@ export async function GET() {
           companyAddress: 'Jl. Raya Perusahaan No. 1',
           companyPhone: '0812-3456-7890',
           payrollCutoffDate: 25,
-          defaultWorkDays: 26
+          defaultWorkDays: 26,
+          machineIp: '103.162.16.14',
+          machinePort: 4370
         }
       })
     }
@@ -36,7 +38,9 @@ export async function PUT(request: Request) {
       companyPhone, 
       companyEmail,
       payrollCutoffDate, 
-      defaultWorkDays 
+      defaultWorkDays,
+      machineIp,
+      machinePort
     } = body
 
     if (!id) {
@@ -51,7 +55,9 @@ export async function PUT(request: Request) {
         companyPhone,
         companyEmail,
         payrollCutoffDate: parseInt(payrollCutoffDate),
-        defaultWorkDays: parseInt(defaultWorkDays)
+        defaultWorkDays: parseInt(defaultWorkDays),
+        machineIp,
+        machinePort: parseInt(machinePort)
       }
     })
 

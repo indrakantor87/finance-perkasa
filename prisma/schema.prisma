@@ -153,6 +153,10 @@ model SystemSetting {
   payrollCutoffDate Int      @default(25) // Tanggal tutup buku absen (misal tgl 25)
   defaultWorkDays   Int      @default(26) // Hari kerja default per bulan
   
+  // Machine Configuration
+  machineIp         String   @default("103.162.16.14")
+  machinePort       Int      @default(4370)
+  
   updatedAt         DateTime @updatedAt
 }
 

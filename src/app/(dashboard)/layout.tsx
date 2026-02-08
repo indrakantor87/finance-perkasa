@@ -1,6 +1,7 @@
 import React from 'react';
 import Header from '@/components/layout/Header';
 import Navigation from '@/components/layout/Navigation';
+import AIAssistant from '@/components/AIAssistant';
 
 export default function DashboardLayout({
   children,
@@ -12,6 +13,7 @@ export default function DashboardLayout({
       <Header />
       <Navigation />
       {children}
+      <AIAssistant />
     </div>
   );
 }
