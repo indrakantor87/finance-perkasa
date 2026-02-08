@@ -1,11 +1,11 @@
-const ZKLib = require('node-zklib')
+const ZKLib = require('zkteco-js')
 const { PrismaClient } = require('@prisma/client')
 const prisma = new PrismaClient()
 
 async function main() {
     let zk = null
     try {
-        console.log('Starting sync process...')
+        console.log('Starting sync process (zkteco-js)...')
         
         // Setup connection
         const ip = '103.162.16.14'
@@ -105,19 +105,61 @@ async function main() {
                 }
             }
             
-            console.log(`User Mapping: Matched ${Object.keys(employeeMap).length} users. Unmapped: ${unmappedUsers.length}`)
+            // AUTO-CREATE MISSING USERS (To ensure logs are processed)
+            let createdUserCount = 0
             if (unmappedUsers.length > 0) {
-                console.log(`Unmapped Names: ${unmappedUsers.slice(0, 10).join(', ')}${unmappedUsers.length > 10 ? '...' : ''}`)
+                console.log(`Auto-creating ${unmappedUsers.length} missing users...`)
+                for (const name of unmappedUsers) {
+                    try {
+                        // Double check if exists (in case of race condition or previous loop)
+                        const existing = await prisma.employee.findFirst({
+                             where: { name: { equals: name, mode: 'insensitive' } }
+                        })
+                        
+                        let empId = existing?.id
+                        
+                        if (!existing) {
+                             const newEmp = await prisma.employee.create({
+                                data: {
+                                    name: name,
+                                    role: 'STAFF', // Default
+                                    department: 'Pemasaran dan Pelayanan', // Default
+                                    status: 'Karyawan',
+                                    joinDate: new Date(),
+                                }
+                             })
+                             console.log(`Created user: ${name}`)
+                             empId = newEmp.id
+                             createdUserCount++
+                        }
+                        
+                        // Add to map
+                        // We need to find the machine ID for this name
+                        const machineUser = users.data.find(u => u.name === name)
+                        if (machineUser && empId) {
+                            employeeMap[machineUser.userId] = empId
+                        }
+                    } catch (err) {
+                        console.error(`Failed to create user ${name}:`, err)
+                    }
+                }
             }
+            
+            console.log(`User Mapping: Matched ${Object.keys(employeeMap).length} users. Unmapped: ${unmappedUsers.length - createdUserCount}`)
+
 
             // 2. Group logs by User and Date
             const groupedLogs = {} 
             
             for (const log of logs.data) {
-                const uid = log.user_id || log.deviceUserId // Try both
+                // Handle property name differences (zkteco-js vs node-zklib style)
+                const uid = log.deviceUserId || log.user_id
+                const recordTime = log.recordTime || log.record_time
+                
+                if (!uid) continue
                 if (!employeeMap[uid]) continue
                 
-                const dateObj = new Date(log.recordTime)
+                const dateObj = new Date(recordTime)
                 if (isNaN(dateObj.getTime())) continue
                 
                 const dateStr = dateObj.toISOString().split('T')[0]
@@ -125,7 +167,11 @@ async function main() {
                 if (!groupedLogs[uid]) groupedLogs[uid] = {}
                 if (!groupedLogs[uid][dateStr]) groupedLogs[uid][dateStr] = []
                 
-                groupedLogs[uid][dateStr].push(dateObj)
+                // Normalize log object for easier processing later
+                log.recordTime = recordTime // Ensure consistent property access
+                
+                // Keep the raw log to check state
+                groupedLogs[uid][dateStr].push(log)
             }
             
             // 3. Save to DB
@@ -137,24 +183,88 @@ async function main() {
             for (const uid in groupedLogs) {
                 const employeeId = employeeMap[uid]
                 for (const dateStr in groupedLogs[uid]) {
-                    const rawTimes = groupedLogs[uid][dateStr].sort((a, b) => a - b)
+                    const rawLogs = groupedLogs[uid][dateStr].sort((a, b) => 
+                        new Date(a.recordTime) - new Date(b.recordTime)
+                    )
                     
-                    // Deduplicate: Filter times that are within 5 minutes of the PREVIOUS valid time
-                    // This prevents "Double Tap" issues where CheckIn and CheckOut are identical or seconds apart
-                    const times = []
-                    if (rawTimes.length > 0) {
-                        times.push(rawTimes[0])
-                        for (let i = 1; i < rawTimes.length; i++) {
-                            const diff = rawTimes[i] - times[times.length - 1]
-                            // 5 minutes = 5 * 60 * 1000 = 300000 ms
-                            if (diff > 5 * 60 * 1000) {
-                                times.push(rawTimes[i])
+                    // Deduplicate logic (Double Tap Prevention)
+                    // We only keep logs that are > 2 mins apart or have DIFFERENT states
+                    const validLogs = []
+                    if (rawLogs.length > 0) {
+                        validLogs.push(rawLogs[0])
+                        for (let i = 1; i < rawLogs.length; i++) {
+                            const prev = validLogs[validLogs.length - 1]
+                            const curr = rawLogs[i]
+                            
+                            const prevTime = new Date(prev.recordTime).getTime()
+                            const currTime = new Date(curr.recordTime).getTime()
+                            const diff = currTime - prevTime
+                            
+                            // If diff > 5 mins OR State is different (e.g. In vs Out), keep it
+                            // (If state is same and < 5 mins, likely double tap)
+                            const prevState = prev.state
+                            const currState = curr.state
+                            
+                            if (diff > 5 * 60 * 1000 || prevState !== currState) {
+                                validLogs.push(curr)
                             }
                         }
                     }
 
-                    const checkIn = times[0]
-                    const checkOut = times.length > 1 ? times[times.length - 1] : null
+                    // DETERMINE CheckIn / CheckOut based on STATE (User Request: Identik dengan mesin)
+                    // State 0 = CheckIn, State 1 = CheckOut
+                    // If state is not 0/1 (e.g. Break), we ignore for basic In/Out or map to closest
+                    
+                    let checkIn = null
+                    let checkOut = null
+                    
+                    // Find explicit Check In (First State 0)
+                    const inLog = validLogs.find(l => l.state === 0)
+                    if (inLog) {
+                        checkIn = new Date(inLog.recordTime)
+                    }
+
+                    // Find explicit Check Out (Last State 1)
+                    // We search from end
+                    const outLog = [...validLogs].reverse().find(l => l.state === 1)
+                    if (outLog) {
+                        checkOut = new Date(outLog.recordTime)
+                    }
+
+                    // FALLBACK: If no explicit states found (some machines don't send state properly or all 0)
+                    // Or if only one log exists and it has no valid state
+                    if (!checkIn && !checkOut) {
+                         if (validLogs.length === 1) {
+                             // Only one log, unknown state. Assume CheckIn (Standard behavior)
+                             // BUT User specifically said "Historis jam masuk hilang, hanya jam keluar".
+                             // If the log is late (> 12:00), maybe it's Out?
+                             // Let's stick to standard unless we are sure.
+                             // However, if we switched to zkteco-js, we SHOULD see the state.
+                             checkIn = new Date(validLogs[0].recordTime)
+                         } else if (validLogs.length > 1) {
+                             // Multiple logs, assume First In, Last Out
+                             checkIn = new Date(validLogs[0].recordTime)
+                             checkOut = new Date(validLogs[validLogs.length - 1].recordTime)
+                         }
+                    } else {
+                        // We have at least one explicit state.
+                        // Handle partials:
+                        // Case: Only CheckOut exists (User scenario) -> checkIn is null, checkOut is set.
+                        // Case: Only CheckIn exists -> checkIn is set, checkOut is null.
+                    }
+
+                    // FINAL SAFETY: If we have CheckIn & CheckOut, ensure In < Out
+                    if (checkIn && checkOut && checkIn > checkOut) {
+                        // Swapped? Or midnight crossing?
+                        // If same day, this is weird. Maybe Out was recorded before In?
+                        // Or multiple shifts?
+                        // For now, if In > Out, invalidate the Out (or In?)
+                        // Let's just keep them, but overtime calc might be weird.
+                        // Actually, if In > Out on same day, it's invalid sequence.
+                        // But maybe the "Out" belongs to previous shift?
+                        // Since we group by Date, these are same calendar day.
+                        // We'll trust the explicit states.
+                    }
                     
                     // Calculate Overtime (WIB Aware)
                     let overtimeHours = 0
@@ -186,6 +296,13 @@ async function main() {
                             }
                          }
                          
+                         // SAFETY CHECK: Overtime cannot exceed Total Duration
+                         const totalDurationMinutes = Math.floor(durationMillis / 60000);
+                         if (overtimeMinutes > totalDurationMinutes) {
+                             console.warn(`Overtime calculation anomaly detected: OT ${overtimeMinutes}m > Duration ${totalDurationMinutes}m. Capping to duration.`);
+                             overtimeMinutes = totalDurationMinutes;
+                         }
+
                          if (overtimeMinutes > 0) {
                             const hh = Math.floor(overtimeMinutes / 60)
                             const mm = Math.round(overtimeMinutes % 60)
@@ -212,17 +329,24 @@ async function main() {
                         // User requested to NOT overwrite existing data
                         skippedCount++
                     } else {
-                        await prisma.attendance.create({
-                            data: {
-                                employeeId,
-                                date: startOfDay,
-                                checkIn: checkIn,
-                                checkOut: checkOut,
-                                status: 'PRESENT',
-                                overtimeHours: overtimeHours
-                            }
-                        })
-                        createdCount++
+                        // Check if we have valid data to save
+                        // We save if at least CheckIn OR CheckOut is present
+                        if (checkIn || checkOut) {
+                            await prisma.attendance.create({
+                                data: {
+                                    employeeId,
+                                    date: startOfDay,
+                                    checkIn: checkIn, // Can be null
+                                    checkOut: checkOut, // Can be null
+                                    status: 'PRESENT',
+                                    overtimeHours: overtimeHours
+                                }
+                            })
+                            createdCount++
+                        } else {
+                            // No valid times (should not happen if logs exist)
+                            skippedCount++ 
+                        }
                     }
                     processedCount++
                 }

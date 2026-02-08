@@ -307,18 +307,9 @@ export default function MachineManagementPage() {
               const rawState = log.state !== undefined ? log.state : (log.status ?? 0);
               let state = getStateLabel(rawState);
               
-              // SMART LOGIC FIX (Requested by User):
-              // If the machine sends '0' (C/In) but it is late in the day (> 16:00),
-              // and specifically if it's the last log of the day, it is likely a 'C/Out'.
-              // This handles the case where "Pulang" scans are recorded as "0" by the machine.
-              if (rawState === 0 && hour >= 16) {
-                  // Additional check: If this is the ONLY log for the day > 12:00, or the last log
-                  // We can safely assume it's Out for Normal Shift.
-                  // For Late Shift (In at 17:00), this might be incorrect, but user context implies Normal Shift issues.
-                  // To be safer, we can check if there's a previous Check-In.
-                  // BUT user said "history in is gone", so this is a single log scenario.
-                  state = 'C/Out';
-              }
+              // Use raw state from machine (0=CheckIn, 1=CheckOut, etc.)
+              // We do NOT infer state based on time to preserve data integrity ("Data Real")
+              // (Logic for smart inference removed to show exact machine data)
 
               // Simple OverTime detection (if after 17:00 and is Check Out)
               if (state === 'C/Out' && hour >= 17) {

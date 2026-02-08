@@ -119,6 +119,12 @@ export async function POST(request: Request) {
         }
       }
 
+      // SAFETY CHECK: Overtime cannot exceed Total Duration
+      const totalDurationMinutes = Math.floor(durationMillis / 60000);
+      if (overtimeMinutes > totalDurationMinutes) {
+          overtimeMinutes = totalDurationMinutes;
+      }
+
       if (overtimeMinutes <= 0) return 0
       return toDotFormat(overtimeMinutes)
     }
