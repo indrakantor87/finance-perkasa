@@ -1,40 +1,29 @@
-const ZKLib = require('node-zklib')
+const ZKLib = require('zkteco-js')
 
 async function main() {
     let zk = null
     try {
         const ip = '103.162.16.14'
         const port = 4370
-        // Increase timeout
+        // zkteco-js: ip, port, timeout, inport
         zk = new ZKLib(ip, port, 20000, 4000)
 
+        // Create socket
         await zk.createSocket()
 
         // Get logs
-        const timeoutMs = 120000 
-        let logs = { data: [] }
+        const logs = await zk.getAttendances()
         
-        const fetchPromise = zk.getAttendances()
-        const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error(`Fetch timeout (${timeoutMs}ms)`)), timeoutMs)
-        )
-        
-        logs = await Promise.race([fetchPromise, timeoutPromise])
-        
-        // Filter if IDs provided in env
+        // logs.data structure in zkteco-js:
+        // { sn, user_id, record_time, type, state, ip }
+
         let data = logs?.data || []
         
-        // Ensure deviceUserId is used (node-zklib usually returns deviceUserId or user_id)
-        // Let's normalize
-        data = data.map(l => ({
-            ...l,
-            deviceUserId: l.deviceUserId || l.user_id, // Normalize
-        }))
-
+        // Filter if IDs provided in env
         const targetIds = process.env.TARGET_USER_IDS ? process.env.TARGET_USER_IDS.split(',') : []
         
         if (targetIds.length > 0) {
-            data = data.filter(l => targetIds.includes(String(l.deviceUserId)))
+            data = data.filter(l => targetIds.includes(String(l.user_id)))
         }
 
         console.log(JSON.stringify({ status: 'success', data }))

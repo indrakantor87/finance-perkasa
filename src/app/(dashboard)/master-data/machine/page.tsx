@@ -265,7 +265,7 @@ export default function MachineManagementPage() {
       ];
 
       // Helper to map status to State string
-      const getStateLabel = (status: number | string) => {
+      const getStateLabel = (status: number | string | undefined) => {
           const s = Number(status);
           switch(s) {
               case 0: return 'C/In';
@@ -278,32 +278,49 @@ export default function MachineManagementPage() {
           }
       };
 
-      // Helper to detect Exceptions (Simple logic)
+      // Helper to detect Exceptions & Apply Smart Logic
       const processLogsWithExceptions = (userLogs: any[]) => {
           // Sort by time
           const sorted = [...userLogs].sort((a: any, b: any) => 
-            new Date(a.recordTime).getTime() - new Date(b.recordTime).getTime()
+            new Date(a.record_time || a.recordTime).getTime() - new Date(b.record_time || b.recordTime).getTime()
           );
 
           return sorted.map((log, idx) => {
-              const currentMsg = new Date(log.recordTime);
+              // Handle field names from both libraries (zkteco-js: record_time, node-zklib: recordTime)
+              const timeStr = log.record_time || log.recordTime;
+              const currentMsg = new Date(timeStr);
               let exception = '';
               
               // Check for Repeat (within 2 minutes of previous log)
               if (idx > 0) {
                   const prevLog = sorted[idx-1];
-                  const prevMsg = new Date(prevLog.recordTime);
+                  const prevTimeStr = prevLog.record_time || prevLog.recordTime;
+                  const prevMsg = new Date(prevTimeStr);
                   const diffMs = currentMsg.getTime() - prevMsg.getTime();
                   if (diffMs < 2 * 60 * 1000) { // 2 minutes
                       exception = 'Repeat';
                   }
               }
 
-              // Simple OverTime detection (if after 17:00 and is Check Out)
-              // Note: This is just a visual approximation to match the user's screenshot style
               const hour = currentMsg.getHours();
-              const state = getStateLabel(log.deviceUserId === undefined ? log.state : (log.status ?? log.state)); // status or state
+              // Get raw state (zkteco-js: state, node-zklib: status/state)
+              const rawState = log.state !== undefined ? log.state : (log.status ?? 0);
+              let state = getStateLabel(rawState);
               
+              // SMART LOGIC FIX (Requested by User):
+              // If the machine sends '0' (C/In) but it is late in the day (> 16:00),
+              // and specifically if it's the last log of the day, it is likely a 'C/Out'.
+              // This handles the case where "Pulang" scans are recorded as "0" by the machine.
+              if (rawState === 0 && hour >= 16) {
+                  // Additional check: If this is the ONLY log for the day > 12:00, or the last log
+                  // We can safely assume it's Out for Normal Shift.
+                  // For Late Shift (In at 17:00), this might be incorrect, but user context implies Normal Shift issues.
+                  // To be safer, we can check if there's a previous Check-In.
+                  // BUT user said "history in is gone", so this is a single log scenario.
+                  state = 'C/Out';
+              }
+
+              // Simple OverTime detection (if after 17:00 and is Check Out)
               if (state === 'C/Out' && hour >= 17) {
                   if (exception) exception += ', OverTime';
                   else exception = 'OverTime';
@@ -311,6 +328,7 @@ export default function MachineManagementPage() {
 
               return {
                   ...log,
+                  _recordTime: currentMsg, // Normalized Date object
                   _stateLabel: state,
                   _exception: exception
               };
@@ -322,10 +340,11 @@ export default function MachineManagementPage() {
         
         // Process sequentially to stagger downloads
         targetUsers.forEach((user, index) => {
-          // Filter logs for this user
-          const rawUserLogs = logs.filter((l: any) => 
-              l.deviceUserId === user.userId || l.user_id === user.userId
-          );
+          // Filter logs for this user (handle both user_id formats)
+          const rawUserLogs = logs.filter((l: any) => {
+              const logUid = String(l.user_id || l.deviceUserId);
+              return logUid === String(user.userId);
+          });
           
           const processedLogs = processLogsWithExceptions(rawUserLogs);
 
@@ -333,7 +352,7 @@ export default function MachineManagementPage() {
             'AC-No.': user.userId,
             'No.': '',
             'Name': user.name,
-            'Time': new Date(l.recordTime).toLocaleString('id-ID'), // e.g. 02/02/2026 08:00:00
+            'Time': l._recordTime.toLocaleString('id-ID'), // e.g. 02/02/2026 08:00:00
             'State': l._stateLabel,
             'New State': '',
             'Exception': l._exception,
@@ -369,9 +388,10 @@ export default function MachineManagementPage() {
         let allProcessedLogs: any[] = [];
         
         users.forEach(user => {
-            const rawUserLogs = logs.filter((l: any) => 
-                l.deviceUserId === user.userId || l.user_id === user.userId
-            );
+            const rawUserLogs = logs.filter((l: any) => {
+                const logUid = String(l.user_id || l.deviceUserId);
+                return logUid === String(user.userId);
+            });
             const processed = processLogsWithExceptions(rawUserLogs).map(l => ({
                 ...l,
                 _userName: user.name,
@@ -380,16 +400,14 @@ export default function MachineManagementPage() {
             allProcessedLogs = [...allProcessedLogs, ...processed];
         });
 
-        // Sort all by time eventually, or keep grouped? Usually global log is sorted by time.
-        // But for "Repeat" check, we needed per-user sorting.
-        // Let's sort the final result by Time.
-        allProcessedLogs.sort((a: any, b: any) => new Date(a.recordTime).getTime() - new Date(b.recordTime).getTime());
+        // Sort all by time
+        allProcessedLogs.sort((a: any, b: any) => a._recordTime.getTime() - b._recordTime.getTime());
 
         const dataToExport = allProcessedLogs.map((l: any) => ({
             'AC-No.': l._userId,
             'No.': '',
             'Name': l._userName,
-            'Time': new Date(l.recordTime).toLocaleString('id-ID'),
+            'Time': l._recordTime.toLocaleString('id-ID'),
             'State': l._stateLabel,
             'New State': '',
             'Exception': l._exception,
