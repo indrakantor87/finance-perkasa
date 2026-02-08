@@ -310,10 +310,8 @@ async function main() {
                          }
                     }
 
-                    const startOfDay = new Date(dateStr)
-                    startOfDay.setHours(0,0,0,0)
-                    const endOfDay = new Date(dateStr)
-                    endOfDay.setHours(23,59,59,999)
+                    const startOfDay = new Date(`${dateStr}T00:00:00.000Z`)
+                    const endOfDay = new Date(`${dateStr}T23:59:59.999Z`)
 
                     const existing = await prisma.attendance.findFirst({
                         where: {
@@ -326,8 +324,79 @@ async function main() {
                     })
 
                     if (existing) {
-                        // User requested to NOT overwrite existing data
-                        skippedCount++
+                        // Merge Logic (Update missing fields)
+                        // Only update if existing field is null/empty and we have new data
+                        let needsUpdate = false
+                        const updateData = {}
+                        
+                        if (!existing.checkIn && checkIn) {
+                            updateData.checkIn = checkIn
+                            needsUpdate = true
+                        }
+                        
+                        if (!existing.checkOut && checkOut) {
+                            updateData.checkOut = checkOut
+                            needsUpdate = true
+                        }
+                        
+                        // Recalculate Overtime if we updated times
+                        if (needsUpdate) {
+                            const finalCheckIn = updateData.checkIn || existing.checkIn
+                            const finalCheckOut = updateData.checkOut || existing.checkOut
+                            
+                            // Re-run overtime calc logic (simplified here or reused)
+                            // Ideally we should extract the calc logic, but for now let's copy the safety check
+                            if (finalCheckIn && finalCheckOut) {
+                                 const durationMillis = finalCheckOut.getTime() - finalCheckIn.getTime()
+                                 // ... (Recalc logic same as above)
+                                 // For simplicity, let's use the one computed for current log if it covers both
+                                 // But wait, 'overtimeHours' variable above was calculated based on 'checkIn' and 'checkOut' from machine.
+                                 // If we merge, we might combine Machine In + Existing Out (or vice versa).
+                                 // So we should recalc overtime.
+                                 
+                                 const WIB_OFFSET = 7 * 60 * 60 * 1000
+                                 const inDateWIB = new Date(finalCheckIn.getTime() + WIB_OFFSET)
+                                 const outDateWIB = new Date(finalCheckOut.getTime() + WIB_OFFSET)
+                                 const inHour = inDateWIB.getUTCHours()
+                                 const inMinute = inDateWIB.getUTCMinutes()
+                                 const dur = finalCheckOut.getTime() - finalCheckIn.getTime()
+                                 let otMin = 0
+                                 
+                                 // Logic reuse
+                                 if (inHour > 17 || (inHour === 17 && inMinute >= 0)) {
+                                    otMin = Math.floor(dur / 60000)
+                                 } else {
+                                    const stdExit = new Date(inDateWIB)
+                                    stdExit.setUTCHours(17, 0, 0, 0)
+                                    if (outDateWIB.getTime() > stdExit.getTime()) {
+                                        if (inDateWIB.getTime() > stdExit.getTime()) {
+                                            otMin = Math.floor(dur / 60000)
+                                        } else {
+                                            otMin = Math.floor((outDateWIB.getTime() - stdExit.getTime()) / 60000)
+                                        }
+                                    }
+                                 }
+                                 
+                                 const totalDur = Math.floor(dur / 60000)
+                                 if (otMin > totalDur) otMin = totalDur
+                                 
+                                 if (otMin > 0) {
+                                     const h = Math.floor(otMin / 60)
+                                     const m = Math.round(otMin % 60)
+                                     updateData.overtimeHours = parseFloat(`${h}.${m.toString().padStart(2, '0')}`)
+                                 } else {
+                                     updateData.overtimeHours = 0
+                                 }
+                            }
+                            
+                            await prisma.attendance.update({
+                                where: { id: existing.id },
+                                data: updateData
+                            })
+                            updatedCount++
+                        } else {
+                             skippedCount++
+                        }
                     } else {
                         // Check if we have valid data to save
                         // We save if at least CheckIn OR CheckOut is present

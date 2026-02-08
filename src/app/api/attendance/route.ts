@@ -270,18 +270,49 @@ export async function POST(request: Request) {
       const computedOTMin = toMinutes(computedOT)
       const extraMin = toMinutes(parseExtra(overtimeHours))
       const newOT = toDotFormat(computedOTMin + extraMin)
-      
-      const attendance = await prisma.attendance.create({
-        data: {
-          employeeId,
-          date: new Date(date),
-          checkIn: inDate,
-          checkOut: outDate,
-          status: status || 'PRESENT',
-          overtimeHours: newOT
+
+      // Check if exists
+      const dateObj = new Date(date)
+      const dateStr = dateObj.toISOString().split('T')[0]
+      const startOfDay = new Date(`${dateStr}T00:00:00.000Z`)
+      const endOfDay = new Date(`${dateStr}T23:59:59.999Z`)
+
+      const existing = await prisma.attendance.findFirst({
+        where: {
+            employeeId,
+            date: {
+                gte: startOfDay,
+                lte: endOfDay
+            }
         }
       })
-      return NextResponse.json(attendance)
+
+      if (existing) {
+        // Update existing
+        const attendance = await prisma.attendance.update({
+            where: { id: existing.id },
+            data: {
+                checkIn: inDate || existing.checkIn,
+                checkOut: outDate || existing.checkOut,
+                status: status || existing.status,
+                overtimeHours: newOT // Overwrite OT with new calculation + extra
+            }
+        })
+        return NextResponse.json(attendance)
+      } else {
+        // Create new
+        const attendance = await prisma.attendance.create({
+            data: {
+            employeeId,
+            date: startOfDay, // Ensure UTC Midnight
+            checkIn: inDate,
+            checkOut: outDate,
+            status: status || 'PRESENT',
+            overtimeHours: newOT
+            }
+        })
+        return NextResponse.json(attendance)
+      }
     }
   } catch (error) {
     console.error('Error creating/updating attendance:', error)
