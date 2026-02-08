@@ -137,8 +137,22 @@ async function main() {
             for (const uid in groupedLogs) {
                 const employeeId = employeeMap[uid]
                 for (const dateStr in groupedLogs[uid]) {
-                    const times = groupedLogs[uid][dateStr].sort((a, b) => a - b)
+                    const rawTimes = groupedLogs[uid][dateStr].sort((a, b) => a - b)
                     
+                    // Deduplicate: Filter times that are within 5 minutes of the PREVIOUS valid time
+                    // This prevents "Double Tap" issues where CheckIn and CheckOut are identical or seconds apart
+                    const times = []
+                    if (rawTimes.length > 0) {
+                        times.push(rawTimes[0])
+                        for (let i = 1; i < rawTimes.length; i++) {
+                            const diff = rawTimes[i] - times[times.length - 1]
+                            // 5 minutes = 5 * 60 * 1000 = 300000 ms
+                            if (diff > 5 * 60 * 1000) {
+                                times.push(rawTimes[i])
+                            }
+                        }
+                    }
+
                     const checkIn = times[0]
                     const checkOut = times.length > 1 ? times[times.length - 1] : null
                     

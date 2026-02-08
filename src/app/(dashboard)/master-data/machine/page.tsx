@@ -38,8 +38,10 @@ export default function MachineManagementPage() {
     cardno: 0
   });
 
-  const [selectedUids, setSelectedUids] = useState<number[]>([]);
+  const [isExporting, setIsExporting] = useState(false);
   const [warning, setWarning] = useState('');
+
+  const [selectedUids, setSelectedUids] = useState<number[]>([]);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -217,67 +219,122 @@ export default function MachineManagementPage() {
     }
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     if (users.length === 0) {
       setError('Tidak ada data user untuk diexport');
       return;
     }
 
-    // Common column settings
-    const wscols = [
-      { wch: 15 }, // User ID
-      { wch: 30 }, // Nama
-      { wch: 10 }, // Role
-      { wch: 15 }, // Card No
-      { wch: 15 }  // Password
-    ];
+    setIsExporting(true);
+    setSuccess('Sedang mengambil data log asli dari mesin...');
+    setError('');
 
-    // Scenario 1: Export Selected Users (Separate Files)
-    if (selectedUids.length > 0) {
-      const targetUsers = users.filter(u => selectedUids.includes(u.uid));
+    try {
+      // 1. Identify Target Users
+      const targetUsers = selectedUids.length > 0 
+        ? users.filter(u => selectedUids.includes(u.uid))
+        : users;
+        
+      const targetUserIds = targetUsers.map(u => u.userId);
+
+      // 2. Fetch Logs from Machine via API
+      const res = await fetch('/api/machine/logs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userIds: targetUserIds })
+      });
+      const result = await res.json();
       
-      targetUsers.forEach((user, index) => {
-        const dataToExport = [{
-          'User ID': user.userId,
-          'Nama': user.name,
-          'Role': user.role === 14 ? 'Admin' : 'User',
-          'Card No': user.cardno || '-',
-          'Password': user.password || '-'
-        }];
+      if (result.status !== 'success') {
+          throw new Error(result.message || 'Gagal mengambil log');
+      }
+
+      const logs = result.data || [];
+      console.log(`Fetched ${logs.length} logs for export`);
+
+      // 3. Common Column Settings
+      const wscols = [
+        { wch: 15 }, // User ID
+        { wch: 30 }, // Nama
+        { wch: 20 }, // Waktu
+        { wch: 10 }, // IP
+        { wch: 10 }  // Verify Mode
+      ];
+
+      // 4. Scenario 1: Export Selected Users (Separate Files)
+      if (selectedUids.length > 0) {
+        
+        // Process sequentially to stagger downloads
+        targetUsers.forEach((user, index) => {
+          // Filter logs for this user
+          // Note: ZK logs might use 'deviceUserId' or 'user_id' depending on lib
+          const userLogs = logs.filter((l: any) => 
+              l.deviceUserId === user.userId || l.user_id === user.userId
+          );
+          
+          // Sort by time
+          userLogs.sort((a: any, b: any) => new Date(a.recordTime).getTime() - new Date(b.recordTime).getTime());
+
+          const dataToExport = userLogs.length > 0 ? userLogs.map((l: any) => ({
+            'User ID': user.userId,
+            'Nama': user.name,
+            'Waktu': new Date(l.recordTime).toLocaleString('id-ID'),
+            'IP Mesin': l.ip || '-',
+            //'Verify Type': l.verifyType || '-'
+          })) : [{
+             'User ID': user.userId,
+             'Nama': user.name,
+             'Waktu': 'TIDAK ADA DATA LOG',
+             'IP Mesin': '-',
+          }];
+
+          const ws = XLSX.utils.json_to_sheet(dataToExport);
+          const wb = XLSX.utils.book_new();
+          ws['!cols'] = wscols;
+          XLSX.utils.book_append_sheet(wb, ws, "Log Absensi");
+          
+          // Stagger downloads
+          setTimeout(() => {
+             const safeName = user.name.replace(/[^a-zA-Z0-9\s-_]/g, '').trim();
+             XLSX.writeFile(wb, `Log_${safeName || user.userId}_${new Date().toISOString().split('T')[0]}.xlsx`);
+          }, index * 800);
+        });
+        
+        setSuccess(`Sedang memproses download ${targetUsers.length} file Log Absensi...`);
+      } 
+      // 5. Scenario 2: Export All Users (Single File)
+      else {
+        const dataToExport = logs.map((l: any) => {
+            const user = users.find(u => u.userId === l.deviceUserId || u.userId === l.user_id);
+            return {
+                'User ID': l.deviceUserId || l.user_id,
+                'Nama': user ? user.name : 'Unknown',
+                'Waktu': new Date(l.recordTime).toLocaleString('id-ID'),
+                'IP Mesin': l.ip || '-',
+            };
+        });
+
+        // Sort by Time
+        dataToExport.sort((a: any, b: any) => new Date(a.Waktu).getTime() - new Date(b.Waktu).getTime());
+
+        if (dataToExport.length === 0) {
+             dataToExport.push({ 'User ID': '-', 'Nama': '-', 'Waktu': 'TIDAK ADA DATA LOG', 'IP Mesin': '-' });
+        }
 
         const ws = XLSX.utils.json_to_sheet(dataToExport);
         const wb = XLSX.utils.book_new();
         ws['!cols'] = wscols;
-        XLSX.utils.book_append_sheet(wb, ws, "User Data");
+        XLSX.utils.book_append_sheet(wb, ws, "Semua Log Absensi");
         
-        // Stagger downloads to prevent browser blocking
-        setTimeout(() => {
-           // Sanitize filename
-           const safeName = user.name.replace(/[^a-zA-Z0-9\s-_]/g, '').trim();
-           XLSX.writeFile(wb, `${safeName || 'User'}_${new Date().toISOString().split('T')[0]}.xlsx`);
-        }, index * 500);
-      });
-      
-      setSuccess(`Sedang memproses download ${targetUsers.length} file Excel...`);
-      return;
+        XLSX.writeFile(wb, `Machine_Logs_All_${new Date().toISOString().split('T')[0]}.xlsx`);
+        setSuccess(`Berhasil mengexport ${logs.length} data log ke Excel`);
+      }
+
+    } catch (err: any) {
+      setError('Gagal export: ' + err.message);
+    } finally {
+      setIsExporting(false);
     }
-
-    // Scenario 2: Export All Users (Single File)
-    const dataToExport = users.map(user => ({
-      'User ID': user.userId,
-      'Nama': user.name,
-      'Role': user.role === 14 ? 'Admin' : 'User',
-      'Card No': user.cardno || '-',
-      'Password': user.password || '-'
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(dataToExport);
-    const wb = XLSX.utils.book_new();
-    ws['!cols'] = wscols;
-    XLSX.utils.book_append_sheet(wb, ws, "Machine Users");
-    
-    XLSX.writeFile(wb, `Machine_Users_All_${new Date().toISOString().split('T')[0]}.xlsx`);
-    setSuccess(`Berhasil mengexport ${users.length} data ke Excel`);
   };
 
   return (
@@ -316,12 +373,12 @@ export default function MachineManagementPage() {
 
           <button 
             onClick={handleExportExcel}
-            disabled={loading || users.length === 0}
+            disabled={loading || users.length === 0 || isExporting}
             className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors shadow-sm disabled:opacity-50"
-            title={selectedUids.length > 0 ? `Export ${selectedUids.length} User Terpilih` : "Export Semua User"}
+            title={selectedUids.length > 0 ? `Export Log ${selectedUids.length} User Terpilih` : "Export Semua Log"}
           >
             <FileSpreadsheet className="w-4 h-4" />
-            {selectedUids.length > 0 ? `Export (${selectedUids.length})` : 'Export Excel'}
+            {isExporting ? 'Proses...' : (selectedUids.length > 0 ? `Export Log (${selectedUids.length})` : 'Export Log')}
           </button>
           
           <button 
