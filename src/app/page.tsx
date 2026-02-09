@@ -10,8 +10,9 @@ export default function Home() {
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage("");
     if (!email) {
@@ -26,22 +27,49 @@ export default function Home() {
       setMessage("Kata sandi minimal 6 karakter");
       return;
     }
-    const allowed = ["administrator@test.com", "admin@test.com"];
-    if (!allowed.includes(email.toLowerCase()) || password !== "123456") {
-      setMessage("Email atau kata sandi tidak cocok");
-      return;
-    }
-    const auth = { email };
+
+    setLoading(true);
+
     try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setMessage(data.error || 'Login gagal');
+        setLoading(false);
+        return;
+      }
+
+      // Login success
+      const user = data.user;
       const storage = remember ? window.localStorage : window.sessionStorage;
-      storage.setItem("perkasa-finance-auth", JSON.stringify(auth));
+      storage.setItem("perkasa-finance-auth", JSON.stringify(user));
       
       // Set cookie for middleware
       const maxAge = remember ? 7 * 24 * 60 * 60 : 0; // 7 days or session
       const expires = remember ? `; max-age=${maxAge}` : '';
-      document.cookie = `perkasa-finance-auth=true; path=/${expires}`;
-    } catch {}
-    router.push("/dashboard");
+      // Store user role in cookie for basic middleware checks
+      document.cookie = `perkasa-finance-auth=${JSON.stringify(user)}; path=/${expires}`;
+
+      // Redirect based on role
+      if (user.role === 'EMPLOYEE' || user.role === 'KARYAWAN') {
+         // Karyawan can see dashboard but limited
+         router.push("/dashboard");
+      } else {
+         router.push("/dashboard");
+      }
+    } catch (error) {
+      console.error(error);
+      setMessage("Terjadi kesalahan sistem");
+      setLoading(false);
+    }
   };
 
   return (
@@ -62,6 +90,7 @@ export default function Home() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="email@perkasa.net.id"
               className="w-full p-3 border rounded-lg text-gray-900 dark:text-zinc-100 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500"
+              disabled={loading}
             />
           </div>
           <div className="mb-6">
@@ -73,11 +102,13 @@ export default function Home() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="minimal 6 karakter"
                 className="w-full p-3 border rounded-lg text-gray-900 dark:text-zinc-100 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all placeholder:text-gray-400 dark:placeholder:text-gray-500 pr-10"
+                disabled={loading}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                disabled={loading}
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
@@ -90,6 +121,7 @@ export default function Home() {
               checked={remember}
               onChange={(e) => setRemember(e.target.checked)}
               className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 bg-white dark:bg-gray-700"
+              disabled={loading}
             />
             <label htmlFor="remember" className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer select-none">Ingat Saya</label>
           </div>
@@ -102,9 +134,10 @@ export default function Home() {
 
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-bold shadow-md hover:shadow-lg transition-all active:scale-[0.98]"
+            disabled={loading}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-colors focus:ring-4 focus:ring-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Masuk
+            {loading ? "Memproses..." : "Masuk"}
           </button>
         </form>
       </main>

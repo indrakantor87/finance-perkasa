@@ -44,6 +44,10 @@ export default function PermissionsPage() {
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   
+  // Auth State
+  const [role, setRole] = useState<string | null>(null)
+  const [currentEmployeeId, setCurrentEmployeeId] = useState<string | null>(null)
+
   // Form State
   const [formData, setFormData] = useState({
     employeeId: '',
@@ -54,8 +58,22 @@ export default function PermissionsPage() {
     attachment: ''
   })
 
-  // Fetch Data
+  // Fetch Data & Auth
   useEffect(() => {
+    try {
+      const stored = localStorage.getItem('perkasa-finance-auth') || sessionStorage.getItem('perkasa-finance-auth')
+      if (stored) {
+        const user = JSON.parse(stored)
+        setRole(user.role)
+        setCurrentEmployeeId(user.employeeId)
+        // If employee, set default ID in form
+        if (user.role === 'EMPLOYEE' || user.role === 'KARYAWAN') {
+            setFormData(prev => ({ ...prev, employeeId: user.employeeId }))
+        }
+      }
+    } catch (e) {
+      console.error(e)
+    }
     fetchData()
   }, [])
 
@@ -76,6 +94,12 @@ export default function PermissionsPage() {
     }
   }
 
+  // Filter Logic
+  const filteredRequests = requests.filter(req => {
+    const matchEmployee = (role === 'EMPLOYEE' || role === 'KARYAWAN') ? req.employeeId === currentEmployeeId : true
+    return matchEmployee
+  })
+
   // Handlers
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -92,6 +116,7 @@ export default function PermissionsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
+          employeeId: (role === 'EMPLOYEE' || role === 'KARYAWAN') ? currentEmployeeId : formData.employeeId,
           duration: diffDays,
           durationUnit: 'DAYS'
         })
@@ -101,7 +126,7 @@ export default function PermissionsPage() {
         setShowModal(false)
         fetchData()
         setFormData({
-            employeeId: '',
+            employeeId: (role === 'EMPLOYEE' || role === 'KARYAWAN') ? currentEmployeeId || '' : '',
             type: 'SICK',
             startDate: new Date().toISOString().split('T')[0],
             endDate: new Date().toISOString().split('T')[0],
@@ -201,10 +226,10 @@ export default function PermissionsPage() {
                 <tbody className="divide-y divide-gray-100 dark:divide-neutral-800">
                     {loading ? (
                         <tr><td colSpan={7} className="px-6 py-8 text-center text-gray-500">Memuat data...</td></tr>
-                    ) : requests.length === 0 ? (
+                    ) : filteredRequests.length === 0 ? (
                         <tr><td colSpan={7} className="px-6 py-8 text-center text-gray-500">Belum ada data perizinan.</td></tr>
                     ) : (
-                        requests.map(req => (
+                        filteredRequests.map(req => (
                             <tr key={req.id} className="hover:bg-gray-50 dark:hover:bg-neutral-800/50 transition-colors">
                                 <td className="px-6 py-4 text-gray-500 dark:text-slate-400">
                                     {new Date(req.createdAt).toLocaleDateString('id-ID')}
@@ -240,7 +265,7 @@ export default function PermissionsPage() {
                                 </td>
                                 <td className="px-6 py-4 text-right">
                                     <div className="flex justify-end gap-2">
-                                        {req.status === 'PENDING' && (
+                                        {(req.status === 'PENDING' && role !== 'EMPLOYEE' && role !== 'KARYAWAN') && (
                                             <>
                                                 <button onClick={() => handleStatusUpdate(req.id, 'APPROVED')} className="p-1.5 bg-green-50 text-green-600 rounded hover:bg-green-100" title="Setujui">
                                                     <CheckCircle size={16} />
@@ -272,6 +297,7 @@ export default function PermissionsPage() {
                     <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 transition-colors"><XCircle size={20} /></button>
                 </div>
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                    {(role !== 'EMPLOYEE' && role !== 'KARYAWAN') && (
                     <div>
                         <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-slate-300">Karyawan</label>
                         <select 
@@ -286,6 +312,7 @@ export default function PermissionsPage() {
                             ))}
                         </select>
                     </div>
+                    )}
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>

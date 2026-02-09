@@ -26,6 +26,8 @@ model Employee {
   salarySlips SalarySlip[]
   loans       Loan[]
   leaveRequests LeaveRequest[]
+  warningLetters WarningLetter[]
+  user        User?
 }
 
 model Attendance {
@@ -166,7 +168,9 @@ model User {
   email     String   @unique
   password  String
   name      String
-  role      String   @default("ADMIN") // ADMIN, STAFF
+  role      String   @default("ADMIN") // DEVELOPER, ADMINISTRATOR, ADMIN, EMPLOYEE
+  employeeId String? @unique
+  employee  Employee? @relation(fields: [employeeId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -179,4 +183,22 @@ model Notification {
   category  String   @default("system") // system, data_input, import, employee, salary
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
+}
+
+model WarningLetter {
+  id        String   @id @default(cuid())
+  employeeId String
+  employee  Employee @relation(fields: [employeeId], references: [id])
+  
+  level     Int      @default(1) // 1, 2, 3
+  reason    String
+  description String? // Detail kejadian
+  
+  issuedDate DateTime @default(now())
+  validUntil DateTime // Masa berlaku (biasanya 6 bulan)
+  
+  status    String   @default("ACTIVE") // ACTIVE, EXPIRED, REVOKED
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

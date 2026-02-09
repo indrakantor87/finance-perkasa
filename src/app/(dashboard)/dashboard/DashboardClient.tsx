@@ -9,7 +9,7 @@ import {
   Users, Clock, FileText, Settings, LogOut, 
   LayoutDashboard, Database, UserCheck, Banknote, 
   CreditCard, FileCheck, Bell, Coffee, ArrowUpRight, 
-  ArrowDownRight, Wallet, Briefcase, ChevronRight
+  ArrowDownRight, Wallet, Briefcase, ChevronRight, AlertTriangle
 } from 'lucide-react';
 
 interface DashboardStats {
@@ -42,14 +42,55 @@ interface DashboardStats {
 
 export default function DashboardClient({ stats }: { stats: DashboardStats | null }) {
   const [mounted, setMounted] = useState(false);
+  const [role, setRole] = useState<string | null>(null)
 
   useEffect(() => {
     setMounted(true);
+    try {
+      const stored = localStorage.getItem('perkasa-finance-auth') || sessionStorage.getItem('perkasa-finance-auth')
+      if (stored) {
+        const user = JSON.parse(stored)
+        setRole(user.role)
+      }
+    } catch (e) {
+      console.error(e)
+    }
   }, []);
 
   // Fallback if stats failed to load
   if (!stats) {
     return <div className="p-8 text-center text-red-500">Gagal memuat data dashboard.</div>
+  }
+
+  // Karyawan View
+  if (role === 'EMPLOYEE' || role === 'KARYAWAN') {
+    return (
+        <div className="font-sans text-slate-800 dark:text-slate-100 p-6 max-w-[1600px] mx-auto space-y-6">
+            <div className="bg-white dark:bg-neutral-900 p-8 rounded-2xl shadow-sm border border-gray-100 dark:border-neutral-800 text-center">
+                <h2 className="text-2xl font-bold mb-4">Selamat Datang di Portal Karyawan</h2>
+                <p className="text-gray-500 dark:text-gray-400 mb-8">Silakan akses menu di bawah ini untuk melihat data Anda.</p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                     <Link href="/attendance" className="p-6 bg-blue-50 dark:bg-blue-900/20 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors border border-blue-100 dark:border-blue-800 group">
+                        <UserCheck className="w-10 h-10 text-blue-600 dark:text-blue-400 mb-4 mx-auto group-hover:scale-110 transition-transform" />
+                        <h3 className="font-bold text-lg text-blue-700 dark:text-blue-300">Absensi Saya</h3>
+                     </Link>
+                     <Link href="/employees/disciplinary" className="p-6 bg-red-50 dark:bg-red-900/20 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors border border-red-100 dark:border-red-800 group">
+                        <AlertTriangle className="w-10 h-10 text-red-600 dark:text-red-400 mb-4 mx-auto group-hover:scale-110 transition-transform" />
+                        <h3 className="font-bold text-lg text-red-700 dark:text-red-300">Sanksi & SP</h3>
+                     </Link>
+                     <Link href="/loans" className="p-6 bg-violet-50 dark:bg-violet-900/20 rounded-xl hover:bg-violet-100 dark:hover:bg-violet-900/30 transition-colors border border-violet-100 dark:border-violet-800 group">
+                        <Wallet className="w-10 h-10 text-violet-600 dark:text-violet-400 mb-4 mx-auto group-hover:scale-110 transition-transform" />
+                        <h3 className="font-bold text-lg text-violet-700 dark:text-violet-300">Pinjaman</h3>
+                     </Link>
+                     <Link href="/permissions" className="p-6 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors border border-indigo-100 dark:border-indigo-800 group">
+                        <FileCheck className="w-10 h-10 text-indigo-600 dark:text-indigo-400 mb-4 mx-auto group-hover:scale-110 transition-transform" />
+                        <h3 className="font-bold text-lg text-indigo-700 dark:text-indigo-300">Perizinan</h3>
+                     </Link>
+                </div>
+            </div>
+        </div>
+    )
   }
 
   // --- Process Data for Charts ---

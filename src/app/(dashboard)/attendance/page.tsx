@@ -80,6 +80,23 @@ export default function AttendancePage() {
   const [editingGroup, setEditingGroup] = useState<GroupedAttendance | null>(null)
   const [isSyncing, setIsSyncing] = useState(false)
 
+  // Auth State
+  const [role, setRole] = useState<string | null>(null)
+  const [currentEmployeeId, setCurrentEmployeeId] = useState<string | null>(null)
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('perkasa-finance-auth') || sessionStorage.getItem('perkasa-finance-auth')
+      if (stored) {
+        const user = JSON.parse(stored)
+        setRole(user.role)
+        setCurrentEmployeeId(user.employeeId)
+      }
+    } catch (e) {
+      console.error("Error parsing auth", e)
+    }
+  }, [])
+
   // -- Theme --
   // We can use standard Tailwind dark: classes for most things.
   // For dynamic values if needed:
@@ -516,7 +533,8 @@ export default function AttendancePage() {
   const filteredAttendances = attendances.filter(att => {
     const matchCategory = activeCategory === 'Semua' || att.employee.department === activeCategory
     const matchSearch = att.employee.name.toLowerCase().includes(searchTerm.toLowerCase())
-    return matchCategory && matchSearch
+    const matchEmployee = (role === 'EMPLOYEE' || role === 'KARYAWAN') ? att.employeeId === currentEmployeeId : true
+    return matchCategory && matchSearch && matchEmployee
   })
   
   const toMinutes = (dotFormat: number) => {

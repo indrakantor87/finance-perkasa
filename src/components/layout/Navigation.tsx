@@ -1,27 +1,47 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
   Users, LayoutDashboard, UserCheck, Banknote, 
-  CreditCard, FileCheck, Database, Settings, FileBarChart
+  CreditCard, FileCheck, Database, Settings, FileBarChart, AlertTriangle
 } from 'lucide-react';
 
 export default function Navigation() {
   const pathname = usePathname();
+  const [role, setRole] = useState<string | null>(null);
 
-  const navItems = [
-    { icon: <LayoutDashboard size={18} />, label: "Dashboard", href: "/dashboard" },
-    { icon: <Users size={18} />, label: "Data Karyawan", href: "/employees" },
-    { icon: <UserCheck size={18} />, label: "Absensi", href: "/attendance" },
-    { icon: <Banknote size={18} />, label: "Gaji", href: "/salary" },
-    { icon: <FileBarChart size={18} />, label: "Laporan", href: "/reports" },
-    { icon: <CreditCard size={18} />, label: "Pinjaman", href: "/loans" },
-    { icon: <FileCheck size={18} />, label: "Perizinan", href: "/permissions" },
-    { icon: <Database size={18} />, label: "Master Data", href: "/master-data" },
-    { icon: <Settings size={18} />, label: "Settings", href: "/settings" },
+  useEffect(() => {
+    // Get role from storage
+    try {
+      const stored = localStorage.getItem('perkasa-finance-auth') || sessionStorage.getItem('perkasa-finance-auth');
+      if (stored) {
+        const user = JSON.parse(stored);
+        setRole(user.role);
+      }
+    } catch (e) {
+      console.error("Error parsing auth", e);
+    }
+  }, []);
+
+  const allNavItems = [
+    { icon: <LayoutDashboard size={18} />, label: "Dashboard", href: "/dashboard", roles: ['DEVELOPER', 'ADMINISTRATOR', 'ADMIN', 'EMPLOYEE', 'KARYAWAN'] },
+    { icon: <Users size={18} />, label: "Data Karyawan", href: "/employees", roles: ['DEVELOPER', 'ADMINISTRATOR', 'ADMIN'] },
+    { icon: <AlertTriangle size={18} />, label: "Sanksi", href: "/employees/disciplinary", roles: ['DEVELOPER', 'ADMINISTRATOR', 'ADMIN', 'EMPLOYEE', 'KARYAWAN'] },
+    { icon: <UserCheck size={18} />, label: "Absensi", href: "/attendance", roles: ['DEVELOPER', 'ADMINISTRATOR', 'ADMIN', 'EMPLOYEE', 'KARYAWAN'] },
+    { icon: <Banknote size={18} />, label: "Gaji", href: "/salary", roles: ['DEVELOPER', 'ADMINISTRATOR', 'ADMIN'] },
+    { icon: <FileBarChart size={18} />, label: "Laporan", href: "/reports", roles: ['DEVELOPER', 'ADMINISTRATOR', 'ADMIN'] },
+    { icon: <CreditCard size={18} />, label: "Pinjaman", href: "/loans", roles: ['DEVELOPER', 'ADMINISTRATOR', 'ADMIN', 'EMPLOYEE', 'KARYAWAN'] },
+    { icon: <FileCheck size={18} />, label: "Perizinan", href: "/permissions", roles: ['DEVELOPER', 'ADMINISTRATOR', 'ADMIN', 'EMPLOYEE', 'KARYAWAN'] },
+    { icon: <Database size={18} />, label: "Master Data", href: "/master-data", roles: ['DEVELOPER', 'ADMINISTRATOR'] },
+    { icon: <Settings size={18} />, label: "Settings", href: "/settings", roles: ['DEVELOPER', 'ADMINISTRATOR'] },
   ];
+
+  // Filter items based on role
+  // If role is null (loading or not logged in), show nothing or minimal? 
+  // Ideally we wait for role, but for now default to empty or safe list.
+  const navItems = role ? allNavItems.filter(item => item.roles.includes(role)) : [];
 
   return (
     <div className="bg-white dark:bg-neutral-900 border-b border-gray-200 dark:border-neutral-800 overflow-x-auto no-scrollbar print:hidden">
