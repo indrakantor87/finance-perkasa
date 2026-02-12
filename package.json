@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "clean": "node scripts/clean.js",
     "db:generate": "prisma generate"
   },
   "prisma": {
