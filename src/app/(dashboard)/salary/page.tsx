@@ -66,15 +66,16 @@ export default function SalaryPage() {
     return slip.employee.department === activeCategory
   })
 
-  const fetchSlips = async () => {
+  const fetchSlips = async (signal?: AbortSignal) => {
     setLoadingHistory(true)
     try {
-      const res = await fetch(`/api/salary-slip?month=${month}&year=${year}`)
+      const res = await fetch(`/api/salary-slip?month=${month}&year=${year}`, { signal })
       if (res.ok) {
         const data = await res.json()
         setSlips(data)
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'AbortError') return
       console.error('Failed to fetch history', err)
     } finally {
       setLoadingHistory(false)
@@ -82,8 +83,10 @@ export default function SalaryPage() {
   }
 
   useEffect(() => {
-    fetchSlips()
+    const controller = new AbortController()
+    fetchSlips(controller.signal)
     setSelectedSlipIds([]) // Reset selection on period change
+    return () => controller.abort()
   }, [month, year])
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -114,6 +117,8 @@ export default function SalaryPage() {
       return;
     }
 
+    // Dynamic import to reduce bundle size
+    const ExcelJS = (await import('exceljs')).default;
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Slip Gaji');
 
@@ -525,17 +530,43 @@ export default function SalaryPage() {
 
   const updateInput = (field: keyof SalarySlipData, value: number) => {
     if (!inputData) return
-    const newData = { ...inputData, [field]: value }
+    
+    let safeValue = value
+
+    // Safety Check: Prevent entering Rupiah amounts into Count/Days fields
+    // If value is > 1000 in presentDays, user likely typed nominal (e.g. 1500000)
+    if (field === 'presentDays') {
+        if (value > 35) {
+            // Cap at 31 if obviously too large, or just return to prevent update
+            // We'll cap at 31 to be safe
+            safeValue = 31
+            alert('Maksimal jumlah hari adalah 31')
+        }
+    }
+
+    // Safety Check: Counts shouldn't be massive (e.g. user typed 500000 for incentive)
+    const countFields = ['psbCount', 'installationCount5k', 'installationCount10k', 
+                         'countHomeLite', 'countHomeBasic', 'countHomeStream', 
+                         'countHomeEntertain', 'countHomeSmall', 'countHomeAdvan']
+    
+    if (countFields.includes(field)) {
+        if (value > 5000) {
+            safeValue = 5000
+            alert('Nilai Quantity/Jumlah terlalu besar. Pastikan Anda memasukkan JUMLAH (pcs), bukan Nominal (Rp).')
+        }
+    }
+
+    const newData = { ...inputData, [field]: safeValue }
     
     // Auto-calculate Incentive PSB if psbCount changes
     if (field === 'psbCount') {
-        newData.incentivePsb = value * 50000
+        newData.incentivePsb = safeValue * 50000
     }
 
     // Auto-calculate Incentive Instalasi
     if (field === 'installationCount5k' || field === 'installationCount10k') {
-        const count5k = field === 'installationCount5k' ? value : (newData.installationCount5k || 0)
-        const count10k = field === 'installationCount10k' ? value : (newData.installationCount10k || 0)
+        const count5k = field === 'installationCount5k' ? safeValue : (newData.installationCount5k || 0)
+        const count10k = field === 'installationCount10k' ? safeValue : (newData.installationCount10k || 0)
         newData.incentiveInstalasi = (count5k * 5000) + (count10k * 10000)
     }
 
@@ -543,12 +574,12 @@ export default function SalaryPage() {
     // Only if user changes one of the count fields
     const packageFields = ['countHomeLite', 'countHomeBasic', 'countHomeStream', 'countHomeEntertain', 'countHomeSmall', 'countHomeAdvan']
     if (packageFields.includes(field)) {
-        const countHomeLite = field === 'countHomeLite' ? value : (newData.countHomeLite || 0)
-        const countHomeBasic = field === 'countHomeBasic' ? value : (newData.countHomeBasic || 0)
-        const countHomeStream = field === 'countHomeStream' ? value : (newData.countHomeStream || 0)
-        const countHomeEntertain = field === 'countHomeEntertain' ? value : (newData.countHomeEntertain || 0)
-        const countHomeSmall = field === 'countHomeSmall' ? value : (newData.countHomeSmall || 0)
-        const countHomeAdvan = field === 'countHomeAdvan' ? value : (newData.countHomeAdvan || 0)
+        const countHomeLite = field === 'countHomeLite' ? safeValue : (newData.countHomeLite || 0)
+        const countHomeBasic = field === 'countHomeBasic' ? safeValue : (newData.countHomeBasic || 0)
+        const countHomeStream = field === 'countHomeStream' ? safeValue : (newData.countHomeStream || 0)
+        const countHomeEntertain = field === 'countHomeEntertain' ? safeValue : (newData.countHomeEntertain || 0)
+        const countHomeSmall = field === 'countHomeSmall' ? safeValue : (newData.countHomeSmall || 0)
+        const countHomeAdvan = field === 'countHomeAdvan' ? safeValue : (newData.countHomeAdvan || 0)
 
         const rawTotal = (countHomeLite * 337800) +
                          (countHomeBasic * 150000) +
@@ -562,7 +593,7 @@ export default function SalaryPage() {
 
     // Auto-calculate UMT
     if (field === 'presentDays') {
-        newData.umtAmount = value * 15000
+        newData.umtAmount = safeValue * 15000
     }
     
     // Recalculate totals

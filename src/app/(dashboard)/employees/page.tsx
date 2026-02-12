@@ -87,15 +87,16 @@ export default function EmployeesPage() {
     whatsapp: ''
   })
 
-  const fetchEmployees = async () => {
+  const fetchEmployees = async (signal?: AbortSignal) => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/employees?department=${encodeURIComponent(activeCategory)}`)
+      const res = await fetch(`/api/employees?department=${encodeURIComponent(activeCategory)}`, { signal })
       if (res.ok) {
         const data = await res.json()
         setEmployees(data)
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'AbortError') return
       console.error('Failed to fetch employees', err)
     } finally {
       setLoading(false)
@@ -103,7 +104,8 @@ export default function EmployeesPage() {
   }
 
   useEffect(() => {
-    fetchEmployees()
+    const controller = new AbortController()
+    fetchEmployees(controller.signal)
     setFormData(prev => ({ 
       ...prev, 
       department: activeCategory,
@@ -111,6 +113,7 @@ export default function EmployeesPage() {
     }))
     setFilterRole('')
     setFilterStatus('')
+    return () => controller.abort()
   }, [activeCategory])
 
   const handleSubmit = async (e: React.FormEvent) => {

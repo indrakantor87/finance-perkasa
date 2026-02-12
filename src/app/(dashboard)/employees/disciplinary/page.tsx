@@ -47,8 +47,9 @@ export default function DisciplinaryPage() {
   })
 
   useEffect(() => {
-    fetchWarningLetters()
-    fetchEmployees()
+    const controller = new AbortController()
+    fetchWarningLetters(controller.signal)
+    fetchEmployees(controller.signal)
 
     // Get auth state
     try {
@@ -61,31 +62,35 @@ export default function DisciplinaryPage() {
     } catch (e) {
       console.error(e)
     }
+    
+    return () => controller.abort()
   }, [])
 
-  const fetchWarningLetters = async () => {
+  const fetchWarningLetters = async (signal?: AbortSignal) => {
     setLoading(true)
     try {
-      const res = await fetch('/api/warning-letters')
+      const res = await fetch('/api/warning-letters', { signal })
       if (res.ok) {
         const data = await res.json()
         setWarningLetters(data)
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'AbortError') return
       console.error('Failed to fetch warning letters', err)
     } finally {
       setLoading(false)
     }
   }
 
-  const fetchEmployees = async () => {
+  const fetchEmployees = async (signal?: AbortSignal) => {
     try {
-      const res = await fetch('/api/employees') // Fetches all employees
+      const res = await fetch('/api/employees', { signal }) // Fetches all employees
       if (res.ok) {
         const data = await res.json()
         setEmployees(data)
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'AbortError') return
       console.error('Failed to fetch employees', err)
     }
   }

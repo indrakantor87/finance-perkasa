@@ -101,17 +101,20 @@ export default function SettingsPage() {
   }
 
   useEffect(() => {
-    fetchSettings()
+    const controller = new AbortController()
+    fetchSettings(controller.signal)
+    return () => controller.abort()
   }, [])
 
-  const fetchSettings = async () => {
+  const fetchSettings = async (signal?: AbortSignal) => {
     try {
-      const res = await fetch('/api/settings')
+      const res = await fetch('/api/settings', { signal })
       if (res.ok) {
         const data = await res.json()
         setSettings(data)
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error.name === 'AbortError') return
       console.error('Failed to fetch settings:', error)
     } finally {
       setLoading(false)

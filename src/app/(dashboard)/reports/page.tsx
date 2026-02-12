@@ -56,13 +56,15 @@ export default function ReportsPage() {
   }, [])
 
   useEffect(() => {
-    fetchData()
+    const controller = new AbortController()
+    fetchData(controller.signal)
+    return () => controller.abort()
   }, [month, year])
 
-  const fetchData = async () => {
+  const fetchData = async (signal?: AbortSignal) => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/salary-slip?month=${month}&year=${year}`)
+      const res = await fetch(`/api/salary-slip?month=${month}&year=${year}`, { signal })
       if (res.ok) {
         const rawResult = await res.json()
         
@@ -101,11 +103,12 @@ export default function ReportsPage() {
           },
           netSalary: item.netSalary || 0
         }))
-        
+
         setData(mappedData)
       }
-    } catch (error) {
-      console.error('Failed to fetch report data', error)
+    } catch (err: any) {
+      if (err.name === 'AbortError') return
+      console.error('Failed to fetch reports', err)
     } finally {
       setLoading(false)
     }

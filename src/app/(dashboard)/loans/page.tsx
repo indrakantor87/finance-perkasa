@@ -66,20 +66,23 @@ export default function LoansPage() {
   }, [])
 
   useEffect(() => {
-    fetchData()
+    const controller = new AbortController()
+    fetchData(controller.signal)
+    return () => controller.abort()
   }, []) // Fetch all initially, then filter
 
-  const fetchData = async () => {
+  const fetchData = async (signal?: AbortSignal) => {
     setLoading(true)
     try {
       const [loansRes, empRes] = await Promise.all([
-        fetch('/api/loans'),
-        fetch('/api/employees')
+        fetch('/api/loans', { signal }),
+        fetch('/api/employees', { signal })
       ])
       
       if (loansRes.ok) setLoans(await loansRes.json())
       if (empRes.ok) setEmployees(await empRes.json())
-    } catch (error) {
+    } catch (error: any) {
+      if (error.name === 'AbortError') return
       console.error('Failed to fetch data', error)
     } finally {
       setLoading(false)

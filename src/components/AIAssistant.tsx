@@ -39,6 +39,12 @@ export default function AIAssistant() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const pathname = usePathname();
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -115,6 +121,7 @@ export default function AIAssistant() {
     // Process Command (Enhanced Logic)
     // Simulate AI thinking delay
     setTimeout(async () => {
+      if (!isMounted.current) return;
       const lowerInput = textToSend.toLowerCase();
       let responseText: React.ReactNode = 'Maaf, saya belum mengerti perintah tersebut. Coba kata kunci seperti "karyawan", "laporan", atau "sinkronisasi".';
       let action = undefined;
@@ -127,8 +134,10 @@ export default function AIAssistant() {
       if (lowerInput.includes('total karyawan') || lowerInput.includes('jumlah karyawan') || lowerInput.includes('berapa karyawan')) {
         try {
           const res = await fetch('/api/employees');
+          if (!isMounted.current) return;
           if (res.ok) {
             const data = await res.json();
+            if (!isMounted.current) return;
             const count = data.length || 0;
             responseText = `Saat ini terdapat total ${count} karyawan terdaftar dalam sistem.`;
             
@@ -156,8 +165,10 @@ export default function AIAssistant() {
       else if (lowerInput.includes('notifikasi') || lowerInput.includes('pesan') || lowerInput.includes('alert')) {
         try {
           const res = await fetch('/api/notifications');
+          if (!isMounted.current) return;
           if (res.ok) {
             const data = await res.json();
+            if (!isMounted.current) return;
             const unreadCount = data.filter((n: any) => !n.isRead).length;
             responseText = unreadCount > 0 
               ? `Anda memiliki ${unreadCount} notifikasi baru yang belum dibaca.`
@@ -281,8 +292,10 @@ export default function AIAssistant() {
         component
       };
 
-      setIsTyping(false);
-      setMessages(prev => [...prev, aiMsg]);
+      if (isMounted.current) {
+        setIsTyping(false);
+        setMessages(prev => [...prev, aiMsg]);
+      }
       
       // Auto-execute navigation logic (kept simple)
       if (action && (lowerInput.includes('buka') || lowerInput.includes('pergi') || lowerInput.includes('lihat'))) {

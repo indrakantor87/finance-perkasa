@@ -20,11 +20,13 @@ export default function UserMenu() {
   const menuRef = useRef<HTMLDivElement>(null)
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
+  const isMountedRef = useRef(true)
   const router = useRouter()
 
   // Ensure hydration match
   useEffect(() => {
     setMounted(true)
+    isMountedRef.current = true
     try {
       const stored = localStorage.getItem('perkasa-finance-auth') || sessionStorage.getItem('perkasa-finance-auth')
       if (stored) {
@@ -33,6 +35,7 @@ export default function UserMenu() {
     } catch (e) {
       console.error(e)
     }
+    return () => { isMountedRef.current = false }
   }, [])
 
   // Close on click outside
@@ -71,8 +74,10 @@ export default function UserMenu() {
       
       if (res.ok) {
         alert('Password berhasil diubah')
-        setShowPasswordModal(false)
-        setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' })
+        if (isMountedRef.current) {
+          setShowPasswordModal(false)
+          setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' })
+        }
       } else {
         alert(data.error || 'Gagal mengubah password')
       }
@@ -80,7 +85,7 @@ export default function UserMenu() {
       console.error('Change password error', error)
       alert('Terjadi kesalahan sistem')
     } finally {
-      setLoading(false)
+      if (isMountedRef.current) setLoading(false)
     }
   }
 
@@ -176,8 +181,9 @@ export default function UserMenu() {
                 try {
                   localStorage.removeItem("perkasa-finance-auth")
                   sessionStorage.removeItem("perkasa-finance-auth")
+                  document.cookie = "perkasa-finance-auth=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;"
                 } catch (e) {}
-                router.push("/")
+                window.location.href = "/"
               }}
             >
               <LogOut size={18} />

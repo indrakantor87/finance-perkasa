@@ -9,15 +9,16 @@ export default function Header() {
   const [formattedDate, setFormattedDate] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
 
-  const fetchUnreadCount = async () => {
+  const fetchUnreadCount = async (signal?: AbortSignal) => {
     try {
-      const res = await fetch('/api/notifications');
+      const res = await fetch('/api/notifications', { signal });
       if (res.ok) {
         const data = await res.json();
         const unread = data.filter((n: any) => !n.isRead).length;
         setUnreadCount(unread);
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error.name === 'AbortError') return;
       console.error('Failed to fetch notifications', error);
     }
   };
@@ -27,11 +28,17 @@ export default function Header() {
     const dateOptions: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     setFormattedDate(today.toLocaleDateString('id-ID', dateOptions));
     
-    fetchUnreadCount();
+    const controller = new AbortController();
+    fetchUnreadCount(controller.signal);
 
     // Listen for updates
-    window.addEventListener('notifications-updated', fetchUnreadCount);
-    return () => window.removeEventListener('notifications-updated', fetchUnreadCount);
+    const handleUpdate = () => fetchUnreadCount(controller.signal);
+    window.addEventListener('notifications-updated', handleUpdate);
+    
+    return () => {
+      controller.abort();
+      window.removeEventListener('notifications-updated', handleUpdate);
+    };
   }, []);
 
   return (

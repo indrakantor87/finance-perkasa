@@ -54,12 +54,12 @@ export default function MachineManagementPage() {
 
   const [selectedUids, setSelectedUids] = useState<number[]>([]);
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (signal?: AbortSignal) => {
     setLoading(true);
     setError('');
     setWarning('');
     try {
-      const res = await fetch('/api/machine/users');
+      const res = await fetch('/api/machine/users', { signal });
       const data = await res.json();
       
       if (data.status === 'success') {
@@ -68,6 +68,7 @@ export default function MachineManagementPage() {
         throw new Error(data.message || 'Failed to fetch users');
       }
     } catch (err: any) {
+      if (err.name === 'AbortError') return;
       setError(err.message);
     } finally {
       setLoading(false);
@@ -125,9 +126,9 @@ export default function MachineManagementPage() {
     }
   };
 
-  const fetchSettings = async () => {
+  const fetchSettings = async (signal?: AbortSignal) => {
     try {
-      const res = await fetch('/api/settings');
+      const res = await fetch('/api/settings', { signal });
       const data = await res.json();
       if (data) {
         setMachineSettings({
@@ -136,14 +137,17 @@ export default function MachineManagementPage() {
             machinePort: data.machinePort || 4370
         });
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'AbortError') return;
       console.error('Failed to fetch settings', err);
     }
   };
 
   useEffect(() => {
-    fetchUsers();
-    fetchSettings();
+    const controller = new AbortController();
+    fetchUsers(controller.signal);
+    fetchSettings(controller.signal);
+    return () => controller.abort();
   }, []);
 
   const handleSaveSettings = async (e: React.FormEvent) => {

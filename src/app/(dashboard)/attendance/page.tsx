@@ -104,34 +104,40 @@ export default function AttendancePage() {
   // const isDark = resolvedTheme === 'dark'
 
   useEffect(() => {
-    fetchEmployees()
+    const controller = new AbortController()
+    fetchEmployees(controller.signal)
+    return () => controller.abort()
   }, [])
 
   useEffect(() => {
-    fetchAttendance()
+    const controller = new AbortController()
+    fetchAttendance(controller.signal)
+    return () => controller.abort()
   }, [startDate, endDate, activeCategory])
 
-  const fetchEmployees = async () => {
+  const fetchEmployees = async (signal?: AbortSignal) => {
     try {
-      const res = await fetch('/api/employees') // Fetch all employees for mapping
+      const res = await fetch('/api/employees', { signal }) // Fetch all employees for mapping
       if (res.ok) {
         const data = await res.json()
         setEmployees(data)
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'AbortError') return
       console.error('Failed to fetch employees', err)
     }
   }
 
-  const fetchAttendance = async () => {
+  const fetchAttendance = async (signal?: AbortSignal) => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/attendance?startDate=${startDate}&endDate=${endDate}`)
+      const res = await fetch(`/api/attendance?startDate=${startDate}&endDate=${endDate}`, { signal })
       if (res.ok) {
         const data = await res.json()
         setAttendances(data)
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'AbortError') return
       console.error('Failed to fetch attendance', err)
     } finally {
       setLoading(false)

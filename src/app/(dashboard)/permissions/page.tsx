@@ -74,20 +74,24 @@ export default function PermissionsPage() {
     } catch (e) {
       console.error(e)
     }
-    fetchData()
+    
+    const controller = new AbortController()
+    fetchData(controller.signal)
+    return () => controller.abort()
   }, [])
 
-  const fetchData = async () => {
+  const fetchData = async (signal?: AbortSignal) => {
     setLoading(true)
     try {
       const [reqRes, empRes] = await Promise.all([
-        fetch('/api/permissions'),
-        fetch('/api/employees')
+        fetch('/api/permissions', { signal }),
+        fetch('/api/employees', { signal })
       ])
       
       if (reqRes.ok) setRequests(await reqRes.json())
       if (empRes.ok) setEmployees(await empRes.json())
-    } catch (error) {
+    } catch (error: any) {
+      if (error.name === 'AbortError') return
       console.error('Failed to fetch data', error)
     } finally {
       setLoading(false)
