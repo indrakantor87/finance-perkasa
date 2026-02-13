@@ -108,49 +108,51 @@ export default function SalaryPage() {
   }
 
   const handleExportExcel = async () => {
-    const slipsToExport = selectedSlipIds.length > 0 
-      ? slips.filter(s => selectedSlipIds.includes(s.id))
-      : filteredSlips;
-    
-    if (slipsToExport.length === 0) {
-      alert('Tidak ada data untuk diexport');
-      return;
-    }
-
-    // Dynamic import to reduce bundle size
-    const ExcelJS = (await import('exceljs')).default;
-    const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet('Slip Gaji');
-
-    // Fetch images
-    let headerLogoId: number | null = null;
-    let ttdLogoId: number | null = null;
-
     try {
-        const headerResponse = await fetch('/images/header-banner.png');
-        if (headerResponse.ok) {
-            const headerBuffer = await headerResponse.arrayBuffer();
-            headerLogoId = workbook.addImage({
-                buffer: headerBuffer,
-                extension: 'png',
-            });
-        }
+      const slipsToExport = selectedSlipIds.length > 0 
+        ? slips.filter(s => selectedSlipIds.includes(s.id))
+        : filteredSlips;
+      
+      if (slipsToExport.length === 0) {
+        alert('Tidak ada data untuk diexport');
+        return;
+      }
 
-        const ttdResponse = await fetch('/images/ttd.png');
-        if (ttdResponse.ok) {
-            const ttdBuffer = await ttdResponse.arrayBuffer();
-            ttdLogoId = workbook.addImage({
-                buffer: ttdBuffer,
-                extension: 'png',
-            });
-        }
-    } catch (e) {
-        console.error("Error loading images", e);
-    }
+      // Dynamic import to reduce bundle size
+      const ExcelJSModule = await import('exceljs');
+      const ExcelJS = ExcelJSModule.default || ExcelJSModule;
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Slip Gaji');
 
-    let colOffset = 1;
+      // Fetch images
+      let headerLogoId: number | null = null;
+      let ttdLogoId: number | null = null;
 
-    for (const slip of slipsToExport) {
+      try {
+          const headerResponse = await fetch('/images/header-banner.png');
+          if (headerResponse.ok) {
+              const headerBuffer = await headerResponse.arrayBuffer();
+              headerLogoId = workbook.addImage({
+                  buffer: headerBuffer,
+                  extension: 'png',
+              });
+          }
+
+          const ttdResponse = await fetch('/images/ttd.png');
+          if (ttdResponse.ok) {
+              const ttdBuffer = await ttdResponse.arrayBuffer();
+              ttdLogoId = workbook.addImage({
+                  buffer: ttdBuffer,
+                  extension: 'png',
+              });
+          }
+      } catch (e) {
+          console.error("Error loading images", e);
+      }
+
+      let colOffset = 1;
+
+      for (const slip of slipsToExport) {
         const col1 = colOffset;
         const col2 = colOffset + 1;
 
@@ -388,6 +390,10 @@ export default function SalaryPage() {
     anchor.download = `Slip_Gaji_Export_${new Date().getTime()}.xlsx`;
     anchor.click();
     window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting excel:', error);
+      alert('Gagal mengexport data. Silakan coba lagi.');
+    }
   }
 
   const handleBulkPrint = () => {
