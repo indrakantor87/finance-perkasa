@@ -45,7 +45,7 @@ export default function Header() {
     <header className="sticky top-0 z-30 bg-blue-900 dark:bg-slate-900 text-white border-b border-blue-800 dark:border-slate-800 px-6 py-4 flex items-center justify-between shadow-md print:hidden">
       <div className="flex items-center gap-3">
         <div className="bg-white p-1.5 rounded-full shadow-lg">
-          <img src="/uploads/logo-perkasa.png" alt="Perkasa Networks" className="w-8 h-8 object-contain" />
+          <img src="/uploads/logo-perkasa-new.png" alt="Perkasa Networks" className="w-8 h-8 object-contain" />
         </div>
         <div>
            <h1 className="text-lg font-bold tracking-tight text-white leading-none">FINANCE PERKASA</h1>
