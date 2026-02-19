@@ -13,12 +13,21 @@ export default function Navigation() {
   const [role, setRole] = useState<string | null>(null);
 
   useEffect(() => {
-    // Get role from storage
     try {
       const stored = localStorage.getItem('perkasa-finance-auth') || sessionStorage.getItem('perkasa-finance-auth');
       if (stored) {
         const user = JSON.parse(stored);
         setRole(user.role);
+        return;
+      }
+
+      const cookie = document.cookie.split('; ').find(row => row.startsWith('perkasa-finance-auth='));
+      if (cookie) {
+        const value = decodeURIComponent(cookie.split('=')[1] || '');
+        if (value) {
+          const user = JSON.parse(value);
+          setRole(user.role);
+        }
       }
     } catch (e) {
       console.error("Error parsing auth", e);

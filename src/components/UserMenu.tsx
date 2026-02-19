@@ -31,6 +31,14 @@ export default function UserMenu() {
       const stored = localStorage.getItem('perkasa-finance-auth') || sessionStorage.getItem('perkasa-finance-auth')
       if (stored) {
         setCurrentUser(JSON.parse(stored))
+      } else {
+        const cookie = document.cookie.split('; ').find(row => row.startsWith('perkasa-finance-auth='))
+        if (cookie) {
+          const value = decodeURIComponent(cookie.split('=')[1] || '')
+          if (value) {
+            setCurrentUser(JSON.parse(value))
+          }
+        }
       }
     } catch (e) {
       console.error(e)
