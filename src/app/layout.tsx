@@ -6,6 +6,14 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 export const metadata: Metadata = {
   title: "Finance Perkasa",
   description: "Sistem Keuangan & Penggajian PSB Perkasa",
+  icons: {
+    icon: [
+      { url: "/images/logo-company.jpeg" },
+      { url: "/images/logo-company.jpeg", sizes: "32x32" },
+    ],
+    shortcut: "/images/logo-company.jpeg",
+    apple: "/images/logo-company.jpeg",
+  },
 };
 
 export default function RootLayout({
