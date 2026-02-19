@@ -149,9 +149,31 @@
     }
   });
 
+  function sanitizeFetchArgs(args) {
+    try {
+      if (args[1] && typeof args[1] === 'object' && 'signal' in args[1]) {
+        var sig1 = args[1].signal;
+        if (!sig1 || (typeof AbortSignal !== 'undefined' && !(sig1 instanceof AbortSignal))) {
+          var cloned1 = Object.assign({}, args[1]);
+          delete cloned1.signal;
+          args[1] = cloned1;
+        }
+      } else if (args[0] && typeof args[0] === 'object' && 'signal' in args[0]) {
+        var sig0 = args[0].signal;
+        if (!sig0 || (typeof AbortSignal !== 'undefined' && !(sig0 instanceof AbortSignal))) {
+          var cloned0 = Object.assign({}, args[0]);
+          delete cloned0.signal;
+          args[0] = cloned0;
+        }
+      }
+    } catch (e) {}
+    return args;
+  }
+
   // Safe fetch wrapper that swallows abort errors
   function wrapFetch(fn) {
     return async function(...args) {
+      args = sanitizeFetchArgs(args);
       try {
         return await fn.apply(this, args);
       } catch (e) {
