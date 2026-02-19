@@ -6,7 +6,8 @@ export const runtime = 'nodejs'
 
 export async function POST() {
   return new Promise((resolve) => {
-    const scriptPath = path.join(process.cwd(), 'scripts', 'clear-machine-logs.js')
+    const scriptsDir = process.env.SCRIPTS_DIR || path.join(process.cwd(), 'scripts')
+    const scriptPath = path.join(scriptsDir, 'clear-machine-logs.js')
     const child = spawn('node', [scriptPath], {
       cwd: process.cwd(),
       env: { ...process.env }

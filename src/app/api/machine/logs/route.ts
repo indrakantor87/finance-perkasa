@@ -10,7 +10,8 @@ export async function POST(req: Request) {
     const { userIds } = await req.json(); // userIds (string[]) to filter
     
     return new Promise((resolve) => {
-        const scriptPath = path.join(process.cwd(), 'scripts', 'export-logs.js');
+        const scriptsDir = process.env.SCRIPTS_DIR || path.join(process.cwd(), 'scripts');
+        const scriptPath = path.join(scriptsDir, 'export-logs.js');
         
         const env = { 
             ...process.env,
