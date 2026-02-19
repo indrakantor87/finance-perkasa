@@ -70,7 +70,7 @@ async function main() {
 
     } catch (e) {
         console.error('Clear Error:', e.message)
-        process.exit(1)
+        throw e
     } finally {
         if (zk) {
             try {
@@ -81,4 +81,16 @@ async function main() {
     }
 }
 
-main()
+async function cli() {
+    try {
+        await main()
+    } catch (e) {
+        process.exit(1)
+    }
+}
+
+if (require.main === module) {
+    cli()
+}
+
+module.exports = { main }

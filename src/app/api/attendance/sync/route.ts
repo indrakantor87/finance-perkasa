@@ -1,60 +1,19 @@
 import { NextResponse } from 'next/server'
-import { spawn } from 'child_process'
-import path from 'path'
-
 export const runtime = 'nodejs'
 
 export async function POST() {
-  return new Promise((resolve) => {
-    const scriptsDir = process.env.SCRIPTS_DIR || path.join(process.cwd(), 'scripts')
-    const scriptPath = path.join(scriptsDir, 'sync-machine.js')
-    const child = spawn('node', [scriptPath], {
-      cwd: process.cwd(),
-      env: { ...process.env }
+  try {
+    const { main } = require('../../../../../scripts/sync-machine.js')
+    const result = await main()
+
+    return NextResponse.json({
+      message: 'Sync successful',
+      details: result || null
     })
-
-    let stdout = ''
-    let stderr = ''
-
-    child.stdout.on('data', (data) => {
-      stdout += data.toString()
-    })
-
-    child.stderr.on('data', (data) => {
-      stderr += data.toString()
-    })
-
-    child.on('close', (code) => {
-      if (code === 0) {
-        // Try to parse the output for counts
-        const match = stdout.match(/Sync Complete\. Processed: (\d+), Created: (\d+), Updated: (\d+)(?:, Skipped: (\d+))?/)
-        const mappingMatch = stdout.match(/User Mapping: Matched (\d+) users\. Unmapped: (\d+)/)
-        const unmappedNamesMatch = stdout.match(/Unmapped Names: (.*)/)
-
-        let details = {}
-        if (match) {
-            details = {
-                processed: parseInt(match[1]),
-                created: parseInt(match[2]),
-                updated: parseInt(match[3]),
-                skipped: match[4] ? parseInt(match[4]) : 0,
-                unmappedCount: mappingMatch ? parseInt(mappingMatch[2]) : 0,
-                unmappedNames: unmappedNamesMatch ? unmappedNamesMatch[1] : ''
-            }
-        }
-        
-        resolve(NextResponse.json({ 
-            message: 'Sync successful', 
-            details,
-            logs: stdout
-        }))
-      } else {
-        resolve(NextResponse.json({ 
-            message: 'Sync failed', 
-            error: stderr || 'Unknown error',
-            logs: stdout
-        }, { status: 500 }))
-      }
-    })
-  })
+  } catch (error: any) {
+    return NextResponse.json({
+      message: 'Sync failed',
+      error: error?.message || 'Unknown error'
+    }, { status: 500 })
+  }
 }

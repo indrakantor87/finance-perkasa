@@ -424,13 +424,13 @@ async function main() {
                 }
             }
             console.log(`Sync Complete. Processed: ${processedCount}, Created: ${createdCount}, Updated: ${updatedCount}, Skipped: ${skippedCount}`)
+            return { processedCount, createdCount, updatedCount, skippedCount }
         }
 
     } catch (e) {
         const errorMsg = e instanceof Error ? e.message : String(e)
         console.error('Sync Error:', errorMsg)
-        // Ensure non-zero exit code for error
-        process.exit(1)
+        throw e
     } finally {
         if (zk) {
             try {
@@ -441,4 +441,16 @@ async function main() {
     }
 }
 
-main()
+async function cli() {
+    try {
+        await main()
+    } catch (e) {
+        process.exit(1)
+    }
+}
+
+if (require.main === module) {
+    cli()
+}
+
+module.exports = { main }
