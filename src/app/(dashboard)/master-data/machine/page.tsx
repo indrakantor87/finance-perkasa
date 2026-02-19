@@ -59,7 +59,9 @@ export default function MachineManagementPage() {
     setError('');
     setWarning('');
     try {
-      const res = await fetch('/api/machine/users', { signal });
+      const options: RequestInit = {};
+      if (signal) options.signal = signal;
+      const res = await fetch('/api/machine/users', options);
       const data = await res.json();
       
       if (data.status === 'success') {
@@ -128,7 +130,9 @@ export default function MachineManagementPage() {
 
   const fetchSettings = async (signal?: AbortSignal) => {
     try {
-      const res = await fetch('/api/settings', { signal });
+      const options: RequestInit = {};
+      if (signal) options.signal = signal;
+      const res = await fetch('/api/settings', options);
       const data = await res.json();
       if (data) {
         setMachineSettings({
