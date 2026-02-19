@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "clean": "node scripts/clean.js",
-    "db:generate": "prisma generate"
+    "db:generate": "prisma generate",
+    "db:migrate:deploy": "prisma migrate deploy"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
