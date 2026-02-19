@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { spawn } from 'child_process'
 import path from 'path'
 
+export const runtime = 'nodejs'
+
 export async function POST() {
   return new Promise((resolve) => {
     const scriptPath = path.join(process.cwd(), 'scripts', 'clear-machine-logs.js')
