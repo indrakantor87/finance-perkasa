@@ -8,11 +8,11 @@ export const metadata: Metadata = {
   description: "Sistem Keuangan & Penggajian PSB Perkasa",
   icons: {
     icon: [
-      { url: "/images/logo-company.jpeg" },
-      { url: "/images/logo-company.jpeg", sizes: "32x32" },
+      { url: "/uploads/logo-perkasa.png" },
+      { url: "/uploads/logo-perkasa.png", sizes: "32x32" },
     ],
-    shortcut: "/images/logo-company.jpeg",
-    apple: "/images/logo-company.jpeg",
+    shortcut: "/uploads/logo-perkasa.png",
+    apple: "/uploads/logo-perkasa.png",
   },
 };
 
