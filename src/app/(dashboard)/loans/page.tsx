@@ -1,12 +1,12 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { CreditCard, Plus, Search, Filter, Trash2, CheckCircle, XCircle, ChevronDown, ChevronUp, DollarSign } from 'lucide-react'
+import { CreditCard, Plus, Search, Trash2, XCircle, ChevronDown, ChevronUp } from 'lucide-react'
 
-// Types
 type Employee = {
   id: string
   name: string
+  role: string
   department: string
 }
 
@@ -104,7 +104,37 @@ export default function LoansPage() {
   // Handlers
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
+    if (isEmployeeRole && formData.type === 'PINJAMAN' && currentEmployee && currentEmployeeId) {
+      const roleName = (currentEmployee.role || '').toUpperCase()
+      let plafon = 2000000
+      if (roleName.includes('MANAGER')) {
+        plafon = 5000000
+      } else if (roleName.includes('SPV') || roleName.includes('SUPERVISOR') || roleName.includes('LEADER')) {
+        plafon = 3000000
+      }
+
+      const outstandingPinjaman = loans
+        .filter(loan => loan.employeeId === currentEmployeeId && loan.type === 'PINJAMAN' && loan.status === 'ACTIVE')
+        .reduce((sum, loan) => sum + getRemainingAmount(loan), 0)
+
+      const requestedAmount = parseFloat(formData.amount || '0')
+
+      if (requestedAmount <= 0 || Number.isNaN(requestedAmount)) {
+        alert('Jumlah pinjaman tidak valid')
+        return
+      }
+
+      if (outstandingPinjaman + requestedAmount > plafon) {
+        const formatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 })
+        const plafonLabel = formatter.format(plafon)
+        const remainingPlafon = Math.max(0, plafon - outstandingPinjaman)
+        const remainingLabel = formatter.format(remainingPlafon)
+        alert(`Pengajuan melebihi plafon pinjaman (${plafonLabel}). Sisa plafon Anda: ${remainingLabel}.`)
+        return
+      }
+    }
+
     try {
       const res = await fetch('/api/loans', {
         method: 'POST',
@@ -166,16 +196,30 @@ export default function LoansPage() {
     ? employees.find(emp => emp.id === currentEmployeeId) || null
     : null
 
+  const now = new Date()
+  const currentMonthIndex = now.getMonth()
+  const currentYear = now.getFullYear()
+
+  const currentEmployeeKasbonMonthlyTotal = isEmployeeRole && currentEmployeeId
+    ? loans
+        .filter(loan => loan.employeeId === currentEmployeeId && loan.type === 'KASBON')
+        .filter(loan => {
+          const d = new Date(loan.date)
+          return d.getMonth() === currentMonthIndex && d.getFullYear() === currentYear
+        })
+        .reduce((sum, loan) => sum + loan.amount, 0)
+    : 0
+
   return (
     <div className="p-6 max-w-[1600px] mx-auto space-y-6 font-sans">
       <div className="flex justify-between items-center">
         <div>
-            <h1 className="text-2xl font-bold text-gray-800 dark:text-slate-100 flex items-center gap-2">
-                <CreditCard className="text-blue-600" /> {isEmployeeRole ? 'Pinjaman Saya' : 'Manajemen Pinjaman'}
-            </h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-1">
-              {isEmployeeRole ? 'Lihat dan ajukan pinjaman pribadi Anda' : 'Kelola data pinjaman dan angsuran karyawan'}
-            </p>
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-slate-100 flex items-center gap-2">
+            <CreditCard className="text-blue-600" /> {isEmployeeRole ? 'Pinjaman Saya' : 'Manajemen Pinjaman'}
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">
+            {isEmployeeRole ? 'Lihat dan ajukan pinjaman pribadi Anda' : 'Kelola data pinjaman dan angsuran karyawan'}
+          </p>
         </div>
         
         {/* Create / Request Loan */}
@@ -205,7 +249,6 @@ export default function LoansPage() {
         )}
       </div>
 
-      {/* Filters */}
       <div className="bg-white dark:bg-neutral-900 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-neutral-800 flex flex-wrap gap-4 items-center justify-between">
         <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -217,6 +260,14 @@ export default function LoansPage() {
                 className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
             />
         </div>
+        {isEmployeeRole && (
+          <div className="text-right text-sm">
+            <div className="text-gray-500 dark:text-gray-400">Total Kasbon bulan ini</div>
+            <div className="font-semibold text-gray-800 dark:text-slate-100">
+              {formatRupiah(currentEmployeeKasbonMonthlyTotal)}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Loans Grid */}
@@ -368,25 +419,33 @@ export default function LoansPage() {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Jenis Pinjaman</label>
-                        <select
-                          required
-                          value={formData.type}
-                          onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-blue-500 outline-none"
-                        >
-                          <option value="KASBON">Kasbon</option>
-                          <option value="PINJAMAN">Pinjaman</option>
-                        </select>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Jenis Pinjaman</label>
+                      <select
+                        required
+                        value={formData.type}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            type: e.target.value,
+                            monthlyInstallment: e.target.value === 'PINJAMAN' ? formData.monthlyInstallment : ''
+                          })
+                        }
+                        className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-blue-500 outline-none"
+                      >
+                        <option value="KASBON">Kasbon</option>
+                        <option value="PINJAMAN">Pinjaman</option>
+                      </select>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className={`grid gap-4 ${formData.type === 'PINJAMAN' ? 'grid-cols-2' : 'grid-cols-1'}`}>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Jumlah Pinjaman</label>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              {formData.type === 'PINJAMAN' ? 'Jumlah Pinjaman' : 'Jumlah Kasbon'}
+                            </label>
                             <div className="relative">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs">Rp</span>
                                 <input 
-                                    type="number" 
+                                    type="number"
                                     required
                                     value={formData.amount}
                                     onChange={(e) => setFormData({...formData, amount: e.target.value})}
@@ -395,20 +454,22 @@ export default function LoansPage() {
                                 />
                             </div>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Angsuran/Bln</label>
-                            <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs">Rp</span>
-                                <input 
-                                    type="number" 
-                                    required
-                                    value={formData.monthlyInstallment}
-                                    onChange={(e) => setFormData({...formData, monthlyInstallment: e.target.value})}
-                                    className="w-full pl-8 pr-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-blue-500 outline-none"
-                                    placeholder="0"
-                                />
-                            </div>
-                        </div>
+                        {formData.type === 'PINJAMAN' && (
+                          <div>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Angsuran/Bln</label>
+                              <div className="relative">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs">Rp</span>
+                                  <input 
+                                      type="number"
+                                      required
+                                      value={formData.monthlyInstallment}
+                                      onChange={(e) => setFormData({...formData, monthlyInstallment: e.target.value})}
+                                      className="w-full pl-8 pr-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-blue-500 outline-none"
+                                      placeholder="0"
+                                  />
+                              </div>
+                          </div>
+                        )}
                     </div>
 
                     <div>
