@@ -303,12 +303,16 @@ async function main() {
                     if (checkIn && checkOut) {
                          const WIB_OFFSET = 7 * 60 * 60 * 1000
                          const inDateWIB = new Date(checkIn.getTime() + WIB_OFFSET)
-                         const outDateWIB = new Date(checkOut.getTime() + WIB_OFFSET)
+                         let outDateWIB = new Date(checkOut.getTime() + WIB_OFFSET)
                          
                          const inHour = inDateWIB.getUTCHours()
                          const inMinute = inDateWIB.getUTCMinutes()
+
+                         if (outDateWIB.getTime() <= inDateWIB.getTime() && (inHour > 17 || (inHour === 17 && inMinute >= 0))) {
+                             outDateWIB = new Date(outDateWIB.getTime() + 24 * 60 * 60 * 1000)
+                         }
                          
-                         const durationMillis = checkOut.getTime() - checkIn.getTime()
+                         const durationMillis = outDateWIB.getTime() - inDateWIB.getTime()
                          const totalDurationMinutes = Math.floor(durationMillis / 60000)
                          let overtimeMinutes = 0
 
@@ -372,10 +376,15 @@ async function main() {
                         if (finalCheckIn && finalCheckOut) {
                             const WIB_OFFSET = 7 * 60 * 60 * 1000
                             const inDateWIB = new Date(finalCheckIn.getTime() + WIB_OFFSET)
-                            const outDateWIB = new Date(finalCheckOut.getTime() + WIB_OFFSET)
+                            let outDateWIB = new Date(finalCheckOut.getTime() + WIB_OFFSET)
                             const inHour = inDateWIB.getUTCHours()
                             const inMinute = inDateWIB.getUTCMinutes()
-                            const dur = finalCheckOut.getTime() - finalCheckIn.getTime()
+
+                            if (outDateWIB.getTime() <= inDateWIB.getTime() && (inHour > 17 || (inHour === 17 && inMinute >= 0))) {
+                                outDateWIB = new Date(outDateWIB.getTime() + 24 * 60 * 60 * 1000)
+                            }
+
+                            const dur = outDateWIB.getTime() - inDateWIB.getTime()
                             const totalDur = Math.floor(dur / 60000)
                             let otMin = 0
 

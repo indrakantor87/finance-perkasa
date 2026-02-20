@@ -570,13 +570,18 @@ export default function AttendancePage() {
   const calcOvertimeHours = (inISO: string | null, outISO: string | null) => {
     if (!inISO || !outISO) return 0
     const inDate = new Date(inISO)
-    const outDate = new Date(outISO)
-    
-    const durationMillis = outDate.getTime() - inDate.getTime()
-    if (durationMillis <= 0) return 0
+    let outDate = new Date(outISO)
     
     const inHour = inDate.getHours()
     const inMinute = inDate.getMinutes()
+    
+    if (outDate.getTime() <= inDate.getTime() && (inHour > 17 || (inHour === 17 && inMinute >= 0))) {
+      outDate = new Date(outDate.getTime() + 24 * 60 * 60 * 1000)
+    }
+
+    const durationMillis = outDate.getTime() - inDate.getTime()
+    if (durationMillis <= 0) return 0
+
     const totalMinutes = Math.floor(durationMillis / 60000)
     const WORK_MINUTES = 9 * 60
     
