@@ -6,15 +6,22 @@ const WIB_OFFSET_MS = 7 * 60 * 60 * 1000
 
 function parseMachineTime(recordTime) {
     if (!recordTime) return null
-    if (recordTime instanceof Date) return recordTime
-    if (typeof recordTime === 'number') {
-        const d = new Date(recordTime)
-        return isNaN(d.getTime()) ? null : d
+
+    let d = null
+
+    if (recordTime instanceof Date) {
+        d = new Date(recordTime.getTime())
+    } else if (typeof recordTime === 'number') {
+        d = new Date(recordTime)
+    } else {
+        const s = String(recordTime).trim()
+        d = new Date(s)
     }
 
-    const s = String(recordTime).trim()
-    const d = new Date(s)
-    return isNaN(d.getTime()) ? null : d
+    if (!d || isNaN(d.getTime())) return null
+
+    const corrected = new Date(d.getTime() - WIB_OFFSET_MS)
+    return corrected
 }
 
 async function main() {
