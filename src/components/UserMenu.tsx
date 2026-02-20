@@ -52,9 +52,8 @@ export default function UserMenu() {
       setEmployeeProfile(null)
       return
     }
-    const isEmployee = currentUser.role === 'EMPLOYEE' || currentUser.role === 'KARYAWAN'
     const employeeId = currentUser.employeeId
-    if (!isEmployee || !employeeId) {
+    if (!employeeId) {
       setEmployeeProfile(null)
       return
     }
@@ -266,12 +265,32 @@ export default function UserMenu() {
                 </h2>
                 <div className="flex items-center justify-center gap-2 text-blue-600 dark:text-blue-400 font-medium mt-1">
                   <Shield size={16} />
-                  <span>{currentUser?.role || 'Guest'}</span>
+                  <span>{employeeProfile?.role || currentUser?.role || 'Guest'}</span>
                 </div>
               </div>
 
               {/* Details List */}
               <div className="space-y-4">
+                <div className="flex items-center gap-3 text-gray-600 dark:text-slate-300 p-3 bg-gray-50 dark:bg-neutral-800 rounded-xl">
+                  <Shield size={18} className="text-gray-400" />
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Jabatan</p>
+                    <p className="text-sm font-medium text-gray-800 dark:text-slate-100">
+                      {employeeProfile?.role || currentUser?.role || '-'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 text-gray-600 dark:text-slate-300 p-3 bg-gray-50 dark:bg-neutral-800 rounded-xl">
+                  <User size={18} className="text-gray-400" />
+                  <div className="flex-1">
+                    <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Departemen</p>
+                    <p className="text-sm font-medium text-gray-800 dark:text-slate-100">
+                      {employeeProfile?.department || '-'}
+                    </p>
+                  </div>
+                </div>
+
                 <div className="flex items-center gap-3 text-gray-600 dark:text-slate-300 p-3 bg-gray-50 dark:bg-neutral-800 rounded-xl">
                   <Mail size={18} className="text-gray-400" />
                   <div className="flex-1">
