@@ -2,6 +2,33 @@ const ZKLib = require('zkteco-js')
 const { PrismaClient } = require('@prisma/client')
 const prisma = new PrismaClient()
 
+const WIB_OFFSET_MS = 7 * 60 * 60 * 1000
+
+function parseMachineTime(recordTime) {
+    if (!recordTime) return null
+    if (recordTime instanceof Date) return recordTime
+    if (typeof recordTime === 'number') {
+        const d = new Date(recordTime)
+        return isNaN(d.getTime()) ? null : d
+    }
+
+    const s = String(recordTime).trim()
+    const m = s.match(/^(\d{4})[-/](\d{2})[-/](\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/)
+    if (m) {
+        const year = parseInt(m[1], 10)
+        const month = parseInt(m[2], 10) - 1
+        const day = parseInt(m[3], 10)
+        const hour = parseInt(m[4], 10)
+        const minute = parseInt(m[5], 10)
+        const second = m[6] ? parseInt(m[6], 10) : 0
+        const utcMs = Date.UTC(year, month, day, hour - 7, minute, second)
+        return new Date(utcMs)
+    }
+
+    const d = new Date(s)
+    return isNaN(d.getTime()) ? null : d
+}
+
 async function main() {
     let zk = null
     try {
@@ -157,21 +184,22 @@ async function main() {
             for (const log of logs.data) {
                 // Handle property name differences (zkteco-js vs node-zklib style)
                 const uid = log.deviceUserId || log.user_id
-                const recordTime = log.recordTime || log.record_time
+                const rawRecordTime = log.recordTime || log.record_time
                 
                 if (!uid) continue
                 if (!employeeMap[uid]) continue
                 
-                const dateObj = new Date(recordTime)
-                if (isNaN(dateObj.getTime())) continue
+                const dateObj = parseMachineTime(rawRecordTime)
+                if (!dateObj || isNaN(dateObj.getTime())) continue
                 
-                const dateStr = dateObj.toISOString().split('T')[0]
+                const dateWIB = new Date(dateObj.getTime() + WIB_OFFSET_MS)
+                const dateStr = dateWIB.toISOString().split('T')[0]
                 
                 if (!groupedLogs[uid]) groupedLogs[uid] = {}
                 if (!groupedLogs[uid][dateStr]) groupedLogs[uid][dateStr] = []
                 
                 // Normalize log object for easier processing later
-                log.recordTime = recordTime // Ensure consistent property access
+                log.recordTime = dateObj // Ensure consistent property access
                 
                 // Keep the raw log to check state
                 groupedLogs[uid][dateStr].push(log)
@@ -187,7 +215,7 @@ async function main() {
                 const employeeId = employeeMap[uid]
                 for (const dateStr in groupedLogs[uid]) {
                     const rawLogs = groupedLogs[uid][dateStr].sort((a, b) => 
-                        new Date(a.recordTime) - new Date(b.recordTime)
+                        a.recordTime - b.recordTime
                     )
                     
                     // Deduplicate logic (Double Tap Prevention)
@@ -199,8 +227,8 @@ async function main() {
                             const prev = validLogs[validLogs.length - 1]
                             const curr = rawLogs[i]
                             
-                            const prevTime = new Date(prev.recordTime).getTime()
-                            const currTime = new Date(curr.recordTime).getTime()
+                            const prevTime = prev.recordTime.getTime()
+                            const currTime = curr.recordTime.getTime()
                             const diff = currTime - prevTime
                             
                             // If diff > 5 mins OR State is different (e.g. In vs Out), keep it
