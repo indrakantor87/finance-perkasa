@@ -39,7 +39,7 @@ export default function Navigation() {
     { icon: <Users size={18} />, label: "Data Karyawan", href: "/employees", roles: ['DEVELOPER', 'ADMINISTRATOR', 'ADMIN'] },
     { icon: <AlertTriangle size={18} />, label: "Sanksi", href: "/employees/disciplinary", roles: ['DEVELOPER', 'ADMINISTRATOR', 'ADMIN', 'EMPLOYEE', 'KARYAWAN'] },
     { icon: <UserCheck size={18} />, label: "Absensi", href: "/attendance", roles: ['DEVELOPER', 'ADMINISTRATOR', 'ADMIN', 'EMPLOYEE', 'KARYAWAN'] },
-    { icon: <Banknote size={18} />, label: "Gaji", href: "/salary", roles: ['DEVELOPER', 'ADMINISTRATOR', 'ADMIN'] },
+    { icon: <Banknote size={18} />, label: "Gaji", href: "/salary", roles: ['DEVELOPER', 'ADMINISTRATOR', 'ADMIN', 'EMPLOYEE', 'KARYAWAN'] },
     { icon: <FileBarChart size={18} />, label: "Laporan", href: "/reports", roles: ['DEVELOPER', 'ADMINISTRATOR', 'ADMIN'] },
     { icon: <CreditCard size={18} />, label: "Pinjaman", href: "/loans", roles: ['DEVELOPER', 'ADMINISTRATOR', 'ADMIN', 'EMPLOYEE', 'KARYAWAN'] },
     { icon: <FileCheck size={18} />, label: "Perizinan", href: "/permissions", roles: ['DEVELOPER', 'ADMINISTRATOR', 'ADMIN', 'EMPLOYEE', 'KARYAWAN'] },

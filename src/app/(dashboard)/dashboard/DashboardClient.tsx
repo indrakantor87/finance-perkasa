@@ -70,7 +70,7 @@ export default function DashboardClient({ stats }: { stats: DashboardStats | nul
                 <h2 className="text-2xl font-bold mb-4">Selamat Datang di Portal Karyawan</h2>
                 <p className="text-gray-500 dark:text-gray-400 mb-8">Silakan akses menu di bawah ini untuk melihat data Anda.</p>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                      <Link href="/attendance" className="p-6 bg-blue-50 dark:bg-blue-900/20 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors border border-blue-100 dark:border-blue-800 group">
                         <UserCheck className="w-10 h-10 text-blue-600 dark:text-blue-400 mb-4 mx-auto group-hover:scale-110 transition-transform" />
                         <h3 className="font-bold text-lg text-blue-700 dark:text-blue-300">Absensi Saya</h3>
@@ -78,6 +78,10 @@ export default function DashboardClient({ stats }: { stats: DashboardStats | nul
                      <Link href="/employees/disciplinary" className="p-6 bg-red-50 dark:bg-red-900/20 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors border border-red-100 dark:border-red-800 group">
                         <AlertTriangle className="w-10 h-10 text-red-600 dark:text-red-400 mb-4 mx-auto group-hover:scale-110 transition-transform" />
                         <h3 className="font-bold text-lg text-red-700 dark:text-red-300">Sanksi & SP</h3>
+                     </Link>
+                     <Link href="/salary" className="p-6 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors border border-emerald-100 dark:border-emerald-800 group">
+                        <Banknote className="w-10 h-10 text-emerald-600 dark:text-emerald-400 mb-4 mx-auto group-hover:scale-110 transition-transform" />
+                        <h3 className="font-bold text-lg text-emerald-700 dark:text-emerald-300">Gaji Saya</h3>
                      </Link>
                      <Link href="/loans" className="p-6 bg-violet-50 dark:bg-violet-900/20 rounded-xl hover:bg-violet-100 dark:hover:bg-violet-900/30 transition-colors border border-violet-100 dark:border-violet-800 group">
                         <Wallet className="w-10 h-10 text-violet-600 dark:text-violet-400 mb-4 mx-auto group-hover:scale-110 transition-transform" />

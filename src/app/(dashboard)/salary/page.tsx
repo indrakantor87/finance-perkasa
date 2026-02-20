@@ -13,6 +13,7 @@ import ExcelJS from 'exceljs';
 
 interface SlipHistoryItem extends SalarySlipData {
   id: string
+  employeeId: string
   month: number
   year: number
   createdAt: string
@@ -51,6 +52,24 @@ export default function SalaryPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
 
+  const [role, setRole] = useState<string | null>(null)
+  const [currentEmployeeId, setCurrentEmployeeId] = useState<string | null>(null)
+
+  const isEmployeeRole = role === 'EMPLOYEE' || role === 'KARYAWAN'
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('perkasa-finance-auth') || sessionStorage.getItem('perkasa-finance-auth')
+      if (stored) {
+        const user = JSON.parse(stored)
+        setRole(user.role)
+        setCurrentEmployeeId(user.employeeId)
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }, [])
+
   const getRoleLabel = (role: string) => {
     if (activeCategory === 'Pemasaran dan Pelayanan') {
       const r = role ? role.toUpperCase() : ''
@@ -63,7 +82,9 @@ export default function SalaryPage() {
 
   // Filter slips based on active category
   const filteredSlips = slips.filter(slip => {
-    return slip.employee.department === activeCategory
+    const matchCategory = slip.employee.department === activeCategory
+    const matchEmployee = isEmployeeRole && currentEmployeeId ? slip.employeeId === currentEmployeeId : true
+    return matchCategory && matchEmployee
   })
 
   const fetchSlips = async (signal?: AbortSignal) => {
@@ -659,82 +680,83 @@ export default function SalaryPage() {
           <h1 className="text-2xl font-bold text-gray-800 dark:text-zinc-100">Penggajian & Slip Gaji</h1>
         </div>
 
-        <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-sm border border-gray-100 dark:border-gray-800 print:hidden">
-          {/* Category Tabs */}
-          <div className="flex gap-4 border-b border-gray-200 dark:border-gray-700 mb-6 overflow-x-auto pb-2">
-            {['Pemasaran dan Pelayanan', 'Teknis dan Expan', 'Operasional', 'General Affair', 'Keuangan dan HR'].map((category) => (
-              <button
-                key={category}
-                onClick={() => setActiveCategory(category)}
-                className={`pb-2 px-4 font-medium transition-colors border-b-2 whitespace-nowrap ${
-                  activeCategory === category
-                    ? 'border-blue-600 text-blue-700 dark:text-blue-400'
-                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400'
-                }`}
-              >
-                {category}
-              </button>
-            ))}
-          </div>
-
-          {['Pemasaran dan Pelayanan', 'Teknis dan Expan', 'Operasional', 'General Affair', 'Keuangan dan HR'].includes(activeCategory) ? (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Nama Karyawan</label>
-                  <input
-                    type="text"
-                    value={employeeId}
-                    onChange={(e) => setEmployeeId(e.target.value)}
-                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900 dark:text-zinc-100 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 placeholder:text-gray-400 dark:placeholder:text-gray-500"
-                    placeholder={`contoh: Budi Santoso`}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Bulan</label>
-                  <select
-                    value={month}
-                    onChange={(e) => setMonth(parseInt(e.target.value))}
-                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900 dark:text-zinc-100 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
-                  >
-                    {[...Array(12)].map((_, i) => (
-                      <option key={i + 1} value={i + 1}>{new Date(0, i).toLocaleString('id-ID', { month: 'long' })}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Tahun</label>
-                  <input
-                    type="number"
-                    value={year}
-                    onChange={(e) => setYear(parseInt(e.target.value))}
-                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900 dark:text-zinc-100 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 placeholder:text-gray-400 dark:placeholder:text-gray-500"
-                  />
-                </div>
-              </div>
-
-              <button
-                onClick={handleInputRincian}
-                disabled={loading || !employeeId}
-                className="w-full bg-blue-700 dark:bg-blue-600 text-white py-2 rounded hover:bg-blue-800 dark:hover:bg-blue-700 disabled:opacity-50 font-bold transition-colors"
-              >
-                {loading ? 'Memuat...' : 'Input Rincian & Buat Slip'}
-              </button>
-              
-              {error && <p className="text-red-500 mt-4 text-sm bg-red-50 dark:bg-red-900/20 p-2 rounded">{error}</p>}
-            </>
-          ) : (
-            <div className="text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-dashed border-gray-300 dark:border-gray-700">
-              <div className="bg-white dark:bg-gray-800 inline-block p-4 rounded-full mb-4 shadow-sm">
-                <Clock className="w-8 h-8 text-gray-400 dark:text-gray-500" />
-              </div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-zinc-100">Fitur Belum Tersedia</h3>
-              <p className="text-gray-500 dark:text-gray-400 mt-1">
-                Modul penggajian untuk kategori <span className="font-bold text-blue-600 dark:text-blue-400">{activeCategory}</span> sedang dalam pengembangan.
-              </p>
+        {!isEmployeeRole && (
+          <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-sm border border-gray-100 dark:border-gray-800 print:hidden">
+            <div className="flex gap-4 border-b border-gray-200 dark:border-gray-700 mb-6 overflow-x-auto pb-2">
+              {['Pemasaran dan Pelayanan', 'Teknis dan Expan', 'Operasional', 'General Affair', 'Keuangan dan HR'].map((category) => (
+                <button
+                  key={category}
+                  onClick={() => setActiveCategory(category)}
+                  className={`pb-2 px-4 font-medium transition-colors border-b-2 whitespace-nowrap ${
+                    activeCategory === category
+                      ? 'border-blue-600 text-blue-700 dark:text-blue-400'
+                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400'
+                  }`}
+                >
+                  {category}
+                </button>
+              ))}
             </div>
-          )}
-        </div>
+
+            {['Pemasaran dan Pelayanan', 'Teknis dan Expan', 'Operasional', 'General Affair', 'Keuangan dan HR'].includes(activeCategory) ? (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Nama Karyawan</label>
+                    <input
+                      type="text"
+                      value={employeeId}
+                      onChange={(e) => setEmployeeId(e.target.value)}
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900 dark:text-zinc-100 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                      placeholder="contoh: Budi Santoso"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Bulan</label>
+                    <select
+                      value={month}
+                      onChange={(e) => setMonth(parseInt(e.target.value))}
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900 dark:text-zinc-100 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                    >
+                      {[...Array(12)].map((_, i) => (
+                        <option key={i + 1} value={i + 1}>{new Date(0, i).toLocaleString('id-ID', { month: 'long' })}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Tahun</label>
+                    <input
+                      type="number"
+                      value={year}
+                      onChange={(e) => setYear(parseInt(e.target.value))}
+                      className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-900 dark:text-zinc-100 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleInputRincian}
+                  disabled={loading || !employeeId}
+                  className="w-full bg-blue-700 dark:bg-blue-600 text-white py-2 rounded hover:bg-blue-800 dark:hover:bg-blue-700 disabled:opacity-50 font-bold transition-colors"
+                >
+                  {loading ? 'Memuat...' : 'Input Rincian & Buat Slip'}
+                </button>
+                
+                {error && <p className="text-red-500 mt-4 text-sm bg-red-50 dark:bg-red-900/20 p-2 rounded">{error}</p>}
+              </>
+            ) : (
+              <div className="text-center py-12 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-dashed border-gray-300 dark:border-gray-700">
+                <div className="bg-white dark:bg-gray-800 inline-block p-4 rounded-full mb-4 shadow-sm">
+                  <Clock className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-zinc-100">Fitur Belum Tersedia</h3>
+                <p className="text-gray-500 dark:text-gray-400 mt-1">
+                  Modul penggajian untuk kategori <span className="font-bold text-blue-600 dark:text-blue-400">{activeCategory}</span> sedang dalam pengembangan.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* History List */}
         <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden print:hidden">
@@ -818,20 +840,24 @@ export default function SalaryPage() {
                       </td>
                       <td className="px-6 py-3 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <button 
-                            onClick={() => handleEdit(slip)}
-                            className="p-2 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-full transition-colors"
-                            title="Edit"
-                          >
-                            <Edit size={16} />
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteClick(slip.id)}
-                            className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors"
-                            title="Hapus"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                          {!isEmployeeRole && (
+                            <>
+                              <button 
+                                onClick={() => handleEdit(slip)}
+                                className="p-2 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-full transition-colors"
+                                title="Edit"
+                              >
+                                <Edit size={16} />
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteClick(slip.id)}
+                                className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors"
+                                title="Hapus"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
