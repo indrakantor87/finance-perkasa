@@ -106,6 +106,7 @@ model Loan {
   monthlyInstallment Float    @default(0) // Keinginan angsuran per bulan
   description        String
   date               DateTime // Tanggal pinjaman
+  type               String   @default("KASBON") // KASBON, PINJAMAN
   employeeId         String
   employee           Employee @relation(fields: [employeeId], references: [id])
   status             String   @default("ACTIVE") // ACTIVE, PAID

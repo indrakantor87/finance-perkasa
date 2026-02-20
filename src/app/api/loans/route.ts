@@ -42,13 +42,14 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { amount, monthlyInstallment, description, date, employeeId } = body
+    const { amount, monthlyInstallment, description, date, employeeId, type } = body
 
     const loan = await prisma.loan.create({
       data: {
         amount: parseFloat(amount),
         monthlyInstallment: parseFloat(monthlyInstallment),
         description,
+        type: type || 'KASBON',
         date: new Date(date),
         employeeId
       }

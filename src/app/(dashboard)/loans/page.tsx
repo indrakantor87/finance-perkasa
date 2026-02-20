@@ -22,6 +22,7 @@ type Loan = {
   amount: number
   monthlyInstallment: number
   description: string
+  type: string
   date: string
   employeeId: string
   status: string // ACTIVE, PAID
@@ -48,6 +49,7 @@ export default function LoansPage() {
     amount: '',
     monthlyInstallment: '',
     description: '',
+    type: 'KASBON',
     date: new Date().toISOString().split('T')[0]
   })
 
@@ -118,6 +120,7 @@ export default function LoansPage() {
           amount: '',
           monthlyInstallment: '',
           description: '',
+          type: 'KASBON',
           date: new Date().toISOString().split('T')[0]
         })
       } else {
@@ -152,18 +155,42 @@ export default function LoansPage() {
     return loan.amount - getPaidAmount(loan)
   }
 
+  const isEmployeeRole = role === 'EMPLOYEE' || role === 'KARYAWAN'
+
+  const currentEmployee = isEmployeeRole && currentEmployeeId
+    ? employees.find(emp => emp.id === currentEmployeeId) || null
+    : null
+
   return (
     <div className="p-6 max-w-[1600px] mx-auto space-y-6 font-sans">
       <div className="flex justify-between items-center">
         <div>
             <h1 className="text-2xl font-bold text-gray-800 dark:text-slate-100 flex items-center gap-2">
-                <CreditCard className="text-blue-600" /> Manajemen Pinjaman (Kasbon)
+                <CreditCard className="text-blue-600" /> {isEmployeeRole ? 'Pinjaman Saya' : 'Manajemen Pinjaman'}
             </h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-1">Kelola data pinjaman dan angsuran karyawan</p>
+            <p className="text-gray-500 dark:text-gray-400 mt-1">
+              {isEmployeeRole ? 'Lihat dan ajukan pinjaman pribadi Anda' : 'Kelola data pinjaman dan angsuran karyawan'}
+            </p>
         </div>
         
-        {/* Only Admin can create loans */}
-        {role !== 'EMPLOYEE' && role !== 'KARYAWAN' && (
+        {/* Create / Request Loan */}
+        {isEmployeeRole ? (
+          <button 
+            onClick={() => {
+              setFormData(prev => ({
+                ...prev,
+                employeeId: currentEmployeeId || '',
+                type: 'KASBON'
+              }))
+              setShowModal(true)
+            }}
+            disabled={!currentEmployeeId}
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm"
+          >
+            <Plus size={18} />
+            <span>Ajukan Pinjaman</span>
+          </button>
+        ) : (
           <button 
             onClick={() => setShowModal(true)}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm"
@@ -207,17 +234,23 @@ export default function LoansPage() {
                     <div key={loan.id} className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-gray-100 dark:border-neutral-800 overflow-hidden hover:shadow-md transition-shadow">
                         <div className="p-5 space-y-4">
                             <div className="flex justify-between items-start">
-                                <div>
+                                <div className="flex items-center justify-between gap-2">
+                                    <div>
                                     <h3 className="font-bold text-gray-800 dark:text-slate-100">{loan.employee.name}</h3>
                                     <p className="text-xs text-gray-500 dark:text-gray-400">{loan.employee.department}</p>
-                                </div>
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
+                                        {loan.type === 'PINJAMAN' ? 'Pinjaman' : 'Kasbon'}
+                                      </span>
+                                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                                     loan.status === 'PAID' 
                                     ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
                                     : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
                                 }`}>
                                     {loan.status === 'PAID' ? 'Lunas' : 'Aktif'}
                                 </span>
+                                    </div>
                             </div>
 
                             <div className="space-y-2">
@@ -307,16 +340,38 @@ export default function LoansPage() {
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Karyawan</label>
-                        <select 
-                            required
-                            value={formData.employeeId}
-                            onChange={(e) => setFormData({...formData, employeeId: e.target.value})}
-                            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-blue-500 outline-none"
+                        {isEmployeeRole ? (
+                          <input
+                            type="text"
+                            disabled
+                            value={currentEmployee?.name || 'Profil karyawan belum terhubung'}
+                            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-gray-100 dark:bg-neutral-800 text-gray-800 dark:text-gray-200"
+                          />
+                        ) : (
+                          <select 
+                              required
+                              value={formData.employeeId}
+                              onChange={(e) => setFormData({...formData, employeeId: e.target.value})}
+                              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-blue-500 outline-none"
+                          >
+                              <option value="">-- Pilih Karyawan --</option>
+                              {employees.map(emp => (
+                                  <option key={emp.id} value={emp.id}>{emp.name}</option>
+                              ))}
+                          </select>
+                        )}
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Jenis Pinjaman</label>
+                        <select
+                          required
+                          value={formData.type}
+                          onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-blue-500 outline-none"
                         >
-                            <option value="">-- Pilih Karyawan --</option>
-                            {employees.map(emp => (
-                                <option key={emp.id} value={emp.id}>{emp.name}</option>
-                            ))}
+                          <option value="KASBON">Kasbon</option>
+                          <option value="PINJAMAN">Pinjaman</option>
                         </select>
                     </div>
 
