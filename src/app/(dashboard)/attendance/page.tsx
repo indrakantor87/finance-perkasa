@@ -86,6 +86,7 @@ export default function AttendancePage() {
   // Auth State
   const [role, setRole] = useState<string | null>(null)
   const [currentEmployeeId, setCurrentEmployeeId] = useState<string | null>(null)
+  const [currentUserName, setCurrentUserName] = useState<string | null>(null)
 
   useEffect(() => {
     try {
@@ -93,7 +94,8 @@ export default function AttendancePage() {
       if (stored) {
         const user = JSON.parse(stored)
         setRole(user.role)
-        setCurrentEmployeeId(user.employeeId)
+        setCurrentEmployeeId(user.employeeId || null)
+        setCurrentUserName(user.name || null)
       }
     } catch (e) {
       console.error("Error parsing auth", e)
@@ -117,6 +119,23 @@ export default function AttendancePage() {
     fetchAttendance(controller.signal)
     return () => controller.abort()
   }, [startDate, endDate, activeCategory])
+
+  useEffect(() => {
+    const isEmployeeLike = role === 'EMPLOYEE' || role === 'KARYAWAN'
+    if (!isEmployeeLike) return
+    if (currentEmployeeId) return
+    if (!currentUserName) return
+    if (!employees.length) return
+
+    const lowerName = currentUserName.toLowerCase().trim()
+    let matched = employees.find(e => e.name.toLowerCase().trim() === lowerName)
+    if (!matched) {
+      matched = employees.find(e => e.name.toLowerCase().includes(lowerName))
+    }
+    if (matched) {
+      setCurrentEmployeeId(matched.id)
+    }
+  }, [role, currentEmployeeId, currentUserName, employees])
 
   const fetchEmployees = async (signal?: AbortSignal) => {
     try {
@@ -551,12 +570,18 @@ export default function AttendancePage() {
     }
   }
 
+  const isEmployeeRole = role === 'EMPLOYEE' || role === 'KARYAWAN'
+  
   const filteredAttendances = attendances.filter(att => {
     const matchCategory = activeCategory === 'Semua' || att.employee.department === activeCategory
     const matchSearch = att.employee.name.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchEmployee = (role === 'EMPLOYEE' || role === 'KARYAWAN') ? att.employeeId === currentEmployeeId : true
+    const matchEmployee = isEmployeeRole ? att.employeeId === currentEmployeeId : true
     return matchCategory && matchSearch && matchEmployee
   })
+  
+  const personalAttendances = isEmployeeRole && currentEmployeeId
+    ? filteredAttendances.filter(att => att.employeeId === currentEmployeeId)
+    : []
   
   const toMinutes = (dotFormat: number) => {
     const h = Math.floor(dotFormat)
@@ -929,33 +954,35 @@ export default function AttendancePage() {
 
   return (
     <div className="font-sans">
-      {/* Main Content */}
       <main className="p-6 max-w-[1600px] mx-auto space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-800 dark:text-zinc-50">Data Absensi</h1>
-          <div className="flex gap-2">
-            <button 
-              onClick={handleSyncMachine}
-              disabled={isSyncing}
-              className={`bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors shadow-sm ${isSyncing ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              <RefreshCw size={18} className={isSyncing ? 'animate-spin' : ''} /> 
-              {isSyncing ? 'Syncing...' : 'Sync Mesin'}
-            </button>
-            <button 
-              onClick={() => setShowImportModal(true)}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-green-700 transition-colors shadow-sm"
-            >
-              <Upload size={18} /> Import Data Fingerprint
-            </button>
-          </div>
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-zinc-50">
+            {isEmployeeRole ? 'Absensi Saya' : 'Data Absensi'}
+          </h1>
+          {!isEmployeeRole && (
+            <div className="flex gap-2">
+              <button 
+                onClick={handleSyncMachine}
+                disabled={isSyncing}
+                className={`bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors shadow-sm ${isSyncing ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <RefreshCw size={18} className={isSyncing ? 'animate-spin' : ''} /> 
+                {isSyncing ? 'Syncing...' : 'Sync Mesin'}
+              </button>
+              <button 
+                onClick={() => setShowImportModal(true)}
+                className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-green-700 transition-colors shadow-sm"
+              >
+                <Upload size={18} /> Import Data Fingerprint
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
           {/* Filters */}
           <div className="p-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 flex flex-col md:flex-row gap-4 justify-between items-center">
              <div className="flex flex-1 gap-4 items-center flex-wrap">
-                {/* Date Range Filter */}
                 <div className="flex gap-2 items-center">
                   <select
                     value={selectedMonth}
@@ -980,301 +1007,379 @@ export default function AttendancePage() {
                     ))}
                   </select>
                 </div>
-
-                <button
-                  onClick={exportToExcel}
-                  className="flex items-center gap-2 px-3 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors text-sm font-medium"
-                >
-                  <Download size={16} />
-                  Export Excel
-                </button>
-
-                {/* Category Tabs inside Filter */}
-                <div className="flex bg-white dark:bg-gray-800 rounded-lg border dark:border-gray-700 p-1 overflow-x-auto">
-                  {['Semua', 'Pemasaran dan Pelayanan', 'Operasional', 'General Affair', 'Keuangan dan HR', 'Teknis dan Expan'].map((cat) => (
+ 
+                {!isEmployeeRole && (
+                  <>
                     <button
-                      key={cat}
-                      onClick={() => setActiveCategory(cat)}
-                      className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all whitespace-nowrap ${
-                        activeCategory === cat 
-                          ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 shadow-sm' 
-                          : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
-                      }`}
+                      onClick={exportToExcel}
+                      className="flex items-center gap-2 px-3 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors text-sm font-medium"
                     >
-                      {cat}
+                      <Download size={16} />
+                      Export Excel
                     </button>
-                  ))}
-                </div>
+ 
+                    <div className="flex bg-white dark:bg-gray-800 rounded-lg border dark:border-gray-700 p-1 overflow-x-auto">
+                      {['Semua', 'Pemasaran dan Pelayanan', 'Operasional', 'General Affair', 'Keuangan dan HR', 'Teknis dan Expan'].map((cat) => (
+                        <button
+                          key={cat}
+                          onClick={() => setActiveCategory(cat)}
+                          className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all whitespace-nowrap ${
+                            activeCategory === cat 
+                              ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 shadow-sm' 
+                              : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                          }`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
              </div>
-
-             <div className="relative w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input 
-                  type="text"
-                  placeholder="Cari nama karyawan..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-900 dark:text-zinc-100 font-medium placeholder:text-gray-600 dark:placeholder:text-gray-500 dark:bg-gray-800 dark:border-gray-700"
-                />
-              </div>
+ 
+             {!isEmployeeRole && (
+               <div className="relative w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <input 
+                    type="text"
+                    placeholder="Cari nama karyawan..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-gray-900 dark:text-zinc-100 font-medium placeholder:text-gray-600 dark:placeholder:text-gray-500 dark:bg-gray-800 dark:border-gray-700"
+                  />
+                </div>
+             )}
           </div>
-
-          {/* Table */}
+ 
           <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
-                <tr>
-                  <th className="px-6 py-3 w-10">
-                    <input
-                      type="checkbox"
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                      onChange={(e) => toggleSelectAll(e.target.checked)}
-                      checked={groupedAttendances.length > 0 && selectedExportIds.length === groupedAttendances.length}
-                    />
-                  </th>
-                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"></th>
-                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">No</th>
-                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Karyawan</th>
-                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Jabatan</th>
-                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Absensi</th>
-                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
-                {loading ? (
-                  <tr><td colSpan={7} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Memuat data...</td></tr>
-                ) : groupedAttendances.length === 0 ? (
-                  <tr><td colSpan={7} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Tidak ada data absensi</td></tr>
-                ) : (
-                  groupedAttendances.map((group, index) => (
-                    <React.Fragment key={group.employeeId}>
-                      <tr className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                        <td className="px-6 py-3">
-                          <input
-                            type="checkbox"
-                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                            checked={selectedExportIds.includes(group.employeeId)}
-                            onChange={(e) => toggleSelectOne(group.employeeId, e.target.checked)}
-                          />
-                        </td>
-                        <td className="px-6 py-3 relative">
-                          <button
-                            onClick={() => openMenuRowId === group.employeeId ? setOpenMenuRowId(null) : setOpenMenuRowId(group.employeeId)}
-                            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-transform"
-                            aria-label="Menu"
-                          >
-                            <ChevronDown size={16} className={`text-gray-600 dark:text-gray-400 transition-transform duration-200 ${openMenuRowId === group.employeeId ? 'rotate-180' : ''}`} />
-                          </button>
-                        </td>
+            {isEmployeeRole ? (
+              <table className="w-full text-left">
+                <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
+                  <tr>
+                    <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">No</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tanggal</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Jam Masuk</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Jam Pulang</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Lembur (Jam)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
+                  {loading ? (
+                    <tr><td colSpan={6} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Memuat data...</td></tr>
+                  ) : personalAttendances.length === 0 ? (
+                    <tr><td colSpan={6} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Tidak ada data absensi</td></tr>
+                  ) : (
+                    personalAttendances.map((att, index) => (
+                      <tr key={att.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                         <td className="px-6 py-3 whitespace-nowrap text-gray-900 dark:text-zinc-100 font-medium">{index + 1}</td>
-                        <td className="px-6 py-3 font-medium text-gray-900 dark:text-zinc-100">{group.employeeName}</td>
-                        <td className="px-6 py-3 text-gray-500 dark:text-gray-400">{group.employeeRole}</td>
+                        <td className="px-6 py-3 text-gray-900 dark:text-zinc-100">
+                          {new Date(att.date).toLocaleDateString('id-ID', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                            timeZone: 'Asia/Jakarta'
+                          })}
+                        </td>
                         <td className="px-6 py-3">
+                          <span className="text-green-600 dark:text-green-400 font-medium">
+                            {att.checkIn
+                              ? new Date(att.checkIn).toLocaleTimeString('id-ID', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  timeZone: 'Asia/Jakarta'
+                                })
+                              : '-'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-3">
+                          <span className="text-green-600 dark:text-green-400 font-medium">
+                            {att.checkOut
+                              ? new Date(att.checkOut).toLocaleTimeString('id-ID', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  timeZone: 'Asia/Jakarta'
+                                })
+                              : '-'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-3">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            (!att.checkIn && !att.checkOut) ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                            (att.checkIn && att.checkOut) ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                            'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                          }`}>
+                            {(!att.checkIn && !att.checkOut) ? 'Alfa' : (att.checkIn && att.checkOut) ? 'Valid' : 'Invalid'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-3 text-sm text-red-600 dark:text-red-400 font-bold">
                           {(() => {
-                            const totalDays = group.attendances.length
-                            const rajinCount = group.attendances.filter(a => a.checkIn && a.checkOut).length
-                            const percentage = totalDays > 0 ? (rajinCount / totalDays) * 100 : 0
-                            
-                            let status = 'Buruk'
-                            let colorClass = 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                            
-                            if (percentage >= 80) {
-                              status = 'Baik'
-                              colorClass = 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                            } else if (percentage >= 50) {
-                              status = 'Kurang'
-                              colorClass = 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                            }
-                            
-                            return (
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${colorClass}`}>
-                                {status}
-                              </span>
-                            )
+                            const calculated = calcOvertimeHours(att.checkIn, att.checkOut)
+                            const stored = att.overtimeHours || 0
+                            const displayValue = Math.max(stored, calculated)
+                            return displayValue > 0 ? `${displayValue} Jam` : '-'
                           })()}
                         </td>
-                        <td className="px-6 py-3 text-right">
-                          <button
-                            onClick={() => handleDeleteGroup(group)}
-                            className="p-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-md hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
-                            title="Hapus Semua Absensi Bulan Ini"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </td>
                       </tr>
-                      {openMenuRowId === group.employeeId && (
-                        <tr>
-                          <td colSpan={7} className="px-6 pb-4 pt-2 bg-gray-50/50 dark:bg-gray-800/30">
-                            <div className="rounded-lg border dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900 overflow-hidden animate-in slide-in-from-top-2 duration-200">
-                              <table className="w-full text-left">
-                                <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
-                                  <tr>
-                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tanggal</th>
-                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Karyawan</th>
-                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Jam Masuk</th>
-                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Jam Pulang</th>
-                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ekstra (Jam)</th>
-                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Lembur (Jam)</th>
-                                    <th className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Aksi</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                                  {group.attendances.map((att) => (
-                                    <tr key={att.id}>
-                                      <td className="px-4 py-2 text-sm text-gray-900 dark:text-zinc-100">
-                                        {new Date(att.date).toLocaleDateString('id-ID', {
-                                          day: '2-digit',
-                                          month: 'short',
-                                          year: 'numeric',
-                                          timeZone: 'Asia/Jakarta'
-                                        })}
-                                      </td>
-                                      <td className="px-4 py-2 text-sm text-gray-900 dark:text-zinc-100 font-medium">{att.employee.name}</td>
-                                      <td className="px-4 py-2">
-                                        {editingRow?.id === att.id ? (
-                                          <input
-                                            type="time"
-                                            value={editCheckIn}
-                                            onChange={(e) => setEditCheckIn(e.target.value)}
-                                            onKeyDown={handleEditKeyDown}
-                                            className="w-full p-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-900 dark:text-zinc-100 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                          />
-                                        ) : (
-                                          <span className="text-green-600 dark:text-green-400 font-medium">
-                                            {att.checkIn
-                                              ? new Date(att.checkIn).toLocaleTimeString('id-ID', {
-                                                  hour: '2-digit',
-                                                  minute: '2-digit',
-                                                  timeZone: 'Asia/Jakarta'
-                                                })
-                                              : '-'}
-                                          </span>
-                                        )}
-                                      </td>
-                                      <td className="px-4 py-2">
-                                        {editingRow?.id === att.id ? (
-                                          <input
-                                            type="time"
-                                            value={editCheckOut}
-                                            onChange={(e) => setEditCheckOut(e.target.value)}
-                                            onKeyDown={handleEditKeyDown}
-                                            className="w-full p-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-900 dark:text-zinc-100 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                          />
-                                        ) : (
-                                          <span className="text-green-600 dark:text-green-400 font-medium">
-                                            {att.checkOut
-                                              ? new Date(att.checkOut).toLocaleTimeString('id-ID', {
-                                                  hour: '2-digit',
-                                                  minute: '2-digit',
-                                                  timeZone: 'Asia/Jakarta'
-                                                })
-                                              : '-'}
-                                          </span>
-                                        )}
-                                      </td>
-                                      <td className="px-4 py-2">
-                                        {editingRow?.id === att.id ? (
-                                          <input
-                                            type="number"
-                                            step="0.25"
-                                            min="0"
-                                            value={editExtra}
-                                            onChange={(e) => setEditExtra(e.target.value)}
-                                            onKeyDown={handleEditKeyDown}
-                                            className="w-24 p-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-900 dark:text-zinc-100 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                          />
-                                        ) : (
-                                          <span className="text-gray-900 dark:text-zinc-100">{att.overtimeHours > calcOvertimeHours(att.checkIn, att.checkOut) ? (att.overtimeHours - calcOvertimeHours(att.checkIn, att.checkOut)).toFixed(2) : '-'}</span>
-                                        )}
-                                      </td>
-                                      <td className="px-4 py-2">
-                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                          (!att.checkIn && !att.checkOut) ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                                          (att.checkIn && att.checkOut) ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                          'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                                        }`}>
-                                          {(!att.checkIn && !att.checkOut) ? 'Alfa' : (att.checkIn && att.checkOut) ? 'Valid' : 'Invalid'}
-                                        </span>
-                                      </td>
-                                      <td className="px-4 py-2 text-sm text-red-600 dark:text-red-400 font-bold">
-                                        {(() => {
-                                          const calculated = calcOvertimeHours(att.checkIn, att.checkOut)
-                                          const stored = att.overtimeHours || 0
-                                          const displayValue = Math.max(stored, calculated)
-                                          return displayValue > 0 ? `${displayValue} Jam` : '-'
-                                        })()}
-                                      </td>
-                                      <td className="px-4 py-2 text-right">
-                                        <div className="flex justify-end gap-2">
-                                          {editingRow?.id === att.id ? (
-                                            <>
-                                              <button
-                                                onClick={handleEditSubmit}
-                                                disabled={isEditing}
-                                                className="p-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
-                                                title="Simpan"
-                                              >
-                                                <CheckCircle size={16} />
-                                              </button>
-                                              <button
-                                                onClick={() => { setEditingRow(null); }}
-                                                className="p-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition-colors"
-                                                title="Batal"
-                                              >
-                                                <XCircle size={16} />
-                                              </button>
-                                            </>
-                                          ) : (
-                                            <button
-                                              onClick={() => openInlineEditForRow(att)}
-                                              className="p-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition-colors"
-                                              title="Edit"
-                                            >
-                                              <Edit3 size={16} />
-                                            </button>
-                                          )}
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                                <tfoot className="bg-gray-50 border-t border-gray-100">
-                                  <tr>
-                                    <td colSpan={6} className="px-4 py-2 text-sm font-bold text-gray-700 text-right">Total Lembur:</td>
-                                    <td className="px-4 py-2 text-sm font-bold text-red-600">
-            {(() => {
-              const totalMin = group.attendances.reduce((acc, curr) => {
-                const calculated = calcOvertimeHours(curr.checkIn, curr.checkOut)
-                const stored = curr.overtimeHours || 0
-                const actual = Math.max(stored, calculated)
-                return acc + toMinutes(actual)
-              }, 0)
-              const h = Math.floor(totalMin / 60)
-              const m = Math.round(totalMin % 60)
-              return `${h}.${m.toString().padStart(2, '0')}`
-            })()} Jam
-          </td>
-                                    <td></td>
-                                  </tr>
-                                </tfoot>
-                              </table>
-                            </div>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            ) : (
+              <table className="w-full text-left">
+                <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
+                  <tr>
+                    <th className="px-6 py-3 w-10">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        onChange={(e) => toggleSelectAll(e.target.checked)}
+                        checked={groupedAttendances.length > 0 && selectedExportIds.length === groupedAttendances.length}
+                      />
+                    </th>
+                    <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"></th>
+                    <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">No</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Karyawan</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Jabatan</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Absensi</th>
+                    <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
+                  {loading ? (
+                    <tr><td colSpan={7} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Memuat data...</td></tr>
+                  ) : groupedAttendances.length === 0 ? (
+                    <tr><td colSpan={7} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">Tidak ada data absensi</td></tr>
+                  ) : (
+                    groupedAttendances.map((group, index) => (
+                      <React.Fragment key={group.employeeId}>
+                        <tr className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                          <td className="px-6 py-3">
+                            <input
+                              type="checkbox"
+                              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                              checked={selectedExportIds.includes(group.employeeId)}
+                              onChange={(e) => toggleSelectOne(group.employeeId, e.target.checked)}
+                            />
+                          </td>
+                          <td className="px-6 py-3 relative">
+                            <button
+                              onClick={() => openMenuRowId === group.employeeId ? setOpenMenuRowId(null) : setOpenMenuRowId(group.employeeId)}
+                              className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-transform"
+                              aria-label="Menu"
+                            >
+                              <ChevronDown size={16} className={`text-gray-600 dark:text-gray-400 transition-transform duration-200 ${openMenuRowId === group.employeeId ? 'rotate-180' : ''}`} />
+                            </button>
+                          </td>
+                          <td className="px-6 py-3 whitespace-nowrap text-gray-900 dark:text-zinc-100 font-medium">{index + 1}</td>
+                          <td className="px-6 py-3 font-medium text-gray-900 dark:text-zinc-100">{group.employeeName}</td>
+                          <td className="px-6 py-3 text-gray-500 dark:text-gray-400">{group.employeeRole}</td>
+                          <td className="px-6 py-3">
+                            {(() => {
+                              const totalDays = group.attendances.length
+                              const rajinCount = group.attendances.filter(a => a.checkIn && a.checkOut).length
+                              const percentage = totalDays > 0 ? (rajinCount / totalDays) * 100 : 0
+                              
+                              let status = 'Buruk'
+                              let colorClass = 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                              
+                              if (percentage >= 80) {
+                                status = 'Baik'
+                                colorClass = 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                              } else if (percentage >= 50) {
+                                status = 'Kurang'
+                                colorClass = 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                              }
+                              
+                              return (
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${colorClass}`}>
+                                  {status}
+                                </span>
+                              )
+                            })()}
+                          </td>
+                          <td className="px-6 py-3 text-right">
+                            <button
+                              onClick={() => handleDeleteGroup(group)}
+                              className="p-1.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-md hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
+                              title="Hapus Semua Absensi Bulan Ini"
+                            >
+                              <Trash2 size={16} />
+                            </button>
                           </td>
                         </tr>
-                      )}
-                    </React.Fragment>
-                  ))
-                )}
-              </tbody>
-            </table>
+                        {openMenuRowId === group.employeeId && (
+                          <tr>
+                            <td colSpan={7} className="px-6 pb-4 pt-2 bg-gray-50/50 dark:bg-gray-800/30">
+                              <div className="rounded-lg border dark:border-gray-700 shadow-sm bg-white dark:bg-gray-900 overflow-hidden animate-in slide-in-from-top-2 duration-200">
+                                <table className="w-full text-left">
+                                  <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700">
+                                    <tr>
+                                      <th className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tanggal</th>
+                                      <th className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nama Karyawan</th>
+                                      <th className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Jam Masuk</th>
+                                      <th className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Jam Pulang</th>
+                                      <th className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ekstra (Jam)</th>
+                                      <th className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                                      <th className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Lembur (Jam)</th>
+                                      <th className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Aksi</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                                    {group.attendances.map((att) => (
+                                      <tr key={att.id}>
+                                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-zinc-100">
+                                          {new Date(att.date).toLocaleDateString('id-ID', {
+                                            day: '2-digit',
+                                            month: 'short',
+                                            year: 'numeric',
+                                            timeZone: 'Asia/Jakarta'
+                                          })}
+                                        </td>
+                                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-zinc-100 font-medium">{att.employee.name}</td>
+                                        <td className="px-4 py-2">
+                                          {editingRow?.id === att.id ? (
+                                            <input
+                                              type="time"
+                                              value={editCheckIn}
+                                              onChange={(e) => setEditCheckIn(e.target.value)}
+                                              onKeyDown={handleEditKeyDown}
+                                              className="w-full p-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-900 dark:text-zinc-100 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            />
+                                          ) : (
+                                            <span className="text-green-600 dark:text-green-400 font-medium">
+                                              {att.checkIn
+                                                ? new Date(att.checkIn).toLocaleTimeString('id-ID', {
+                                                    hour: '2-digit',
+                                                    minute: '2-digit',
+                                                    timeZone: 'Asia/Jakarta'
+                                                  })
+                                                : '-'}
+                                            </span>
+                                          )}
+                                        </td>
+                                        <td className="px-4 py-2">
+                                          {editingRow?.id === att.id ? (
+                                            <input
+                                              type="time"
+                                              value={editCheckOut}
+                                              onChange={(e) => setEditCheckOut(e.target.value)}
+                                              onKeyDown={handleEditKeyDown}
+                                              className="w-full p-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-900 dark:text-zinc-100 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            />
+                                          ) : (
+                                            <span className="text-green-600 dark:text-green-400 font-medium">
+                                              {att.checkOut
+                                                ? new Date(att.checkOut).toLocaleTimeString('id-ID', {
+                                                    hour: '2-digit',
+                                                    minute: '2-digit',
+                                                    timeZone: 'Asia/Jakarta'
+                                                  })
+                                                : '-'}
+                                            </span>
+                                          )}
+                                        </td>
+                                        <td className="px-4 py-2">
+                                          {editingRow?.id === att.id ? (
+                                            <input
+                                              type="number"
+                                              step="0.25"
+                                              min="0"
+                                              value={editExtra}
+                                              onChange={(e) => setEditExtra(e.target.value)}
+                                              onKeyDown={handleEditKeyDown}
+                                              className="w-24 p-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-900 dark:text-zinc-100 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            />
+                                          ) : (
+                                            <span className="text-gray-900 dark:text-zinc-100">{att.overtimeHours > calcOvertimeHours(att.checkIn, att.checkOut) ? (att.overtimeHours - calcOvertimeHours(att.checkIn, att.checkOut)).toFixed(2) : '-'}</span>
+                                          )}
+                                        </td>
+                                        <td className="px-4 py-2">
+                                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                            (!att.checkIn && !att.checkOut) ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                                            (att.checkIn && att.checkOut) ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                            'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                          }`}>
+                                            {(!att.checkIn && !att.checkOut) ? 'Alfa' : (att.checkIn && att.checkOut) ? 'Valid' : 'Invalid'}
+                                          </span>
+                                        </td>
+                                        <td className="px-4 py-2 text-sm text-red-600 dark:text-red-400 font-bold">
+                                          {(() => {
+                                            const calculated = calcOvertimeHours(att.checkIn, att.checkOut)
+                                            const stored = att.overtimeHours || 0
+                                            const displayValue = Math.max(stored, calculated)
+                                            return displayValue > 0 ? `${displayValue} Jam` : '-'
+                                          })()}
+                                        </td>
+                                        <td className="px-4 py-2 text-right">
+                                          <div className="flex justify-end gap-2">
+                                            {editingRow?.id === att.id ? (
+                                              <>
+                                                <button
+                                                  onClick={handleEditSubmit}
+                                                  disabled={isEditing}
+                                                  className="p-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
+                                                  title="Simpan"
+                                                >
+                                                  <CheckCircle size={16} />
+                                                </button>
+                                                <button
+                                                  onClick={() => { setEditingRow(null); }}
+                                                  className="p-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition-colors"
+                                                  title="Batal"
+                                                >
+                                                  <XCircle size={16} />
+                                                </button>
+                                              </>
+                                            ) : (
+                                              <button
+                                                onClick={() => openInlineEditForRow(att)}
+                                                className="p-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200 transition-colors"
+                                                title="Edit"
+                                              >
+                                                <Edit3 size={16} />
+                                              </button>
+                                            )}
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                  <tfoot className="bg-gray-50 border-t border-gray-100">
+                                    <tr>
+                                      <td colSpan={6} className="px-4 py-2 text-sm font-bold text-gray-700 text-right">Total Lembur:</td>
+                                      <td className="px-4 py-2 text-sm font-bold text-red-600">
+                        {(() => {
+                          const totalMin = group.attendances.reduce((acc, curr) => {
+                            const calculated = calcOvertimeHours(curr.checkIn, curr.checkOut)
+                            const stored = curr.overtimeHours || 0
+                            const actual = Math.max(stored, calculated)
+                            return acc + toMinutes(actual)
+                          }, 0)
+                          const h = Math.floor(totalMin / 60)
+                          const m = Math.round(totalMin % 60)
+                          return `${h}.${m.toString().padStart(2, '0')}`
+                        })()} Jam
+                      </td>
+                                      <td></td>
+                                    </tr>
+                                  </tfoot>
+                                </table>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       </main>
-
-      {/* Import Modal */}
-      {showImportModal && (
+ 
+      {showImportModal && !isEmployeeRole && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-800">
