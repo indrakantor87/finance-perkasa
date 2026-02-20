@@ -168,6 +168,7 @@ async function main() {
 
             // 2. Group logs by User and Date
             const groupedLogs = {} 
+            let debugCount = 0
             
             for (const log of logs.data) {
                 // Handle property name differences (zkteco-js vs node-zklib style)
@@ -179,6 +180,19 @@ async function main() {
                 
                 const dateObj = parseMachineTime(rawRecordTime)
                 if (!dateObj || isNaN(dateObj.getTime())) continue
+
+                if (debugCount < 20) {
+                    console.log('DEBUG_MACHINE_TIME', {
+                        rawRecordTime,
+                        typeofRaw: typeof rawRecordTime,
+                        parsedISO: dateObj.toISOString(),
+                        parsedLocal: dateObj.toString(),
+                        serverNow: new Date().toString(),
+                        serverISO: new Date().toISOString(),
+                        envTZ: process.env.TZ || null,
+                    })
+                    debugCount++
+                }
                 
                 const dateWIB = new Date(dateObj.getTime() + WIB_OFFSET_MS)
                 const dateStr = dateWIB.toISOString().split('T')[0]
