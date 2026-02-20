@@ -124,7 +124,12 @@ export default function LoansPage() {
           date: new Date().toISOString().split('T')[0]
         })
       } else {
-        alert('Gagal membuat pinjaman')
+        let message = 'Gagal membuat pinjaman'
+        try {
+          const data = await res.json()
+          if (data?.error) message = data.error
+        } catch {}
+        alert(message)
       }
     } catch (error) {
       console.error('Submit error', error)
@@ -184,8 +189,7 @@ export default function LoansPage() {
               }))
               setShowModal(true)
             }}
-            disabled={!currentEmployeeId}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm"
           >
             <Plus size={18} />
             <span>Ajukan Pinjaman</span>
