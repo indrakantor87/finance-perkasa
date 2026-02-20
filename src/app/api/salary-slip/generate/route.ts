@@ -123,7 +123,7 @@ export async function POST(request: Request) {
     const finalBaseSalary = (isMarketing && (!overrides || overrides.baseSalary === undefined)) ? calculatedBaseSalary : baseSalary
 
     // 2. Transport (Example: 20,000 per day present)
-    const transportAmount = getVal('transportAmount', presentDays * 20000)
+    const transportAmount = getVal('transportAmount', 0)
 
     // 3. Overtime (Example: 25,000 per hour)
     const overtimeDefault = Math.round((totalOvertimeMinutes / 60) * 25000)

@@ -425,7 +425,6 @@ export default function SalaryPage() {
       
       if (!res.ok) throw new Error(data.error || 'Gagal mengambil data')
 
-      // Marketing specific adjustments
       if (activeCategory === 'Pemasaran dan Pelayanan') {
           if (!data.umtAmount && typeof data.presentDays === 'number') {
               data.umtAmount = data.presentDays * 15000
@@ -433,6 +432,31 @@ export default function SalaryPage() {
           data.transportAmount = 0
           data.mealAllowance = 0
       }
+
+      const incomeTotal =
+        (data.baseSalary || 0) +
+        (data.attendanceAllowance || 0) +
+        (data.transportAmount || 0) +
+        (data.overtimeAmount || 0) +
+        (data.performanceBonus || 0) +
+        (data.disciplineBonus || 0) +
+        (data.positionAllowance || 0) +
+        (data.healthAllowance || 0) +
+        (data.bpjsAllowance || 0) +
+        (data.mealAllowance || 0) +
+        (data.incentivePsb || 0) +
+        (data.incentiveInstalasi || 0) +
+        (data.incentiveTagihan || 0) +
+        (data.umtAmount || 0)
+
+      const deductionTotal =
+        (data.arisanDeduction || 0) +
+        (data.jhtDeduction || 0) +
+        (data.loanDeduction || 0)
+
+      data.totalIncome = incomeTotal
+      data.totalDeduction = deductionTotal
+      data.netSalary = incomeTotal - deductionTotal
 
       setInputData(data)
       setShowInputModal(true)
