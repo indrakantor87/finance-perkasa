@@ -155,7 +155,7 @@ export async function POST(request: Request) {
     const installationCount10k = getVal('installationCount10k', 0)
     const incentiveInstalasi = getVal('incentiveInstalasi', (installationCount5k * 5000) + (installationCount10k * 10000))
     const incentiveTagihan = getVal('incentiveTagihan', 0)
-    const umtAmount = getVal('umtAmount', presentDays * 15000)
+    const umtAmount = getVal('umtAmount', 0)
 
     // 9. Teknisi Incentives
     const newCustomerIncentive = getVal('newCustomerIncentive', 0)

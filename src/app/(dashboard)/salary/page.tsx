@@ -427,16 +427,11 @@ export default function SalaryPage() {
 
       // Marketing specific adjustments
       if (activeCategory === 'Pemasaran dan Pelayanan') {
-          // Reset standard Transport/Meal to avoid double counting if using UMT
-          // But allow them to be used if UMT is just a label? 
-          // Since we added umtAmount, we should use that.
-          // We'll zero out others to be safe, or user can't see them to change them.
+          if (!data.umtAmount && typeof data.presentDays === 'number') {
+              data.umtAmount = data.presentDays * 15000
+          }
           data.transportAmount = 0
           data.mealAllowance = 0
-          // data.performanceBonus = 0 // Keep if Kinerja is different? Image doesn't show Kinerja.
-          // Image shows: Incentive PSB, Instalasi, Tagihan.
-          // Kinerja might be irrelevant.
-          // data.performanceBonus = 0
       }
 
       setInputData(data)
