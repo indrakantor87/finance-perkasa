@@ -299,7 +299,6 @@ async function main() {
                         // We'll trust the explicit states.
                     }
                     
-                    // Calculate Overtime (WIB Aware)
                     let overtimeHours = 0
                     if (checkIn && checkOut) {
                          const WIB_OFFSET = 7 * 60 * 60 * 1000
@@ -310,36 +309,35 @@ async function main() {
                          const inMinute = inDateWIB.getUTCMinutes()
                          
                          const durationMillis = checkOut.getTime() - checkIn.getTime()
+                         const totalDurationMinutes = Math.floor(durationMillis / 60000)
                          let overtimeMinutes = 0
-                         
-                         // Case 1: Late Shift (CheckIn >= 17:00 WIB)
-                         if (inHour > 17 || (inHour === 17 && inMinute >= 0)) {
-                            overtimeMinutes = Math.floor(durationMillis / 60000)
-                         } else {
-                            // Case 2: Normal Shift
-                            const standardExitWIB = new Date(inDateWIB)
-                            standardExitWIB.setUTCHours(17, 0, 0, 0)
-                            
-                            if (outDateWIB.getTime() > standardExitWIB.getTime()) {
-                                if (inDateWIB.getTime() > standardExitWIB.getTime()) {
-                                    overtimeMinutes = Math.floor(durationMillis / 60000)
-                                } else {
-                                    overtimeMinutes = Math.floor((outDateWIB.getTime() - standardExitWIB.getTime()) / 60000)
-                                }
-                            }
-                         }
-                         
-                         // SAFETY CHECK: Overtime cannot exceed Total Duration
-                         const totalDurationMinutes = Math.floor(durationMillis / 60000);
-                         if (overtimeMinutes > totalDurationMinutes) {
-                             console.warn(`Overtime calculation anomaly detected: OT ${overtimeMinutes}m > Duration ${totalDurationMinutes}m. Capping to duration.`);
-                             overtimeMinutes = totalDurationMinutes;
-                         }
 
-                         if (overtimeMinutes > 0) {
-                            const hh = Math.floor(overtimeMinutes / 60)
-                            const mm = Math.round(overtimeMinutes % 60)
-                            overtimeHours = parseFloat(`${hh}.${mm.toString().padStart(2, '0')}`)
+                         if (totalDurationMinutes > 0) {
+                             const WORK_MINUTES = 9 * 60
+
+                             if (inHour > 17 || (inHour === 17 && inMinute >= 0)) {
+                                 const regularEndWIB = new Date(inDateWIB.getTime() + WORK_MINUTES * 60000)
+                                 if (outDateWIB.getTime() > regularEndWIB.getTime()) {
+                                     overtimeMinutes = Math.floor((outDateWIB.getTime() - regularEndWIB.getTime()) / 60000)
+                                 }
+                             } else {
+                                 const standardExitWIB = new Date(inDateWIB)
+                                 standardExitWIB.setUTCHours(17, 0, 0, 0)
+                                 if (outDateWIB.getTime() > standardExitWIB.getTime()) {
+                                     overtimeMinutes = Math.floor((outDateWIB.getTime() - standardExitWIB.getTime()) / 60000)
+                                 }
+                             }
+
+                             if (overtimeMinutes > totalDurationMinutes) {
+                                 console.warn(`Overtime calculation anomaly detected: OT ${overtimeMinutes}m > Duration ${totalDurationMinutes}m. Capping to duration.`);
+                                 overtimeMinutes = totalDurationMinutes;
+                             }
+
+                             if (overtimeMinutes > 0) {
+                                const hh = Math.floor(overtimeMinutes / 60)
+                                const mm = Math.round(overtimeMinutes % 60)
+                                overtimeHours = parseFloat(`${hh}.${mm.toString().padStart(2, '0')}`)
+                             }
                          }
                     }
 
@@ -378,31 +376,34 @@ async function main() {
                             const inHour = inDateWIB.getUTCHours()
                             const inMinute = inDateWIB.getUTCMinutes()
                             const dur = finalCheckOut.getTime() - finalCheckIn.getTime()
+                            const totalDur = Math.floor(dur / 60000)
                             let otMin = 0
 
-                            if (inHour > 17 || (inHour === 17 && inMinute >= 0)) {
-                                otMin = Math.floor(dur / 60000)
-                            } else {
-                                const stdExit = new Date(inDateWIB)
-                                stdExit.setUTCHours(17, 0, 0, 0)
-                                if (outDateWIB.getTime() > stdExit.getTime()) {
-                                    if (inDateWIB.getTime() > stdExit.getTime()) {
-                                        otMin = Math.floor(dur / 60000)
-                                    } else {
+                            if (totalDur > 0) {
+                                const WORK_MINUTES = 9 * 60
+
+                                if (inHour > 17 || (inHour === 17 && inMinute >= 0)) {
+                                    const regularEndWIB = new Date(inDateWIB.getTime() + WORK_MINUTES * 60000)
+                                    if (outDateWIB.getTime() > regularEndWIB.getTime()) {
+                                        otMin = Math.floor((outDateWIB.getTime() - regularEndWIB.getTime()) / 60000)
+                                    }
+                                } else {
+                                    const stdExit = new Date(inDateWIB)
+                                    stdExit.setUTCHours(17, 0, 0, 0)
+                                    if (outDateWIB.getTime() > stdExit.getTime()) {
                                         otMin = Math.floor((outDateWIB.getTime() - stdExit.getTime()) / 60000)
                                     }
                                 }
-                            }
 
-                            const totalDur = Math.floor(dur / 60000)
-                            if (otMin > totalDur) otMin = totalDur
+                                if (otMin > totalDur) otMin = totalDur
 
-                            if (otMin > 0) {
-                                const h = Math.floor(otMin / 60)
-                                const m = Math.round(otMin % 60)
-                                updateData.overtimeHours = parseFloat(`${h}.${m.toString().padStart(2, '0')}`)
-                            } else {
-                                updateData.overtimeHours = 0
+                                if (otMin > 0) {
+                                    const h = Math.floor(otMin / 60)
+                                    const m = Math.round(otMin % 60)
+                                    updateData.overtimeHours = parseFloat(`${h}.${m.toString().padStart(2, '0')}`)
+                                } else {
+                                    updateData.overtimeHours = 0
+                                }
                             }
                         }
 

@@ -572,37 +572,28 @@ export default function AttendancePage() {
     const inDate = new Date(inISO)
     const outDate = new Date(outISO)
     
-    // Calculate duration in minutes
     const durationMillis = outDate.getTime() - inDate.getTime()
     if (durationMillis <= 0) return 0
     
-    // Check if check-in is after 17:00 (Local Time)
-    // Note: This logic runs in browser, so local time is user's time (WIB usually)
     const inHour = inDate.getHours()
     const inMinute = inDate.getMinutes()
+    const totalMinutes = Math.floor(durationMillis / 60000)
+    const WORK_MINUTES = 9 * 60
     
-    // Case 1: Late Shift (CheckIn >= 17:00)
+    if (totalMinutes <= 0) return 0
+
     if (inHour > 17 || (inHour === 17 && inMinute >= 0)) {
-      return toDotFormat(Math.floor(durationMillis / 60000))
+      const regularEnd = new Date(inDate.getTime() + WORK_MINUTES * 60000)
+      if (outDate.getTime() <= regularEnd.getTime()) return 0
+      const otMinutes = Math.floor((outDate.getTime() - regularEnd.getTime()) / 60000)
+      return toDotFormat(Math.min(otMinutes, totalMinutes))
     }
 
-    // Case 2: Normal Shift (CheckIn < 17:00)
-    // Only time after 17:00 counts
     const standardExit = new Date(inDate)
     standardExit.setHours(17, 0, 0, 0)
-    
-    // If CheckIn < 17:00
-    if (inDate.getTime() < standardExit.getTime()) {
-      if (outDate.getTime() > standardExit.getTime()) {
-        const otMillis = outDate.getTime() - standardExit.getTime()
-        return toDotFormat(Math.floor(otMillis / 60000))
-      }
-    } else {
-       // Should be covered by Case 1
-       return toDotFormat(Math.floor(durationMillis / 60000))
-    }
-    
-    return 0
+    if (outDate.getTime() <= standardExit.getTime()) return 0
+    const otMinutes = Math.floor((outDate.getTime() - standardExit.getTime()) / 60000)
+    return toDotFormat(Math.min(otMinutes, totalMinutes))
   }
 
   const calcExtra = (att: Attendance) => {
