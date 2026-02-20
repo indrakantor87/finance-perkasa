@@ -383,6 +383,7 @@ export default function SettingsPage() {
                                 <option value="ADMIN">ADMIN</option>
                                 <option value="ADMINISTRATOR">ADMINISTRATOR</option>
                                 <option value="STAFF">STAFF</option>
+                                <option value="KARYAWAN">KARYAWAN</option>
                               </select>
                             </div>
                             
