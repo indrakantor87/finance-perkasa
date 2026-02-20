@@ -3,6 +3,24 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params
+    const employee = await prisma.employee.findUnique({
+      where: { id }
+    })
+
+    if (!employee) {
+      return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
+    }
+
+    return NextResponse.json(employee)
+  } catch (error) {
+    console.error('Error fetching employee:', error)
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+  }
+}
+
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
@@ -10,7 +28,6 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
     const { name, role, department, status, baseSalary, positionAllowance, joinDate, identityPhoto, whatsapp } = body
 
-    // Validation for numbers
     const parsedBaseSalary = Number(baseSalary)
     const parsedPositionAllowance = Number(positionAllowance)
 
@@ -35,7 +52,6 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json(employee)
   } catch (error) {
     console.error('Error updating employee:', error)
-    // Return detailed error for debugging
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal Server Error', details: error }, { status: 500 })
   }
 }

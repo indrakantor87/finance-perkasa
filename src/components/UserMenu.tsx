@@ -10,6 +10,7 @@ export default function UserMenu() {
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [currentUser, setCurrentUser] = useState<any>(null)
+  const [employeeProfile, setEmployeeProfile] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [passwordForm, setPasswordForm] = useState({
     oldPassword: '',
@@ -45,6 +46,38 @@ export default function UserMenu() {
     }
     return () => { isMountedRef.current = false }
   }, [])
+
+  useEffect(() => {
+    if (!currentUser) {
+      setEmployeeProfile(null)
+      return
+    }
+    const isEmployee = currentUser.role === 'EMPLOYEE' || currentUser.role === 'KARYAWAN'
+    const employeeId = currentUser.employeeId
+    if (!isEmployee || !employeeId) {
+      setEmployeeProfile(null)
+      return
+    }
+
+    const controller = new AbortController()
+    fetch(`/api/employees/${employeeId}`, { signal: controller.signal })
+      .then(async res => {
+        if (!res.ok) return null
+        return await res.json()
+      })
+      .then(data => {
+        if (!isMountedRef.current) return
+        setEmployeeProfile(data)
+      })
+      .catch(err => {
+        if (err && err.name === 'AbortError') return
+        console.error('Failed to load employee profile', err)
+      })
+
+    return () => {
+      controller.abort()
+    }
+  }, [currentUser])
 
   // Close on click outside
   useEffect(() => {
@@ -228,7 +261,9 @@ export default function UserMenu() {
 
               {/* Basic Info */}
               <div className="mt-8 mb-6 text-center">
-                <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100">{currentUser?.name || 'User'}</h2>
+                <h2 className="text-2xl font-bold text-gray-800 dark:text-slate-100">
+                  {employeeProfile?.name || currentUser?.name || 'User'}
+                </h2>
                 <div className="flex items-center justify-center gap-2 text-blue-600 dark:text-blue-400 font-medium mt-1">
                   <Shield size={16} />
                   <span>{currentUser?.role || 'Guest'}</span>
@@ -249,7 +284,9 @@ export default function UserMenu() {
                   <Phone size={18} className="text-gray-400" />
                   <div className="flex-1">
                     <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Telepon</p>
-                    <p className="text-sm font-medium text-gray-800 dark:text-slate-100">{currentUser?.phone || '-'}</p>
+                    <p className="text-sm font-medium text-gray-800 dark:text-slate-100">
+                      {employeeProfile?.whatsapp || currentUser?.phone || '-'}
+                    </p>
                   </div>
                 </div>
 
@@ -257,7 +294,13 @@ export default function UserMenu() {
                   <Calendar size={18} className="text-gray-400" />
                   <div className="flex-1">
                     <p className="text-xs text-gray-400 font-medium uppercase tracking-wider">Bergabung Sejak</p>
-                    <p className="text-sm font-medium text-gray-800 dark:text-slate-100">{currentUser?.createdAt ? new Date(currentUser.createdAt).toLocaleDateString('id-ID') : '-'}</p>
+                    <p className="text-sm font-medium text-gray-800 dark:text-slate-100">
+                      {employeeProfile?.joinDate
+                        ? new Date(employeeProfile.joinDate).toLocaleDateString('id-ID')
+                        : currentUser?.createdAt
+                          ? new Date(currentUser.createdAt).toLocaleDateString('id-ID')
+                          : '-'}
+                    </p>
                   </div>
                 </div>
               </div>
