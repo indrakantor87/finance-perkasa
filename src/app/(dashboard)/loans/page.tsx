@@ -42,6 +42,7 @@ export default function LoansPage() {
   // Auth State
   const [role, setRole] = useState<string | null>(null)
   const [currentEmployeeId, setCurrentEmployeeId] = useState<string | null>(null)
+  const [currentUserName, setCurrentUserName] = useState<string | null>(null)
 
   // Form State
   const [formData, setFormData] = useState({
@@ -60,7 +61,8 @@ export default function LoansPage() {
       if (stored) {
         const user = JSON.parse(stored)
         setRole(user.role)
-        setCurrentEmployeeId(user.employeeId)
+        setCurrentEmployeeId(user.employeeId || null)
+        setCurrentUserName(user.employeeName || user.name || null)
       }
     } catch (e) {
       console.error(e)
@@ -72,6 +74,27 @@ export default function LoansPage() {
     fetchData(controller.signal)
     return () => controller.abort()
   }, []) // Fetch all initially, then filter
+
+  useEffect(() => {
+    const isEmployeeLike = role === 'EMPLOYEE' || role === 'KARYAWAN'
+    if (!isEmployeeLike) return
+    if (currentEmployeeId && employees.some(e => e.id === currentEmployeeId)) return
+    if (!currentUserName) return
+    if (!employees.length) return
+
+    const lowerName = currentUserName.toLowerCase().trim()
+    let matched = employees.find(e => e.name.toLowerCase().trim() === lowerName)
+    if (!matched) {
+      matched = employees.find(e => e.name.toLowerCase().includes(lowerName))
+    }
+    if (matched) {
+      setCurrentEmployeeId(matched.id)
+      setFormData(prev => ({
+        ...prev,
+        employeeId: matched.id
+      }))
+    }
+  }, [role, currentEmployeeId, currentUserName, employees])
 
   const fetchData = async (signal?: AbortSignal) => {
     setLoading(true)
