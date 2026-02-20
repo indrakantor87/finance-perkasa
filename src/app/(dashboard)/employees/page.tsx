@@ -47,6 +47,8 @@ const ROLE_OPTIONS: Record<string, string[]> = {
   ],
   'Teknis dan Expan': [
     'Manager Teknik',
+    'Leader Expan',
+    'Leader Jointer',
     'Teknisi PSB', 
     'Teknisi Expan / jalur', 
     'Teknisi Jointer'
