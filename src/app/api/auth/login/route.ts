@@ -38,16 +38,33 @@ export async function POST(request: Request) {
 
     // Return user info excluding password
     const { password: _, ...userWithoutPassword } = user
-    
-    return NextResponse.json({
-      user: {
-        ...userWithoutPassword,
-        // If user is linked to employee, use employee info, otherwise use user info
-        employeeId: user.employeeId,
-        employeeName: user.employee?.name,
-        role: user.role
-      }
+
+    const responseUser = {
+      ...userWithoutPassword,
+      employeeId: user.employeeId,
+      employeeName: user.employee?.name,
+      role: user.role
+    }
+
+    const sessionPayload = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      employeeId: user.employeeId
+    }
+
+    const response = NextResponse.json({
+      user: responseUser
     })
+
+    response.cookies.set('perkasa-finance-auth', JSON.stringify(sessionPayload), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/'
+    })
+
+    return response
   } catch (error) {
     console.error('Login error:', error)
     return NextResponse.json({ error: 'Terjadi kesalahan saat login' }, { status: 500 })

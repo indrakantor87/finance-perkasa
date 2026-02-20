@@ -51,12 +51,6 @@ export default function Home() {
       const user = data.user;
       const storage = remember ? window.localStorage : window.sessionStorage;
       storage.setItem("perkasa-finance-auth", JSON.stringify(user));
-      
-      // Set cookie for middleware
-      const maxAge = remember ? 7 * 24 * 60 * 60 : 0; // 7 days or session
-      const expires = remember ? `; max-age=${maxAge}` : '';
-      // Store user role in cookie for basic middleware checks
-      document.cookie = `perkasa-finance-auth=${JSON.stringify(user)}; path=/${expires}`;
 
       // Redirect based on role
       if (user.role === 'EMPLOYEE' || user.role === 'KARYAWAN') {
