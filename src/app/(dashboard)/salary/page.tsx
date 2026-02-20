@@ -763,22 +763,26 @@ export default function SalaryPage() {
           <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
              <h2 className="text-lg font-bold text-gray-800 dark:text-zinc-100">Riwayat Slip Gaji</h2>
              <div className="flex items-center gap-4">
-                 <button 
-                    onClick={handleExportExcel}
-                    className="flex items-center gap-2 px-3 py-1.5 text-sm rounded transition-colors font-medium bg-green-600 text-white hover:bg-green-700 shadow-sm"
-                 >
-                    <FileSpreadsheet size={16} />
-                    <span>Export Excel</span>
-                 </button>
-                 <button 
-                    onClick={handleBulkPrint}
-                    disabled={selectedSlipIds.length === 0}
-                    className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded transition-colors font-medium ${selectedSlipIds.length > 0 ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'}`}
-                 >
-                    <Printer size={16} />
-                    <span>Print {selectedSlipIds.length > 0 ? `${selectedSlipIds.length} Terpilih` : 'Terpilih'}</span>
-                 </button>
-                 <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-2"></div>
+                 {!isEmployeeRole && (
+                   <>
+                     <button 
+                        onClick={handleExportExcel}
+                        className="flex items-center gap-2 px-3 py-1.5 text-sm rounded transition-colors font-medium bg-green-600 text-white hover:bg-green-700 shadow-sm"
+                     >
+                        <FileSpreadsheet size={16} />
+                        <span>Export Excel</span>
+                     </button>
+                     <button 
+                        onClick={handleBulkPrint}
+                        disabled={selectedSlipIds.length === 0}
+                        className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded transition-colors font-medium ${selectedSlipIds.length > 0 ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'}`}
+                     >
+                        <Printer size={16} />
+                        <span>Print {selectedSlipIds.length > 0 ? `${selectedSlipIds.length} Terpilih` : 'Terpilih'}</span>
+                     </button>
+                     <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-2"></div>
+                   </>
+                 )}
                  <div className="text-sm text-gray-500 dark:text-gray-400">
                     Periode: {new Date(year, month - 1).toLocaleString('id-ID', { month: 'long', year: 'numeric' })}
                  </div>

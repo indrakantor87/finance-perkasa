@@ -2,6 +2,7 @@ import React from 'react';
 import Header from '@/components/layout/Header';
 import Navigation from '@/components/layout/Navigation';
 import AIAssistant from '@/components/AIAssistant';
+import ClientRoleGuard from '@/components/layout/ClientRoleGuard';
 
 export default function DashboardLayout({
   children,
@@ -13,7 +14,9 @@ export default function DashboardLayout({
       <Header />
       <Navigation />
       {children}
-      <AIAssistant />
+      <ClientRoleGuard allowedRoles={['ADMIN', 'ADMINISTRATOR', 'DEVELOPER']}>
+        <AIAssistant />
+      </ClientRoleGuard>
     </div>
   );
 }
