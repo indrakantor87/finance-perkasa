@@ -234,23 +234,24 @@ export default function LoansPage() {
                     <div key={loan.id} className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-gray-100 dark:border-neutral-800 overflow-hidden hover:shadow-md transition-shadow">
                         <div className="p-5 space-y-4">
                             <div className="flex justify-between items-start">
-                                <div className="flex items-center justify-between gap-2">
-                                    <div>
+                                <div>
                                     <h3 className="font-bold text-gray-800 dark:text-slate-100">{loan.employee.name}</h3>
                                     <p className="text-xs text-gray-500 dark:text-gray-400">{loan.employee.department}</p>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
                                         {loan.type === 'PINJAMAN' ? 'Pinjaman' : 'Kasbon'}
-                                      </span>
-                                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                    loan.status === 'PAID' 
-                                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
-                                    : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                                }`}>
-                                    {loan.status === 'PAID' ? 'Lunas' : 'Aktif'}
-                                </span>
-                                    </div>
+                                    </span>
+                                    <span
+                                        className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                            loan.status === 'PAID'
+                                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                                : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                                        }`}
+                                    >
+                                        {loan.status === 'PAID' ? 'Lunas' : 'Aktif'}
+                                    </span>
+                                </div>
                             </div>
 
                             <div className="space-y-2">

@@ -52,7 +52,7 @@ export async function POST(request: Request) {
         type: type || 'KASBON',
         date: new Date(date),
         employeeId
-      }
+      } as any
     })
 
     return NextResponse.json(loan)

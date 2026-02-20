@@ -97,7 +97,9 @@ export async function getDashboardStats() {
     }
 
   } catch (error) {
-    console.error('Error fetching dashboard stats:', error)
+    if (process.env.NODE_ENV === 'production') {
+      console.error('Error fetching dashboard stats:', error)
+    }
     return null
   }
 }
