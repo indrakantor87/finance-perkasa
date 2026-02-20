@@ -55,10 +55,27 @@ export async function POST(request: Request) {
     })
 
     const presentDays = attendances.length
-    const totalOvertimeHours = attendances.reduce(
-      (sum: number, att: { overtimeHours: number }) => sum + att.overtimeHours,
+
+    const toMinutesFromDot = (dotFormat: number) => {
+      if (!dotFormat) return 0
+      const h = Math.floor(dotFormat)
+      const m = Math.round((dotFormat - h) * 100)
+      return h * 60 + m
+    }
+
+    const toDotFormat = (minutes: number) => {
+      if (minutes <= 0) return 0
+      const h = Math.floor(minutes / 60)
+      const m = Math.round(minutes % 60)
+      return parseFloat(`${h}.${m.toString().padStart(2, '0')}`)
+    }
+
+    const totalOvertimeMinutes = attendances.reduce(
+      (sum: number, att: { overtimeHours: number }) => sum + toMinutesFromDot(att.overtimeHours || 0),
       0
     )
+
+    const totalOvertimeHours = toDotFormat(totalOvertimeMinutes)
 
     // Helper to use override or default
     const getVal = (key: string, defaultVal: number) => {
@@ -109,7 +126,8 @@ export async function POST(request: Request) {
     const transportAmount = getVal('transportAmount', presentDays * 20000)
 
     // 3. Overtime (Example: 25,000 per hour)
-    const overtimeAmount = getVal('overtimeAmount', totalOvertimeHours * 25000)
+    const overtimeDefault = Math.round((totalOvertimeMinutes / 60) * 25000)
+    const overtimeAmount = getVal('overtimeAmount', overtimeDefault)
 
     // 4. Tunjangan Jabatan
     let defaultPositionAllowance = 0
