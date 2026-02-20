@@ -26,6 +26,9 @@ interface Attendance {
 interface Employee {
   id: string
   name: string
+  role: string
+  department: string
+  status: string
 }
 
 interface GroupedAttendance {
@@ -879,21 +882,50 @@ export default function AttendancePage() {
     }
   }
 
-  // Group filtered attendances by employee
-  const groupedAttendances = filteredAttendances.reduce((acc, curr) => {
-    const existing = acc.find(g => g.employeeId === curr.employeeId)
-    if (existing) {
-      existing.attendances.push(curr)
-    } else {
-      acc.push({
-        employeeId: curr.employeeId,
-        employeeName: curr.employee.name,
-        employeeRole: curr.employee.role,
-        attendances: [curr]
+  const groupedAttendances = React.useMemo(() => {
+    const map: { [key: string]: GroupedAttendance } = {}
+
+    for (const curr of filteredAttendances) {
+      const existing = map[curr.employeeId]
+      if (existing) {
+        existing.attendances.push(curr)
+      } else {
+        map[curr.employeeId] = {
+          employeeId: curr.employeeId,
+          employeeName: curr.employee.name,
+          employeeRole: curr.employee.role,
+          attendances: [curr]
+        }
+      }
+    }
+
+    const baseGroups = Object.values(map)
+
+    if (!employees.length) {
+      return baseGroups
+    }
+
+    const existingIds = new Set(baseGroups.map(g => g.employeeId))
+    const extraGroups: GroupedAttendance[] = []
+
+    for (const emp of employees) {
+      const matchCategory = activeCategory === 'Semua' || emp.department === activeCategory
+      const matchSearch = emp.name.toLowerCase().includes(searchTerm.toLowerCase())
+      const matchEmployee = (role === 'EMPLOYEE' || role === 'KARYAWAN') ? emp.id === currentEmployeeId : true
+
+      if (!matchCategory || !matchSearch || !matchEmployee) continue
+      if (existingIds.has(emp.id)) continue
+
+      extraGroups.push({
+        employeeId: emp.id,
+        employeeName: emp.name,
+        employeeRole: emp.role,
+        attendances: []
       })
     }
-    return acc
-  }, [] as GroupedAttendance[])
+
+    return [...baseGroups, ...extraGroups]
+  }, [filteredAttendances, employees, activeCategory, searchTerm, role, currentEmployeeId])
 
   return (
     <div className="font-sans">
