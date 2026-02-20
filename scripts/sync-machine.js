@@ -113,7 +113,6 @@ async function main() {
             
             if (users?.data) {
                 for (const u of users.data) {
-                    // Match by name (insensitive)
                     const emp = employees.find(e => e.name.toLowerCase() === u.name.toLowerCase())
                     if (emp) {
                         employeeMap[u.userId] = emp.id
@@ -151,11 +150,11 @@ async function main() {
                              createdUserCount++
                         }
                         
-                        // Add to map
-                        // We need to find the machine ID for this name
-                        const machineUser = users.data.find(u => u.name === name)
-                        if (machineUser && empId) {
-                            employeeMap[machineUser.userId] = empId
+                        const machineUsersForName = users.data.filter(u => u.name === name)
+                        for (const mu of machineUsersForName) {
+                            if (empId) {
+                                employeeMap[mu.userId] = empId
+                            }
                         }
                     } catch (err) {
                         console.error(`Failed to create user ${name}:`, err)
