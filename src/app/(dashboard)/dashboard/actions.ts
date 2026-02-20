@@ -2,6 +2,34 @@
 
 import prisma from '@/lib/prisma'
 
+const EMPTY_STATS = {
+  employees: {
+    total: 0,
+    newCount: 0,
+    byStatus: [],
+    byDept: []
+  },
+  attendance: {
+    present: 0,
+    late: 0,
+    sick: 0,
+    permit: 0,
+    alpha: 0,
+    total: 0,
+    notPresent: 0
+  },
+  loans: {
+    activeCount: 0,
+    totalOutstanding: 0
+  },
+  permissions: {
+    pendingCount: 0
+  },
+  salary: {
+    totalMonth: 0
+  }
+}
+
 export async function getDashboardStats() {
   const now = new Date()
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -100,6 +128,6 @@ export async function getDashboardStats() {
     if (process.env.NODE_ENV === 'production') {
       console.error('Error fetching dashboard stats:', error)
     }
-    return null
+    return EMPTY_STATS
   }
 }
