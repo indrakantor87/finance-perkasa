@@ -381,6 +381,7 @@ export default function SettingsPage() {
                                 className="w-full p-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-950 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors"
                               >
                                 <option value="ADMIN">ADMIN</option>
+                                <option value="ADMINISTRATOR">ADMINISTRATOR</option>
                                 <option value="STAFF">STAFF</option>
                               </select>
                             </div>
