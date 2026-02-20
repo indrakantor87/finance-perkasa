@@ -156,12 +156,24 @@ export default function AttendancePage() {
     }
 
     const dataToExport = sourceData.map(att => ({
-      Tanggal: new Date(att.date).toLocaleDateString('id-ID'),
+      Tanggal: new Date(att.date).toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' }),
       Nama: att.employee.name,
       Jabatan: att.employee.role,
       Departemen: att.employee.department,
-      'Jam Masuk': att.checkIn ? new Date(att.checkIn).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-',
-      'Jam Pulang': att.checkOut ? new Date(att.checkOut).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-',
+      'Jam Masuk': att.checkIn
+        ? new Date(att.checkIn).toLocaleTimeString('id-ID', {
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'Asia/Jakarta'
+          })
+        : '-',
+      'Jam Pulang': att.checkOut
+        ? new Date(att.checkOut).toLocaleTimeString('id-ID', {
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'Asia/Jakarta'
+          })
+        : '-',
       Status: att.status === 'PRESENT' ? 'Hadir' : att.status,
       'Lembur (Jam)': att.overtimeHours
     }))
@@ -1084,7 +1096,12 @@ export default function AttendancePage() {
                                   {group.attendances.map((att) => (
                                     <tr key={att.id}>
                                       <td className="px-4 py-2 text-sm text-gray-900 dark:text-zinc-100">
-                                        {new Date(att.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        {new Date(att.date).toLocaleDateString('id-ID', {
+                                          day: '2-digit',
+                                          month: 'short',
+                                          year: 'numeric',
+                                          timeZone: 'Asia/Jakarta'
+                                        })}
                                       </td>
                                       <td className="px-4 py-2 text-sm text-gray-900 dark:text-zinc-100 font-medium">{att.employee.name}</td>
                                       <td className="px-4 py-2">
@@ -1097,7 +1114,15 @@ export default function AttendancePage() {
                                             className="w-full p-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-900 dark:text-zinc-100 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                           />
                                         ) : (
-                                          <span className="text-green-600 dark:text-green-400 font-medium">{att.checkIn ? new Date(att.checkIn).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}</span>
+                                          <span className="text-green-600 dark:text-green-400 font-medium">
+                                            {att.checkIn
+                                              ? new Date(att.checkIn).toLocaleTimeString('id-ID', {
+                                                  hour: '2-digit',
+                                                  minute: '2-digit',
+                                                  timeZone: 'Asia/Jakarta'
+                                                })
+                                              : '-'}
+                                          </span>
                                         )}
                                       </td>
                                       <td className="px-4 py-2">
@@ -1110,7 +1135,15 @@ export default function AttendancePage() {
                                             className="w-full p-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-900 dark:text-zinc-100 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                           />
                                         ) : (
-                                          <span className="text-green-600 dark:text-green-400 font-medium">{att.checkOut ? new Date(att.checkOut).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-'}</span>
+                                          <span className="text-green-600 dark:text-green-400 font-medium">
+                                            {att.checkOut
+                                              ? new Date(att.checkOut).toLocaleTimeString('id-ID', {
+                                                  hour: '2-digit',
+                                                  minute: '2-digit',
+                                                  timeZone: 'Asia/Jakarta'
+                                                })
+                                              : '-'}
+                                          </span>
                                         )}
                                       </td>
                                       <td className="px-4 py-2">
