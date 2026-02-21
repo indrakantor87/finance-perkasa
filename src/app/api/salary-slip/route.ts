@@ -1,8 +1,74 @@
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import prisma from '@/lib/prisma'
 
 export async function GET(request: Request) {
   try {
+    const cookieStore = await cookies()
+    const authCookie = cookieStore.get('perkasa-finance-auth')
+    
+    let userRole: string | null = null
+    let userEmployeeId: string | null = null
+    let userId: string | null = null
+    let userEmail: string | null = null
+
+    if (authCookie) {
+      try {
+        const session = JSON.parse(authCookie.value)
+        userRole = session.role ?? null
+        userEmployeeId = session.employeeId ?? null
+        userId = session.id ?? null
+        userEmail = session.email ?? null
+      } catch (error) {
+        console.error('Invalid auth cookie in salary-slip GET', error)
+      }
+    }
+
+    if (!userRole) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const isEmployeeRole = userRole === 'KARYAWAN' || userRole === 'EMPLOYEE'
+
+    if (isEmployeeRole && !userEmployeeId) {
+      try {
+        let userRecord = null
+
+        if (userId) {
+          userRecord = await prisma.user.findUnique({
+            where: { id: userId }
+          })
+        } else if (userEmail) {
+          userRecord = await prisma.user.findUnique({
+            where: { email: userEmail }
+          })
+        }
+
+        if (userRecord) {
+          if (userRecord.employeeId) {
+            userEmployeeId = userRecord.employeeId
+          } else if (userRecord.name) {
+            const employees = await prisma.employee.findMany({
+              where: {
+                name: userRecord.name
+              }
+            })
+
+            if (employees.length === 1) {
+              userEmployeeId = employees[0].id
+            }
+          }
+        }
+
+        if (!userEmployeeId) {
+          return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+      } catch (error) {
+        console.error('Error resolving employeeId for employee role', error)
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+      }
+    }
+
     const { searchParams } = new URL(request.url)
     const month = searchParams.get('month')
     const year = searchParams.get('year')
@@ -12,21 +78,22 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Month and Year are required' }, { status: 400 })
     }
 
-    // Filter by role/category if needed
-    // Assuming 'Penjualan' -> STAFF/LEADER/MANAGER role mapping or specific logic?
-    // For now, let's just fetch all and filter by employee role if necessary, or just fetch all for the period.
-    // The user categorized UI by Penjualan/Teknisi/Management.
-    // Let's assume Penjualan includes all roles for now, or refine later.
-    // Based on previous code: Penjualan seems to use 'mkt', 'lead', 'mgr'.
-    
-    // Let's just fetch based on month/year first.
+    // Build where clause
+    const whereClause: any = {
+      month: parseInt(month),
+      year: parseInt(year),
+    }
+
+    // If user is KARYAWAN or EMPLOYEE, only show their own salary slips
+    if (isEmployeeRole) {
+      whereClause.employeeId = userEmployeeId
+      whereClause.releaseDate = {
+        lte: new Date(),
+      }
+    }
+
     const slips = await prisma.salarySlip.findMany({
-      where: {
-        month: parseInt(month),
-        year: parseInt(year),
-        // Add category filtering logic here if we have a way to distinguish
-        // For now, returning all for the month/year is safer to ensure data appears.
-      },
+      where: whereClause,
       include: {
         employee: {
           select: {
@@ -44,6 +111,55 @@ export async function GET(request: Request) {
     return NextResponse.json(slips)
   } catch (error) {
     console.error('Error fetching salary slips:', error)
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const cookieStore = await cookies()
+    const authCookie = cookieStore.get('perkasa-finance-auth')
+
+    let userRole: string | null = null
+
+    if (authCookie) {
+      try {
+        const session = JSON.parse(authCookie.value)
+        userRole = session.role ?? null
+      } catch (error) {
+        console.error('Invalid auth cookie in salary-slip PATCH', error)
+      }
+    }
+
+    if (!userRole) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const isEmployeeRole = userRole === 'KARYAWAN' || userRole === 'EMPLOYEE'
+
+    if (isEmployeeRole) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const body = await request.json()
+    const { id, releaseDate } = body as { id?: string; releaseDate?: string }
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID is required' }, { status: 400 })
+    }
+
+    const effectiveReleaseDate = releaseDate ? new Date(releaseDate) : new Date()
+
+    const updated = await prisma.salarySlip.update({
+      where: { id },
+      data: {
+        releaseDate: effectiveReleaseDate,
+      },
+    })
+
+    return NextResponse.json(updated)
+  } catch (error) {
+    console.error('Error updating salary slip release status:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }

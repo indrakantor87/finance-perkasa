@@ -96,6 +96,7 @@ model SalarySlip {
   netSalary        Float @default(0) // TOTAL DITERIMA
 
   createdAt DateTime @default(now())
+  releaseDate DateTime?
   
   @@unique([month, year, employeeId])
 }

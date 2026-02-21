@@ -9,7 +9,8 @@
     "lint": "eslint",
     "clean": "node scripts/clean.js",
     "db:generate": "prisma generate",
-    "db:migrate:deploy": "prisma migrate deploy"
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:push": "prisma db push"
   },
   "prisma": {
     "seed": "node prisma/seed.js"

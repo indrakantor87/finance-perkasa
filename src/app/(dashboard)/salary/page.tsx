@@ -17,6 +17,7 @@ interface SlipHistoryItem extends SalarySlipData {
   month: number
   year: number
   createdAt: string
+  releaseDate?: string | null
   employee: {
     name: string
     role: string
@@ -80,10 +81,10 @@ export default function SalaryPage() {
     return role
   }
 
-  // Filter slips based on active category
+  // Filter slips based on active category and role
   const filteredSlips = slips.filter(slip => {
-    const matchCategory = slip.employee.department === activeCategory
     const matchEmployee = isEmployeeRole && currentEmployeeId ? slip.employeeId === currentEmployeeId : true
+    const matchCategory = isEmployeeRole ? true : slip.employee.department === activeCategory
     return matchCategory && matchEmployee
   })
 
@@ -126,6 +127,28 @@ export default function SalaryPage() {
         return [...prev, id]
       }
     })
+  }
+
+  const handleReleaseSlip = async (id: string) => {
+    try {
+      const res = await fetch('/api/salary-slip', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        const message = data?.error || 'Gagal merilis slip gaji'
+        alert(message)
+        return
+      }
+
+      await fetchSlips()
+    } catch (error) {
+      console.error('Failed to release slip', error)
+      alert('Gagal merilis slip gaji')
+    }
   }
 
   const handleExportExcel = async () => {
@@ -804,6 +827,7 @@ export default function SalaryPage() {
                   <th className="px-6 py-3">Tanggal</th>
                   <th className="px-6 py-3">Karyawan</th>
                   <th className="px-6 py-3">Jabatan</th>
+                  {!isEmployeeRole && <th className="px-6 py-3">Status</th>}
                   <th className="px-6 py-3">Total Terima</th>
                   <th className="px-6 py-3 text-right">Aksi</th>
                 </tr>
@@ -833,8 +857,15 @@ export default function SalaryPage() {
                       <td className="px-6 py-3 text-gray-900 dark:text-zinc-100 font-medium">
                         {new Date(slip.createdAt).toLocaleDateString('id-ID')}
                       </td>
-                      <td className="px-6 py-3 font-medium text-gray-900 dark:text-zinc-100">{slip.employee.name}</td>
+                    <td className="px-6 py-3 font-medium text-gray-900 dark:text-zinc-100">{slip.employee.name}</td>
                       <td className="px-6 py-3 text-gray-500 dark:text-gray-400">{getRoleLabel(slip.employee.role)}</td>
+                      {!isEmployeeRole && (
+                        <td className="px-6 py-3 text-gray-500 dark:text-gray-400">
+                          {slip.releaseDate
+                            ? new Date(slip.releaseDate).toLocaleDateString('id-ID')
+                            : 'Belum dirilis'}
+                        </td>
+                      )}
                       <td 
                         className="px-6 py-3 font-medium text-green-600 dark:text-green-400 cursor-pointer hover:text-green-800 dark:hover:text-green-300 hover:underline"
                         onClick={() => handlePreview(slip)}
@@ -846,6 +877,14 @@ export default function SalaryPage() {
                         <div className="flex items-center justify-end gap-2">
                           {!isEmployeeRole && (
                             <>
+                              {!slip.releaseDate && (
+                                <button
+                                  onClick={() => handleReleaseSlip(slip.id)}
+                                  className="px-3 py-1 text-xs font-semibold rounded-full bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+                                >
+                                  Rilis
+                                </button>
+                              )}
                               <button 
                                 onClick={() => handleEdit(slip)}
                                 className="p-2 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-full transition-colors"

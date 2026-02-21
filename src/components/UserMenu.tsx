@@ -216,14 +216,16 @@ export default function UserMenu() {
             
             <button 
               className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg flex items-center gap-3 transition-colors"
-              onClick={() => {
+              onClick={async () => {
                 setIsOpen(false)
                 try {
-                  localStorage.removeItem("perkasa-finance-auth")
-                  sessionStorage.removeItem("perkasa-finance-auth")
-                  document.cookie = "perkasa-finance-auth=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;"
+                  await fetch('/api/auth/logout', { method: 'POST' })
                 } catch (e) {}
-                window.location.href = "/"
+                try {
+                  localStorage.removeItem('perkasa-finance-auth')
+                  sessionStorage.removeItem('perkasa-finance-auth')
+                } catch (e) {}
+                router.push('/')
               }}
             >
               <LogOut size={18} />

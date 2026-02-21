@@ -9,6 +9,7 @@ export function middleware(request: NextRequest) {
   const publicRoutes = [
     '/',
     '/api/auth/login',
+    '/api/auth/logout',
   ]
 
   if (publicRoutes.includes(pathname)) {
