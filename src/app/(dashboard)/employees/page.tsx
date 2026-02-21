@@ -349,6 +349,7 @@ export default function EmployeesPage() {
                   <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Nama Lengkap</th>
                   <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Jabatan</th>
                   <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Tanggal Bergabung</th>
+                  <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Nomor WA</th>
                   <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Identitas</th>
                   <th className="px-6 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider text-right">Aksi</th>
@@ -357,11 +358,11 @@ export default function EmployeesPage() {
               <tbody className="divide-y divide-gray-100 dark:divide-neutral-800 text-sm">
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500 dark:text-slate-400">Memuat data...</td>
+                    <td colSpan={7} className="px-6 py-8 text-center text-gray-500 dark:text-slate-400">Memuat data...</td>
                   </tr>
                 ) : filteredEmployees.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500 dark:text-slate-400">Tidak ada data pegawai.</td>
+                    <td colSpan={7} className="px-6 py-8 text-center text-gray-500 dark:text-slate-400">Tidak ada data pegawai.</td>
                   </tr>
                 ) : (
                   filteredEmployees.map((emp) => (
@@ -374,6 +375,16 @@ export default function EmployeesPage() {
                       </td>
                       <td className="px-6 py-3 text-gray-500 dark:text-slate-400">
                         {new Date(emp.joinDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </td>
+                      <td className="px-6 py-3 text-gray-500 dark:text-slate-400">
+                        {emp.whatsapp ? (
+                          <span className="inline-flex items-center gap-2">
+                            <MessageCircle size={14} className="text-green-500" />
+                            <span>{emp.whatsapp}</span>
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 dark:text-slate-600 text-xs italic">-</span>
+                        )}
                       </td>
                       <td className="px-6 py-3">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium border ${
@@ -508,6 +519,17 @@ export default function EmployeesPage() {
                   value={formData.joinDate}
                   onChange={e => setFormData({...formData, joinDate: e.target.value})}
                   className="w-full p-2 border border-gray-300 dark:border-neutral-700 rounded bg-white dark:bg-neutral-950 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-purple-500 focus:outline-none font-medium transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-slate-300">Nomor WhatsApp</label>
+                <input
+                  type="tel"
+                  value={formData.whatsapp}
+                  onChange={e => setFormData({ ...formData, whatsapp: e.target.value })}
+                  className="w-full p-2 border border-gray-300 dark:border-neutral-700 rounded bg-white dark:bg-neutral-950 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none font-medium transition-colors"
+                  placeholder="Contoh: 62812xxxxxxx"
                 />
               </div>
 
