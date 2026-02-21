@@ -1,8 +1,10 @@
 import React from 'react';
+import dynamic from 'next/dynamic';
 import Header from '@/components/layout/Header';
 import Navigation from '@/components/layout/Navigation';
-import AIAssistant from '@/components/AIAssistant';
 import ClientRoleGuard from '@/components/layout/ClientRoleGuard';
+
+const AIAssistant = dynamic(() => import('@/components/AIAssistant'));
 
 export default function DashboardLayout({
   children,

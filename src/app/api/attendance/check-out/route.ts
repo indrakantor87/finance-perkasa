@@ -33,42 +33,47 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Sudah melakukan check-out hari ini' }, { status: 400 })
     }
 
-    // Calculate overtime if applicable
     let overtimeHours = 0
     if (attendance.checkIn) {
-        const checkInDate = new Date(attendance.checkIn)
-        const checkOutDate = today // Now
-        
-        // WIB Conversion (UTC+7)
-        const WIB_OFFSET = 7 * 60 * 60 * 1000
-        const inDateWIB = new Date(checkInDate.getTime() + WIB_OFFSET)
-        const outDateWIB = new Date(checkOutDate.getTime() + WIB_OFFSET)
-        
-        const inHour = inDateWIB.getUTCHours()
-        const inMinute = inDateWIB.getUTCMinutes()
-        
-        const isLateCheckIn = inHour > 17 || (inHour === 17 && inMinute >= 0)
-        let overtimeMinutes = 0
+      const checkInDate = new Date(attendance.checkIn)
+      const checkOutDate = today
 
-        if (isLateCheckIn) {
-             // Late Shift: All duration is overtime
-             overtimeMinutes = Math.floor((checkOutDate.getTime() - checkInDate.getTime()) / 60000)
-        } else {
-             // Normal Shift: Only after 17:00 WIB
-             const standardExitWIB = new Date(inDateWIB)
-             standardExitWIB.setUTCHours(17, 0, 0, 0)
-             
-             if (outDateWIB.getTime() > standardExitWIB.getTime()) {
-                 // Ensure we don't count negative if checkIn > standardExit (covered by isLateCheckIn)
-                 overtimeMinutes = Math.floor((outDateWIB.getTime() - standardExitWIB.getTime()) / 60000)
-             }
+      const WIB_OFFSET = 7 * 60 * 60 * 1000
+      const inDateWIB = new Date(checkInDate.getTime() + WIB_OFFSET)
+      const outDateWIB = new Date(checkOutDate.getTime() + WIB_OFFSET)
+
+      const inHour = inDateWIB.getUTCHours()
+      const inMinute = inDateWIB.getUTCMinutes()
+
+      const isShift2 = inHour > 17 || (inHour === 17 && inMinute >= 0)
+      let overtimeMinutes = 0
+
+      if (isShift2) {
+        overtimeMinutes = Math.floor((checkOutDate.getTime() - checkInDate.getTime()) / 60000)
+      } else {
+        const standardExitWIB = new Date(inDateWIB)
+        standardExitWIB.setUTCHours(17, 0, 0, 0)
+
+        if (outDateWIB.getTime() > standardExitWIB.getTime()) {
+          overtimeMinutes = Math.floor((outDateWIB.getTime() - standardExitWIB.getTime()) / 60000)
+
+          const scheduledStartWIB = new Date(inDateWIB)
+          scheduledStartWIB.setUTCHours(8, 0, 0, 0)
+
+          let lateMinutes = 0
+          if (inDateWIB.getTime() > scheduledStartWIB.getTime()) {
+            lateMinutes = Math.floor((inDateWIB.getTime() - scheduledStartWIB.getTime()) / 60000)
+          }
+
+          overtimeMinutes = Math.max(0, overtimeMinutes - lateMinutes)
         }
-        
-        if (overtimeMinutes > 0) {
-            const h = Math.floor(overtimeMinutes / 60)
-            const m = Math.round(overtimeMinutes % 60)
-            overtimeHours = parseFloat(`${h}.${m.toString().padStart(2, '0')}`)
-        }
+      }
+
+      if (overtimeMinutes > 0) {
+        const h = Math.floor(overtimeMinutes / 60)
+        const m = Math.round(overtimeMinutes % 60)
+        overtimeHours = parseFloat(`${h}.${m.toString().padStart(2, '0')}`)
+      }
     }
 
     const updatedAttendance = await prisma.attendance.update({

@@ -52,26 +52,50 @@ export default function UserMenu() {
       setEmployeeProfile(null)
       return
     }
-    const employeeId = currentUser.employeeId
-    if (!employeeId) {
-      setEmployeeProfile(null)
-      return
-    }
 
     const controller = new AbortController()
-    fetch(`/api/employees/${employeeId}`, { signal: controller.signal })
-      .then(async res => {
-        if (!res.ok) return null
-        return await res.json()
-      })
-      .then(data => {
+
+    const loadById = async (employeeId: string) => {
+      try {
+        const res = await fetch(`/api/employees/${employeeId}`, { signal: controller.signal })
+        if (!res.ok) return
+        const data = await res.json()
         if (!isMountedRef.current) return
         setEmployeeProfile(data)
-      })
-      .catch(err => {
+      } catch (err: any) {
         if (err && err.name === 'AbortError') return
-        console.error('Failed to load employee profile', err)
-      })
+        console.error('Failed to load employee profile by id', err)
+      }
+    }
+
+    const loadByName = async (name: string) => {
+      try {
+        const res = await fetch('/api/employees', { signal: controller.signal })
+        if (!res.ok) return
+        const list: any[] = await res.json()
+        if (!Array.isArray(list) || !list.length) return
+
+        const lowerName = name.toLowerCase().trim()
+        let matched = list.find(e => typeof e.name === 'string' && e.name.toLowerCase().trim() === lowerName)
+        if (!matched) {
+          matched = list.find(e => typeof e.name === 'string' && e.name.toLowerCase().includes(lowerName))
+        }
+        if (matched && isMountedRef.current) {
+          setEmployeeProfile(matched)
+        }
+      } catch (err: any) {
+        if (err && err.name === 'AbortError') return
+        console.error('Failed to load employee profile by name', err)
+      }
+    }
+
+    if (currentUser.employeeId) {
+      loadById(currentUser.employeeId)
+    } else if (currentUser.name) {
+      loadByName(currentUser.name)
+    } else {
+      setEmployeeProfile(null)
+    }
 
     return () => {
       controller.abort()

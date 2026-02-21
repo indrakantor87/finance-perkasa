@@ -150,6 +150,8 @@ export default function DashboardClient({ stats }: { stats: DashboardStats | nul
     return formatCurrency(val)
   }
 
+  const totalPresentToday = stats.attendance.present + stats.attendance.late
+
   return (
     <div className="font-sans text-slate-800 dark:text-slate-100">
       <main className="p-6 max-w-[1600px] mx-auto space-y-6">
@@ -168,8 +170,8 @@ export default function DashboardClient({ stats }: { stats: DashboardStats | nul
           
           <StatWidget 
             title="Kehadiran Hari Ini" 
-            value={stats.attendance.present.toString()} 
-            subtext={`dari ${stats.employees.total} karyawan (${Math.round((stats.attendance.present/stats.employees.total || 1)*100)}%)`}
+            value={totalPresentToday.toString()} 
+            subtext={`dari ${stats.employees.total} karyawan (${Math.round(((totalPresentToday / (stats.employees.total || 1)) || 0)*100)}%)`}
             icon={<UserCheck className="w-5 h-5 text-white" />}
             trend="neutral"
             color="bg-emerald-500"
@@ -211,7 +213,7 @@ export default function DashboardClient({ stats }: { stats: DashboardStats | nul
              </div>
              
              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-               <StatusBadge label="Hadir" value={stats.attendance.present} color="green" icon={<UserCheck size={18} />} />
+               <StatusBadge label="Hadir" value={totalPresentToday} color="green" icon={<UserCheck size={18} />} />
                <StatusBadge label="Belum Absen" value={stats.attendance.notPresent} color="rose" icon={<LogOut size={18} />} />
                <StatusBadge label="Terlambat" value={stats.attendance.late} color="orange" icon={<Clock size={18} />} />
                <StatusBadge label="Izin/Sakit" value={stats.attendance.permit + stats.attendance.sick} color="yellow" icon={<FileText size={18} />} />

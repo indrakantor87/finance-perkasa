@@ -8,7 +8,6 @@ import {
   LayoutDashboard, Database, UserCheck, Banknote, 
   CreditCard, FileCheck, Bell, Edit, Printer, X, Save, Trash2, FileSpreadsheet
 } from 'lucide-react';
-import ExcelJS from 'exceljs';
 
 
 interface SlipHistoryItem extends SalarySlipData {

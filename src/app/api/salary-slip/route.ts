@@ -121,11 +121,15 @@ export async function PATCH(request: Request) {
     const authCookie = cookieStore.get('perkasa-finance-auth')
 
     let userRole: string | null = null
+    let userId: string | null = null
+    let userEmail: string | null = null
 
     if (authCookie) {
       try {
         const session = JSON.parse(authCookie.value)
         userRole = session.role ?? null
+        userId = session.id ?? null
+        userEmail = session.email ?? null
       } catch (error) {
         console.error('Invalid auth cookie in salary-slip PATCH', error)
       }
@@ -153,8 +157,9 @@ export async function PATCH(request: Request) {
     const updated = await prisma.salarySlip.update({
       where: { id },
       data: {
+        // Cast ke any supaya tidak tergantung tipe Prisma Client lama di environment ini
         releaseDate: effectiveReleaseDate,
-      },
+      } as any,
     })
 
     return NextResponse.json(updated)
@@ -167,6 +172,17 @@ export async function PATCH(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
+    const cookieStore = await cookies()
+    const authCookie = cookieStore.get('perkasa-finance-auth')
+
+    let session: { id?: string; email?: string; role?: string } | null = null
+    if (authCookie) {
+      try {
+        session = JSON.parse(authCookie.value)
+      } catch (e) {
+        session = null
+      }
+    }
     const id = searchParams.get('id')
 
     if (!id) {

@@ -1,7 +1,6 @@
 'use client'
  
 import React, { useState, useEffect } from 'react'
-import * as XLSX from 'xlsx'
 import { 
   Users, Calendar, Clock, FileText, Settings, LogOut, 
   LayoutDashboard, Database, UserCheck, Banknote, 
@@ -15,6 +14,7 @@ interface Attendance {
   checkOut: string | null
   status: string
   overtimeHours: number
+  lockedByAdmin?: boolean
   employeeId: string
   employee: {
     name: string
@@ -166,7 +166,7 @@ export default function AttendancePage() {
     }
   }
 
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     // If specific employees are selected, export only their data. Otherwise, export filteredAttendances.
     const sourceData = selectedExportIds.length > 0
       ? filteredAttendances.filter(att => selectedExportIds.includes(att.employeeId))
@@ -200,6 +200,9 @@ export default function AttendancePage() {
       'Lembur (Jam)': att.overtimeHours
     }))
 
+    const XLSXModule = await import('xlsx')
+    const XLSX = (XLSXModule as any).default || XLSXModule
+
     const ws = XLSX.utils.json_to_sheet(dataToExport)
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, "Absensi")
@@ -232,9 +235,12 @@ export default function AttendancePage() {
     }
   }
 
-  const parseFile = (file: File) => {
+  const parseFile = async (file: File) => {
     const fileBaseName = (file.name || '').replace(/\.[^/.]+$/, '')
-    const parseWorkbook = (workbook: XLSX.WorkBook) => {
+    const XLSXModule = await import('xlsx')
+    const XLSX = (XLSXModule as any).default || XLSXModule
+
+    const parseWorkbook = (workbook: any) => {
       const sheetName = workbook.SheetNames[0]
       if (!sheetName) return false
       const sheet = workbook.Sheets[sheetName]
@@ -599,10 +605,10 @@ export default function AttendancePage() {
     if (!inISO || !outISO) return 0
     const inDate = new Date(inISO)
     let outDate = new Date(outISO)
-    
+
     const inHour = inDate.getHours()
     const inMinute = inDate.getMinutes()
-    
+
     if (outDate.getTime() <= inDate.getTime() && (inHour > 17 || (inHour === 17 && inMinute >= 0))) {
       outDate = new Date(outDate.getTime() + 24 * 60 * 60 * 1000)
     }
@@ -611,22 +617,32 @@ export default function AttendancePage() {
     if (durationMillis <= 0) return 0
 
     const totalMinutes = Math.floor(durationMillis / 60000)
-    const WORK_MINUTES = 9 * 60
-    
     if (totalMinutes <= 0) return 0
 
+    let overtimeMinutes = 0
+
     if (inHour > 17 || (inHour === 17 && inMinute >= 0)) {
-      const regularEnd = new Date(inDate.getTime() + WORK_MINUTES * 60000)
-      if (outDate.getTime() <= regularEnd.getTime()) return 0
-      const otMinutes = Math.floor((outDate.getTime() - regularEnd.getTime()) / 60000)
-      return toDotFormat(Math.min(otMinutes, totalMinutes))
+      overtimeMinutes = totalMinutes
+    } else {
+      const standardExit = new Date(inDate)
+      standardExit.setHours(17, 0, 0, 0)
+      if (outDate.getTime() > standardExit.getTime()) {
+        overtimeMinutes = Math.floor((outDate.getTime() - standardExit.getTime()) / 60000)
+
+        const scheduledStart = new Date(inDate)
+        scheduledStart.setHours(8, 0, 0, 0)
+
+        let lateMinutes = 0
+        if (inDate.getTime() > scheduledStart.getTime()) {
+          lateMinutes = Math.floor((inDate.getTime() - scheduledStart.getTime()) / 60000)
+        }
+
+        overtimeMinutes = Math.max(0, overtimeMinutes - lateMinutes)
+      }
     }
 
-    const standardExit = new Date(inDate)
-    standardExit.setHours(17, 0, 0, 0)
-    if (outDate.getTime() <= standardExit.getTime()) return 0
-    const otMinutes = Math.floor((outDate.getTime() - standardExit.getTime()) / 60000)
-    return toDotFormat(Math.min(otMinutes, totalMinutes))
+    if (overtimeMinutes <= 0) return 0
+    return toDotFormat(Math.min(overtimeMinutes, totalMinutes))
   }
 
   const calcExtra = (att: Attendance) => {
@@ -844,6 +860,8 @@ export default function AttendancePage() {
         setShowEditModal(false)
         return
       }
+
+      payloadItem.lockedByAdmin = true
 
       const payload = [payloadItem]
 
@@ -1082,15 +1100,22 @@ export default function AttendancePage() {
                           })}
                         </td>
                         <td className="px-6 py-3">
-                          <span className="text-green-600 dark:text-green-400 font-medium">
-                            {att.checkIn
-                              ? new Date(att.checkIn).toLocaleTimeString('id-ID', {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                  timeZone: 'Asia/Jakarta'
-                                })
-                              : '-'}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-green-600 dark:text-green-400 font-medium">
+                              {att.checkIn
+                                ? new Date(att.checkIn).toLocaleTimeString('id-ID', {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    timeZone: 'Asia/Jakarta'
+                                  })
+                                : '-'}
+                            </span>
+                            {att.status && ['LATE', 'TERLAMBAT'].includes(att.status.toUpperCase()) && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300">
+                                Terlambat
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-3">
                           <span className="text-green-600 dark:text-green-400 font-medium">
@@ -1104,20 +1129,57 @@ export default function AttendancePage() {
                           </span>
                         </td>
                         <td className="px-6 py-3">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            (!att.checkIn && !att.checkOut) ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                            (att.checkIn && att.checkOut) ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                            'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                          }`}>
-                            {(!att.checkIn && !att.checkOut) ? 'Alfa' : (att.checkIn && att.checkOut) ? 'Valid' : 'Invalid'}
-                          </span>
+                          <div className="flex flex-col gap-1">
+                            {(() => {
+                              const noTimes = !att.checkIn && !att.checkOut
+                              const hasBoth = !!att.checkIn && !!att.checkOut
+                              const isLateStatus = att.status && ['LATE', 'TERLAMBAT'].includes(att.status.toUpperCase())
+
+                              let label = 'Valid'
+                              let classes =
+                                'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+
+                              if (noTimes) {
+                                label = 'Alfa'
+                                classes =
+                                  'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                              } else if (isLateStatus) {
+                                label = 'Terlambat'
+                                classes =
+                                  'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300'
+                              } else if (hasBoth) {
+                                label = 'Hadir'
+                                classes =
+                                  'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                              } else {
+                                label = 'Invalid'
+                                classes =
+                                  'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                              }
+
+                              return (
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${classes}`}>
+                                  {label}
+                                </span>
+                              )
+                            })()}
+                            {att.lockedByAdmin && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                Dikunci Admin
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-3 text-sm text-red-600 dark:text-red-400 font-bold">
                           {(() => {
-                            const calculated = calcOvertimeHours(att.checkIn, att.checkOut)
-                            const stored = att.overtimeHours || 0
-                            const displayValue = Math.max(stored, calculated)
-                            return displayValue > 0 ? `${displayValue} Jam` : '-'
+                            const base = calcOvertimeHours(att.checkIn, att.checkOut)
+                            const extra = calcExtra(att)
+                            const totalMin = toMinutes(base) + toMinutes(extra)
+                            if (totalMin <= 0) return '-'
+                            const h = Math.floor(totalMin / 60)
+                            const m = Math.round(totalMin % 60)
+                            const displayValue = parseFloat(`${h}.${m.toString().padStart(2, '0')}`)
+                            return `${displayValue} Jam`
                           })()}
                         </td>
                       </tr>
@@ -1291,24 +1353,44 @@ export default function AttendancePage() {
                                               className="w-24 p-1.5 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-900 dark:text-zinc-100 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             />
                                           ) : (
-                                            <span className="text-gray-900 dark:text-zinc-100">{att.overtimeHours > calcOvertimeHours(att.checkIn, att.checkOut) ? (att.overtimeHours - calcOvertimeHours(att.checkIn, att.checkOut)).toFixed(2) : '-'}</span>
+                                            <span className="text-gray-900 dark:text-zinc-100">
+                                              {(() => {
+                                                const extraDot = calcExtra(att)
+                                                if (!extraDot || extraDot <= 0) return '-'
+                                                const totalMin = toMinutes(extraDot)
+                                                const h = Math.floor(totalMin / 60)
+                                                const m = Math.round(totalMin % 60)
+                                                return `${h}.${m.toString().padStart(2, '0')}`
+                                              })()}
+                                            </span>
                                           )}
                                         </td>
                                         <td className="px-4 py-2">
-                                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                            (!att.checkIn && !att.checkOut) ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                                            (att.checkIn && att.checkOut) ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                            'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                                          }`}>
-                                            {(!att.checkIn && !att.checkOut) ? 'Alfa' : (att.checkIn && att.checkOut) ? 'Valid' : 'Invalid'}
-                                          </span>
+                                          <div className="flex flex-col gap-1">
+                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                              (!att.checkIn && !att.checkOut) ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                                              (att.checkIn && att.checkOut) ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                              'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                            }`}>
+                                              {(!att.checkIn && !att.checkOut) ? 'Alfa' : (att.checkIn && att.checkOut) ? 'Valid' : 'Invalid'}
+                                            </span>
+                                            {att.lockedByAdmin && (
+                                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                                                Dikunci Admin
+                                              </span>
+                                            )}
+                                          </div>
                                         </td>
-                                        <td className="px-4 py-2 text-sm text-red-600 dark:text-red-400 font-bold">
+                                          <td className="px-4 py-2 text-sm text-red-600 dark:text-red-400 font-bold">
                                           {(() => {
-                                            const calculated = calcOvertimeHours(att.checkIn, att.checkOut)
-                                            const stored = att.overtimeHours || 0
-                                            const displayValue = Math.max(stored, calculated)
-                                            return displayValue > 0 ? `${displayValue} Jam` : '-'
+                                            const base = calcOvertimeHours(att.checkIn, att.checkOut)
+                                            const extra = calcExtra(att)
+                                            const totalMin = toMinutes(base) + toMinutes(extra)
+                                            if (totalMin <= 0) return '-'
+                                            const h = Math.floor(totalMin / 60)
+                                            const m = Math.round(totalMin % 60)
+                                            const displayValue = parseFloat(`${h}.${m.toString().padStart(2, '0')}`)
+                                            return `${displayValue} Jam`
                                           })()}
                                         </td>
                                         <td className="px-4 py-2 text-right">
@@ -1351,10 +1433,9 @@ export default function AttendancePage() {
                                       <td className="px-4 py-2 text-sm font-bold text-red-600">
                         {(() => {
                           const totalMin = group.attendances.reduce((acc, curr) => {
-                            const calculated = calcOvertimeHours(curr.checkIn, curr.checkOut)
-                            const stored = curr.overtimeHours || 0
-                            const actual = Math.max(stored, calculated)
-                            return acc + toMinutes(actual)
+                            const base = calcOvertimeHours(curr.checkIn, curr.checkOut)
+                            const extra = calcExtra(curr as any)
+                            return acc + toMinutes(base) + toMinutes(extra)
                           }, 0)
                           const h = Math.floor(totalMin / 60)
                           const m = Math.round(totalMin % 60)

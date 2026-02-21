@@ -1,5 +1,20 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { cookies } from 'next/headers'
+
+const computeStatusFromCheckIn = (checkIn: Date | null): 'PRESENT' | 'LATE' => {
+  if (!checkIn) return 'PRESENT'
+  const WIB_OFFSET = 7 * 60 * 60 * 1000
+  const wib = new Date(checkIn.getTime() + WIB_OFFSET)
+  const hour = wib.getUTCHours()
+  const minute = wib.getUTCMinutes()
+
+  const isShift2 = hour > 17 || (hour === 17 && minute >= 0)
+  const isLateMorning = !isShift2 && (hour > 8 || (hour === 8 && minute > 0))
+
+  if (isLateMorning) return 'LATE'
+  return 'PRESENT'
+}
 
 export async function GET(request: Request) {
   try {
@@ -69,6 +84,21 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
 
+    const cookieStore = await cookies()
+    const authCookie = cookieStore.get('perkasa-finance-auth')
+
+    let session: { id?: string; email?: string; role?: string } | null = null
+    if (authCookie) {
+      try {
+        session = JSON.parse(authCookie.value)
+      } catch (e) {
+        session = null
+      }
+    }
+
+    const ipHeader = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || ''
+    const ip = ipHeader.split(',')[0].trim() || null
+
     const toMinutes = (dotFormat: number) => {
       const h = Math.floor(dotFormat)
       const m = Math.round((dotFormat - h) * 100)
@@ -98,31 +128,35 @@ export async function POST(request: Request) {
       
       let overtimeMinutes = 0
 
-      // Case 1: Late Shift (CheckIn >= 17:00 WIB)
+      // Case 1: Late Shift (CheckIn >= 17:00 WIB) -> full duration as overtime
       if (inHour > 17 || (inHour === 17 && inMinute >= 0)) {
         overtimeMinutes = Math.floor(durationMillis / 60000)
       } 
       // Case 2: Normal Shift (CheckIn < 17:00 WIB)
       else {
-        // Standard Exit is 17:00 WIB on the SAME WIB DAY as CheckIn
         const standardExitWIB = new Date(inDateWIB)
         standardExitWIB.setUTCHours(17, 0, 0, 0)
-        
-        // If CheckOut is after Standard Exit
+
+        // Jika pulang sesudah jam 17:00, hitung lembur dasar
         if (outDateWIB.getTime() > standardExitWIB.getTime()) {
-           // Check if CheckIn was also after Standard Exit (should be covered by Case 1, but for safety)
-           if (inDateWIB.getTime() > standardExitWIB.getTime()) {
-              overtimeMinutes = Math.floor(durationMillis / 60000)
-           } else {
-              overtimeMinutes = Math.floor((outDateWIB.getTime() - standardExitWIB.getTime()) / 60000)
-           }
+          overtimeMinutes = Math.floor((outDateWIB.getTime() - standardExitWIB.getTime()) / 60000)
+
+          // Hitung menit terlambat (setelah 08:00)
+          const scheduledStartWIB = new Date(inDateWIB)
+          scheduledStartWIB.setUTCHours(8, 0, 0, 0)
+
+          let lateMinutes = 0
+          if (inDateWIB.getTime() > scheduledStartWIB.getTime()) {
+            lateMinutes = Math.floor((inDateWIB.getTime() - scheduledStartWIB.getTime()) / 60000)
+          }
+
+          overtimeMinutes = Math.max(0, overtimeMinutes - lateMinutes)
         }
       }
 
-      // SAFETY CHECK: Overtime cannot exceed Total Duration
-      const totalDurationMinutes = Math.floor(durationMillis / 60000);
+      const totalDurationMinutes = Math.floor(durationMillis / 60000)
       if (overtimeMinutes > totalDurationMinutes) {
-          overtimeMinutes = totalDurationMinutes;
+        overtimeMinutes = totalDurationMinutes
       }
 
       if (overtimeMinutes <= 0) return 0
@@ -167,6 +201,7 @@ export async function POST(request: Request) {
         const hasCheckIn = 'checkIn' in item
         const hasCheckOut = 'checkOut' in item
         const hasExtra = 'overtimeHours' in item
+        const hasLockFlag = 'lockedByAdmin' in item
         let checkIn = hasCheckIn ? (item.checkIn ? new Date(item.checkIn) : null) : undefined
         let checkOut = hasCheckOut ? (item.checkOut ? new Date(item.checkOut) : null) : undefined
         if (checkIn instanceof Date && isNaN(checkIn.getTime())) {
@@ -198,6 +233,12 @@ export async function POST(request: Request) {
         }
 
         if (existing) {
+          const wantsLock = hasLockFlag && item.lockedByAdmin === true
+          if (existing.lockedByAdmin && !wantsLock) {
+            results.push(existing)
+            continue
+          }
+
           // Calculate new overtime carefully
           const finalCheckIn = hasCheckIn ? (checkIn ?? null) : existing.checkIn
           const finalCheckOut = hasCheckOut ? (checkOut ?? null) : existing.checkOut
@@ -229,40 +270,47 @@ export async function POST(request: Request) {
           const finalExtraMin = toMinutes(finalExtra)
           const newOT = toDotFormat(computedOTMin + finalExtraMin)
 
-          // Update
           const updated = await prisma.attendance.update({
             where: { id: existing.id },
             data: {
               checkIn: hasCheckIn ? (checkIn ?? null) : existing.checkIn,
               checkOut: hasCheckOut ? (checkOut ?? null) : existing.checkOut,
               status: item.status || existing.status,
-              overtimeHours: newOT
+              overtimeHours: newOT,
+              lockedByAdmin: wantsLock ? true : existing.lockedByAdmin
             }
           })
+
           results.push(updated)
         } else {
           computedOT = calcOvertimeHours(checkIn ?? null, checkOut ?? null)
           const computedOTMin = toMinutes(computedOT)
           const extraMin = toMinutes(extra)
           const newOT = toDotFormat(computedOTMin + extraMin)
-          // Create
+          const statusValue =
+            item.status && typeof item.status === 'string'
+              ? item.status
+              : computeStatusFromCheckIn(checkIn ?? null)
+
           const created = await prisma.attendance.create({
             data: {
               date: startOfDay!,
               employeeId: item.employeeId,
               checkIn: checkIn ?? null,
               checkOut: checkOut ?? null,
-              status: item.status || 'PRESENT',
-              overtimeHours: newOT
+              status: statusValue,
+              overtimeHours: newOT,
+              lockedByAdmin: hasLockFlag && item.lockedByAdmin === true ? true : false
             }
           })
+
           results.push(created)
         }
       }
       return NextResponse.json({ message: 'Bulk import successful', count: results.length })
     } else {
       // Single create
-      const { employeeId, date, checkIn, checkOut, status, overtimeHours } = body
+      const { employeeId, date, checkIn, checkOut, status, overtimeHours, lockedByAdmin } = body
       const inDate = checkIn ? new Date(checkIn) : null
       const outDate = checkOut ? new Date(checkOut) : null
       
@@ -287,30 +335,43 @@ export async function POST(request: Request) {
         }
       })
 
+      const statusValue =
+        status && typeof status === 'string'
+          ? status
+          : computeStatusFromCheckIn(inDate)
+
       if (existing) {
-        // Update existing
+        const wantsLock = lockedByAdmin === true
+        if (existing.lockedByAdmin && !wantsLock) {
+          return NextResponse.json(existing)
+        }
+
         const attendance = await prisma.attendance.update({
-            where: { id: existing.id },
-            data: {
-                checkIn: inDate || existing.checkIn,
-                checkOut: outDate || existing.checkOut,
-                status: status || existing.status,
-                overtimeHours: newOT // Overwrite OT with new calculation + extra
-            }
+          where: { id: existing.id },
+          data: {
+            checkIn: inDate || existing.checkIn,
+            checkOut: outDate || existing.checkOut,
+            status: status || existing.status || statusValue,
+            overtimeHours: newOT,
+            lockedByAdmin: wantsLock ? true : existing.lockedByAdmin
+          }
         })
+
         return NextResponse.json(attendance)
       } else {
         // Create new
         const attendance = await prisma.attendance.create({
-            data: {
+          data: {
             employeeId,
-            date: startOfDay, // Ensure UTC Midnight
+            date: startOfDay,
             checkIn: inDate,
             checkOut: outDate,
-            status: status || 'PRESENT',
-            overtimeHours: newOT
-            }
+            status: statusValue,
+            overtimeHours: newOT,
+            lockedByAdmin: lockedByAdmin === true ? true : false
+          }
         })
+
         return NextResponse.json(attendance)
       }
     }
@@ -324,6 +385,20 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
+    const cookieStore = await cookies()
+    const authCookie = cookieStore.get('perkasa-finance-auth')
+
+    let session: { id?: string; email?: string; role?: string } | null = null
+    if (authCookie) {
+      try {
+        session = JSON.parse(authCookie.value)
+      } catch (e) {
+        session = null
+      }
+    }
+
+    const ipHeader = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || ''
+    const ip = ipHeader.split(',')[0].trim() || null
     const employeeId = searchParams.get('employeeId')
     const startDateParam = searchParams.get('startDate')
     const endDateParam = searchParams.get('endDate')

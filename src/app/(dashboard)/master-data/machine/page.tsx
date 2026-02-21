@@ -5,7 +5,6 @@ import {
   Users, RefreshCw, Plus, Trash2, Search, 
   AlertCircle, CheckCircle2, X, Pencil, Download, FileSpreadsheet, Settings 
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
 
 type MachineUser = {
   uid: number;
@@ -403,6 +402,9 @@ export default function MachineManagementPage() {
       if (selectedUids.length > 0) {
         
         // Process sequentially to stagger downloads
+        const XLSXModule = await import('xlsx');
+        const XLSX = (XLSXModule as any).default || XLSXModule;
+
         targetUsers.forEach((user, index) => {
           // Filter logs for this user (handle both user_id formats)
           const rawUserLogs = logs.filter((l: any) => {
@@ -466,6 +468,9 @@ export default function MachineManagementPage() {
 
         // Sort all by time
         allProcessedLogs.sort((a: any, b: any) => a._recordTime.getTime() - b._recordTime.getTime());
+
+        const XLSXModule = await import('xlsx');
+        const XLSX = (XLSXModule as any).default || XLSXModule;
 
         const dataToExport = allProcessedLogs.map((l: any) => ({
             'AC-No.': l._userId,

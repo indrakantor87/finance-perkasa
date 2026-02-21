@@ -64,15 +64,53 @@ export async function getDashboardStats() {
   try {
     const attendanceToday = await prisma.attendance.findMany({
       where: { date: { gte: startOfToday, lt: endOfToday } },
-      select: { status: true }
+      select: { status: true, checkIn: true }
     })
 
+    const classify = (record: { status: string; checkIn: Date | null }) => {
+      const rawStatus = (record.status || '').toUpperCase()
+
+      if (['SICK', 'SAKIT'].includes(rawStatus)) return 'SICK'
+      if (['PERMIT', 'IZIN'].includes(rawStatus)) return 'PERMIT'
+      if (rawStatus === 'ALPHA') return 'ALPHA'
+
+      const checkIn = record.checkIn
+      if (checkIn) {
+        const WIB_OFFSET = 7 * 60 * 60 * 1000
+        const wib = new Date(checkIn.getTime() + WIB_OFFSET)
+        const hour = wib.getUTCHours()
+        const minute = wib.getUTCMinutes()
+
+        const isShift2 = hour > 17 || (hour === 17 && minute >= 0)
+        const isLateMorning = !isShift2 && (hour > 8 || (hour === 8 && minute > 0))
+
+        if (isLateMorning) return 'LATE'
+      }
+
+      return 'PRESENT'
+    }
+
+    let presentCount = 0
+    let lateCount = 0
+    let sickCount = 0
+    let permitCount = 0
+    let alphaCount = 0
+
+    for (const rec of attendanceToday) {
+      const c = classify(rec as any)
+      if (c === 'LATE') lateCount++
+      else if (c === 'SICK') sickCount++
+      else if (c === 'PERMIT') permitCount++
+      else if (c === 'ALPHA') alphaCount++
+      else presentCount++
+    }
+
     const attendanceStats = {
-      present: attendanceToday.filter(a => ['PRESENT', 'HADIR'].includes(a.status)).length,
-      late: attendanceToday.filter(a => ['LATE', 'TERLAMBAT'].includes(a.status)).length,
-      sick: attendanceToday.filter(a => ['SICK', 'SAKIT'].includes(a.status)).length,
-      permit: attendanceToday.filter(a => ['PERMIT', 'IZIN'].includes(a.status)).length,
-      alpha: attendanceToday.filter(a => a.status === 'ALPHA').length,
+      present: presentCount,
+      late: lateCount,
+      sick: sickCount,
+      permit: permitCount,
+      alpha: alphaCount,
       total: attendanceToday.length
     }
 

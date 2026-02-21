@@ -39,6 +39,7 @@ model Attendance {
   employeeId String
   employee  Employee @relation(fields: [employeeId], references: [id])
   overtimeHours Float @default(0) // Jam lembur harian
+  lockedByAdmin Boolean @default(false)
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

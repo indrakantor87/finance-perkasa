@@ -3,10 +3,34 @@ import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 
+type RateLimitEntry = {
+  count: number
+  firstAttemptAt: number
+}
+
+const loginRateLimitStore = new Map<string, RateLimitEntry>()
+
+const WINDOW_MINUTES = 5
+const MAX_ATTEMPTS = 5
+const WINDOW_MS = WINDOW_MINUTES * 60 * 1000
+
 export async function POST(request: Request) {
   try {
     const body = await request.json()
     const { email, password } = body
+
+    const ipHeader = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || ''
+    const ip = ipHeader.split(',')[0].trim() || 'unknown'
+
+    const now = Date.now()
+    const current = loginRateLimitStore.get(ip)
+
+    if (current && now - current.firstAttemptAt < WINDOW_MS && current.count >= MAX_ATTEMPTS) {
+      return NextResponse.json(
+        { error: 'Terlalu banyak percobaan login. Coba lagi beberapa menit lagi.' },
+        { status: 429 }
+      )
+    }
 
     if (!email || !password) {
       return NextResponse.json({ error: 'Email dan kata sandi wajib diisi' }, { status: 400 })
@@ -27,12 +51,24 @@ export async function POST(request: Request) {
     })
 
     if (!user) {
+      const existing = loginRateLimitStore.get(ip)
+      if (!existing || now - existing.firstAttemptAt >= WINDOW_MS) {
+        loginRateLimitStore.set(ip, { count: 1, firstAttemptAt: now })
+      } else {
+        loginRateLimitStore.set(ip, { count: existing.count + 1, firstAttemptAt: existing.firstAttemptAt })
+      }
       return NextResponse.json({ error: 'Email atau kata sandi salah' }, { status: 401 })
     }
 
     const isValid = await bcrypt.compare(password, user.password)
 
     if (!isValid) {
+      const existing = loginRateLimitStore.get(ip)
+      if (!existing || now - existing.firstAttemptAt >= WINDOW_MS) {
+        loginRateLimitStore.set(ip, { count: 1, firstAttemptAt: now })
+      } else {
+        loginRateLimitStore.set(ip, { count: existing.count + 1, firstAttemptAt: existing.firstAttemptAt })
+      }
       return NextResponse.json({ error: 'Email atau kata sandi salah' }, { status: 401 })
     }
 
@@ -63,6 +99,8 @@ export async function POST(request: Request) {
       sameSite: 'lax',
       path: '/'
     })
+
+    loginRateLimitStore.delete(ip)
 
     return response
   } catch (error) {
