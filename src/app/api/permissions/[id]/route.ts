@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { createNotification } from '@/lib/notification-service'
 
 export async function PATCH(request: Request, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -13,9 +14,14 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
 
     const updatedRequest = await prisma.leaveRequest.update({
       where: { id: params.id },
-      data: { status }
+      data: { status },
+      include: {
+        employee: {
+          select: { name: true }
+        }
+      }
     })
-    
+
     // AUTO-UPDATE ATTENDANCE LOGIC
     if (status === 'APPROVED') {
       const { startDate, endDate, employeeId, type } = updatedRequest
@@ -67,7 +73,26 @@ export async function PATCH(request: Request, props: { params: Promise<{ id: str
         }
       }
     }
-    
+
+    const employeeName = updatedRequest.employee?.name || 'Karyawan'
+    const typeLabel = updatedRequest.type === 'SICK' ? 'Sakit' : updatedRequest.type
+
+    if (status === 'APPROVED') {
+      await createNotification(
+        'Perizinan Disetujui',
+        `Pengajuan perizinan (${typeLabel}) untuk ${employeeName} telah disetujui.`,
+        'success',
+        'leave'
+      )
+    } else if (status === 'REJECTED') {
+      await createNotification(
+        'Perizinan Ditolak',
+        `Pengajuan perizinan (${typeLabel}) untuk ${employeeName} telah ditolak.`,
+        'warning',
+        'leave'
+      )
+    }
+
     return NextResponse.json(updatedRequest)
   } catch (error) {
     console.error('Update permission error:', error)

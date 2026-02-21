@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { createNotification } from '@/lib/notification-service'
 
 export async function GET(request: Request) {
   try {
@@ -49,7 +50,21 @@ export async function POST(request: Request) {
         attachment
       }
     })
-    
+
+    const employee = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      select: { name: true }
+    })
+
+    const employeeName = employee?.name || 'Karyawan'
+
+    await createNotification(
+      'Pengajuan Perizinan Dikirim',
+      `Pengajuan perizinan untuk ${employeeName} periode ${startDate} s/d ${endDate} telah dikirim dan menunggu persetujuan.`,
+      'info',
+      'leave'
+    )
+
     return NextResponse.json(newRequest)
   } catch (error) {
     console.error('Create permission error:', error)

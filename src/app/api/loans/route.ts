@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import prisma from '@/lib/prisma'
+import { createNotification } from '@/lib/notification-service'
 
 export async function GET(request: Request) {
   try {
@@ -100,7 +101,7 @@ export async function POST(request: Request) {
 
     const employee = await prisma.employee.findUnique({
       where: { id: targetEmployeeId },
-      select: { role: true }
+      select: { role: true, name: true }
     })
 
     if (!employee) {
@@ -172,6 +173,22 @@ export async function POST(request: Request) {
         employeeId: targetEmployeeId
       }
     })
+
+    const employeeName = employee.name || 'Karyawan'
+    const formatter = new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0
+    })
+    const amountLabel = formatter.format(amountNumber)
+    const jenisLabel = normalizedType === 'KASBON' ? 'kasbon' : 'pinjaman'
+
+    await createNotification(
+      'Pengajuan Pinjaman/Kasbon Di-ACC',
+      `Pengajuan ${jenisLabel} untuk ${employeeName} sebesar ${amountLabel} telah disetujui dan tercatat di sistem.`,
+      'success',
+      'loan'
+    )
 
     return NextResponse.json(loan)
   } catch (error) {

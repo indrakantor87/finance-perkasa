@@ -4,7 +4,14 @@ export async function createNotification(
   title: string,
   message: string,
   type: 'info' | 'success' | 'warning' | 'error' = 'info',
-  category: 'system' | 'data_input' | 'import' | 'employee' | 'salary' = 'system'
+  category:
+    | 'system'
+    | 'data_input'
+    | 'import'
+    | 'employee'
+    | 'salary'
+    | 'loan'
+    | 'leave' = 'system'
 ) {
   try {
     await prisma.notification.create({
