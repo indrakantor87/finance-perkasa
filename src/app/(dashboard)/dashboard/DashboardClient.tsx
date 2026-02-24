@@ -40,9 +40,19 @@ interface DashboardStats {
   }
 }
 
+interface RecentNotification {
+  id: string
+  title: string
+  message: string
+  type: string
+  createdAt: string
+}
+
 export default function DashboardClient({ stats }: { stats: DashboardStats | null }) {
   const [mounted, setMounted] = useState(false);
   const [role, setRole] = useState<string | null>(null)
+  const [recentNotifications, setRecentNotifications] = useState<RecentNotification[]>([])
+  const [notificationsLoading, setNotificationsLoading] = useState(false)
 
   useEffect(() => {
     setMounted(true);
@@ -56,6 +66,45 @@ export default function DashboardClient({ stats }: { stats: DashboardStats | nul
       console.error(e)
     }
   }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    let aborted = false
+    const controller = new AbortController()
+
+    const fetchNotifications = async () => {
+      try {
+        setNotificationsLoading(true)
+        const res = await fetch('/api/notifications', { signal: controller.signal })
+        if (!res.ok) return
+        const data: any[] = await res.json()
+        if (aborted) return
+        setRecentNotifications(
+          (data || []).slice(0, 5).map(n => ({
+            id: n.id,
+            title: n.title || 'Notifikasi',
+            message: n.message || '',
+            type: n.type || 'info',
+            createdAt: n.createdAt
+          }))
+        )
+      } catch (err: any) {
+        if (err.name === 'AbortError') return
+        console.error('Failed to fetch dashboard notifications', err)
+      } finally {
+        if (!aborted) {
+          setNotificationsLoading(false)
+        }
+      }
+    }
+
+    fetchNotifications()
+
+    return () => {
+      aborted = true
+      controller.abort()
+    }
+  }, [mounted]);
 
   // Fallback if stats failed to load
   if (!stats) {
@@ -371,6 +420,49 @@ export default function DashboardClient({ stats }: { stats: DashboardStats | nul
                   <Link href="/master-data" className="text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 flex items-center gap-1">
                     Cek Master Data <ArrowUpRight size={12} />
                   </Link>
+                </div>
+
+                {/* Recent Activity / Notifications */}
+                <div className="bg-white dark:bg-neutral-900 rounded-xl p-4 border border-gray-200 dark:border-neutral-700">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1">
+                      <Bell className="w-4 h-4 text-amber-500" />
+                      Aktivitas Terbaru
+                    </span>
+                    <Link
+                      href="/notifications"
+                      className="text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                    >
+                      Lihat semua
+                    </Link>
+                  </div>
+                  {notificationsLoading ? (
+                    <div className="h-16 flex items-center justify-center text-xs text-slate-400 dark:text-slate-500">
+                      Memuat aktivitas...
+                    </div>
+                  ) : recentNotifications.length === 0 ? (
+                    <div className="h-16 flex items-center text-xs text-slate-400 dark:text-slate-500">
+                      Tidak ada notifikasi baru.
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-32 overflow-y-auto custom-scrollbar pr-1">
+                      {recentNotifications.slice(0, 4).map((n) => (
+                        <div
+                          key={n.id}
+                          className="border border-dashed border-gray-200 dark:border-neutral-700 rounded-lg px-3 py-2 bg-gray-50/80 dark:bg-neutral-800/60"
+                        >
+                          <p className="text-xs font-semibold text-slate-800 dark:text-slate-100">
+                            {n.title}
+                          </p>
+                          {n.message && (
+                            <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+                              {n.message}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
              </div>
           </div>

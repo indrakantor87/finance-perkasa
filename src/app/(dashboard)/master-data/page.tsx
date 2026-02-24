@@ -18,19 +18,17 @@ export default function MasterDataPage() {
       title: "Kategori Jabatan",
       description: "Pengaturan level dan struktur jabatan karyawan",
       icon: <Shield className="w-8 h-8 text-purple-600 dark:text-purple-400" />,
-      href: "#",
+      href: "/master-data/job-categories",
       color: "bg-purple-50 dark:bg-purple-900/20",
-      borderColor: "border-purple-100 dark:border-purple-800",
-      disabled: true
+      borderColor: "border-purple-100 dark:border-purple-800"
     },
     {
       title: "Konfigurasi Server",
       description: "Pengaturan umum sistem dan environment",
       icon: <Server className="w-8 h-8 text-orange-600 dark:text-orange-400" />,
-      href: "#",
+      href: "/master-data/server-config",
       color: "bg-orange-50 dark:bg-orange-900/20",
-      borderColor: "border-orange-100 dark:border-orange-800",
-      disabled: true
+      borderColor: "border-orange-100 dark:border-orange-800"
     }
   ];
 

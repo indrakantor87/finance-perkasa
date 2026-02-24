@@ -114,11 +114,10 @@ export async function POST(request: Request) {
     const calcOvertimeHours = (inDate: Date | null, outDate: Date | null) => {
       if (!inDate || !outDate) return 0
       
-      // Calculate duration in minutes
       const durationMillis = outDate.getTime() - inDate.getTime()
-      if (durationMillis <= 0) return 0
+      const durationMinutes = Math.floor(durationMillis / 60000)
+      if (durationMinutes <= 0) return 0
       
-      // Convert to WIB (UTC+7) for accurate daily calculation
       const WIB_OFFSET = 7 * 60 * 60 * 1000
       const inDateWIB = new Date(inDate.getTime() + WIB_OFFSET)
       const outDateWIB = new Date(outDate.getTime() + WIB_OFFSET)
@@ -128,20 +127,17 @@ export async function POST(request: Request) {
       
       let overtimeMinutes = 0
 
-      // Case 1: Late Shift (CheckIn >= 17:00 WIB) -> full duration as overtime
+      // Shift 2 (masuk >= 17:00 WIB) mengikuti jam kerja 9 jam
       if (inHour > 17 || (inHour === 17 && inMinute >= 0)) {
-        overtimeMinutes = Math.floor(durationMillis / 60000)
-      } 
-      // Case 2: Normal Shift (CheckIn < 17:00 WIB)
-      else {
+        const WORK_MINUTES_SHIFT2 = 9 * 60
+        overtimeMinutes = Math.max(0, durationMinutes - WORK_MINUTES_SHIFT2)
+      } else {
         const standardExitWIB = new Date(inDateWIB)
         standardExitWIB.setUTCHours(17, 0, 0, 0)
 
-        // Jika pulang sesudah jam 17:00, hitung lembur dasar
         if (outDateWIB.getTime() > standardExitWIB.getTime()) {
           overtimeMinutes = Math.floor((outDateWIB.getTime() - standardExitWIB.getTime()) / 60000)
 
-          // Hitung menit terlambat (setelah 08:00)
           const scheduledStartWIB = new Date(inDateWIB)
           scheduledStartWIB.setUTCHours(8, 0, 0, 0)
 
@@ -154,9 +150,8 @@ export async function POST(request: Request) {
         }
       }
 
-      const totalDurationMinutes = Math.floor(durationMillis / 60000)
-      if (overtimeMinutes > totalDurationMinutes) {
-        overtimeMinutes = totalDurationMinutes
+      if (overtimeMinutes > durationMinutes) {
+        overtimeMinutes = durationMinutes
       }
 
       if (overtimeMinutes <= 0) return 0
@@ -239,36 +234,18 @@ export async function POST(request: Request) {
             continue
           }
 
-          // Calculate new overtime carefully
           const finalCheckIn = hasCheckIn ? (checkIn ?? null) : existing.checkIn
           const finalCheckOut = hasCheckOut ? (checkOut ?? null) : existing.checkOut
           
           const computedOT = calcOvertimeHours(finalCheckIn, finalCheckOut)
-          
-          let finalExtra = 0
+
+          let newOT = computedOT
           if (hasExtra) {
-            finalExtra = parseExtra(item.overtimeHours)
-          } else {
-            // Recalculate based on existing data to find "extra"
-            const oldComputedDecimal = calcOvertimeDecimal(existing.checkIn, existing.checkOut)
-            const newComputedDot = calcOvertimeHours(existing.checkIn, existing.checkOut)
-            
-            if (Math.abs(existing.overtimeHours - oldComputedDecimal) < 0.01) {
-               finalExtra = 0
-            } 
-            else if (Math.abs(toMinutes(existing.overtimeHours) - toMinutes(newComputedDot)) < 1) {
-               finalExtra = 0
-            }
-            else {
-               const extraFromDecimal = Math.max(0, existing.overtimeHours - oldComputedDecimal)
-               const extraMin = Math.round(extraFromDecimal * 60)
-               finalExtra = toDotFormat(extraMin)
-            }
+            const finalExtra = parseExtra(item.overtimeHours)
+            const computedOTMin = toMinutes(computedOT)
+            const finalExtraMin = toMinutes(finalExtra)
+            newOT = toDotFormat(computedOTMin + finalExtraMin)
           }
-          
-          const computedOTMin = toMinutes(computedOT)
-          const finalExtraMin = toMinutes(finalExtra)
-          const newOT = toDotFormat(computedOTMin + finalExtraMin)
 
           const updated = await prisma.attendance.update({
             where: { id: existing.id },
@@ -276,8 +253,7 @@ export async function POST(request: Request) {
               checkIn: hasCheckIn ? (checkIn ?? null) : existing.checkIn,
               checkOut: hasCheckOut ? (checkOut ?? null) : existing.checkOut,
               status: item.status || existing.status,
-              overtimeHours: newOT,
-              lockedByAdmin: wantsLock ? true : existing.lockedByAdmin
+              overtimeHours: newOT
             }
           })
 
@@ -299,8 +275,7 @@ export async function POST(request: Request) {
               checkIn: checkIn ?? null,
               checkOut: checkOut ?? null,
               status: statusValue,
-              overtimeHours: newOT,
-              lockedByAdmin: hasLockFlag && item.lockedByAdmin === true ? true : false
+              overtimeHours: newOT
             }
           })
 
@@ -352,8 +327,7 @@ export async function POST(request: Request) {
             checkIn: inDate || existing.checkIn,
             checkOut: outDate || existing.checkOut,
             status: status || existing.status || statusValue,
-            overtimeHours: newOT,
-            lockedByAdmin: wantsLock ? true : existing.lockedByAdmin
+            overtimeHours: newOT
           }
         })
 
@@ -367,8 +341,7 @@ export async function POST(request: Request) {
             checkIn: inDate,
             checkOut: outDate,
             status: statusValue,
-            overtimeHours: newOT,
-            lockedByAdmin: lockedByAdmin === true ? true : false
+            overtimeHours: newOT
           }
         })
 

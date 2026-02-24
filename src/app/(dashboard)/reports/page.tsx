@@ -120,6 +120,47 @@ export default function ReportsPage() {
   const avgSalary = totalEmployees > 0 ? totalExpenditure / totalEmployees : 0
   const totalDeductions = data.reduce((sum, item) => sum + item.deductions.total, 0)
 
+  const salaryComponentTotals = data.reduce(
+    (acc, item) => {
+      acc.base += item.salary.base || 0
+      acc.transport += item.salary.transport || 0
+      acc.meal += item.salary.meal || 0
+      acc.position += item.salary.position || 0
+      acc.overtime += item.salary.overtime || 0
+      acc.incentive += item.salary.incentive || 0
+      acc.bonus += item.salary.bonus || 0
+      acc.thr += item.salary.thr || 0
+      return acc
+    },
+    {
+      base: 0,
+      transport: 0,
+      meal: 0,
+      position: 0,
+      overtime: 0,
+      incentive: 0,
+      bonus: 0,
+      thr: 0,
+    }
+  )
+
+  const componentChartData = [
+    { name: 'Gaji Pokok', value: salaryComponentTotals.base },
+    { name: 'Transport', value: salaryComponentTotals.transport },
+    { name: 'Makan', value: salaryComponentTotals.meal },
+    { name: 'Jabatan', value: salaryComponentTotals.position },
+    { name: 'Lembur', value: salaryComponentTotals.overtime },
+    { name: 'Insentif', value: salaryComponentTotals.incentive },
+    { name: 'Bonus', value: salaryComponentTotals.bonus },
+    { name: 'THR', value: salaryComponentTotals.thr },
+  ].filter((item) => item.value > 0)
+
+  const deductionBreakdownData = [
+    { name: 'Kasbon', value: data.reduce((sum, item) => sum + (item.deductions.kasbon || 0), 0) },
+    { name: 'BPJS', value: data.reduce((sum, item) => sum + (item.deductions.bpjs || 0), 0) },
+    { name: 'Lain-lain', value: data.reduce((sum, item) => sum + (item.deductions.other || 0), 0) },
+  ].filter((item) => item.value > 0)
+
   // Group by Department
   const deptStats = data.reduce((acc, item) => {
     const dept = item.employee.department || 'Unassigned'
@@ -292,6 +333,107 @@ export default function ReportsPage() {
                     </ResponsiveContainer>
                   ) : (
                     <div className="h-full w-full bg-gray-100 dark:bg-neutral-800 rounded-full animate-pulse" />
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Salary Composition & Deductions Breakdown */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="bg-white dark:bg-neutral-900 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-neutral-800 transition-colors">
+                <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-6">Komposisi Komponen Gaji</h3>
+                <div className="h-80 w-full">
+                  {mounted && componentChartData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RePieChart>
+                        <Pie
+                          data={componentChartData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={110}
+                          paddingAngle={4}
+                          dataKey="value"
+                        >
+                          {componentChartData.map((entry, index) => (
+                            <Cell
+                              key={`component-cell-${index}`}
+                              fill={COLORS[index % COLORS.length]}
+                              stroke={isDark ? '#171717' : '#fff'}
+                            />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip
+                          formatter={(value: any, name: any) => [formatCurrency(Number(value) || 0), name]}
+                          contentStyle={{
+                            borderRadius: '8px',
+                            border: isDark ? '1px solid #262626' : 'none',
+                            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                            backgroundColor: isDark ? '#171717' : '#fff',
+                            color: isDark ? '#f8fafc' : '#1f2937',
+                          }}
+                          itemStyle={{ color: isDark ? '#f8fafc' : '#1f2937' }}
+                        />
+                        <Legend
+                          verticalAlign="bottom"
+                          height={36}
+                          wrapperStyle={{ color: isDark ? '#94a3b8' : '#9ca3af', fontSize: 12 }}
+                        />
+                      </RePieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center text-sm text-gray-400 dark:text-slate-500">
+                      Tidak ada data komponen gaji untuk periode ini.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-neutral-900 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-neutral-800 transition-colors">
+                <h3 className="text-lg font-bold text-gray-800 dark:text-slate-100 mb-6">Rincian Potongan</h3>
+                <div className="h-80 w-full">
+                  {mounted && deductionBreakdownData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RePieChart>
+                        <Pie
+                          data={deductionBreakdownData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={110}
+                          paddingAngle={4}
+                          dataKey="value"
+                        >
+                          {deductionBreakdownData.map((entry, index) => (
+                            <Cell
+                              key={`deduction-cell-${index}`}
+                              fill={COLORS[index % COLORS.length]}
+                              stroke={isDark ? '#171717' : '#fff'}
+                            />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip
+                          formatter={(value: any, name: any) => [formatCurrency(Number(value) || 0), name]}
+                          contentStyle={{
+                            borderRadius: '8px',
+                            border: isDark ? '1px solid #262626' : 'none',
+                            boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                            backgroundColor: isDark ? '#171717' : '#fff',
+                            color: isDark ? '#f8fafc' : '#1f2937',
+                          }}
+                          itemStyle={{ color: isDark ? '#f8fafc' : '#1f2937' }}
+                        />
+                        <Legend
+                          verticalAlign="bottom"
+                          height={36}
+                          wrapperStyle={{ color: isDark ? '#94a3b8' : '#9ca3af', fontSize: 12 }}
+                        />
+                      </RePieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center text-sm text-gray-400 dark:text-slate-500">
+                      Tidak ada data potongan untuk periode ini.
+                    </div>
                   )}
                 </div>
               </div>
