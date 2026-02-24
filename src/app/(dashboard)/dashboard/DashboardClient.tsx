@@ -150,17 +150,20 @@ export default function DashboardClient({ stats }: { stats: DashboardStats | nul
 
   // Employee Status Colors
   const STATUS_COLORS: Record<string, string> = {
-    'Tetap': '#3b82f6', // Blue
-    'Kontrak': '#94a3b8', // Gray
-    'Training': '#f59e0b', // Amber
-    'Probation': '#10b981', // Emerald
+    'Tetap': '#3b82f6',
+    'Karyawan': '#3b82f6',
+    'Kontrak': '#94a3b8',
+    'Kontrak 1': '#6366f1',
+    'Kontrak 2': '#f97316',
+    'Training': '#f59e0b',
+    'Probation': '#10b981',
   }
-  const DEFAULT_COLOR = '#64748b'
+  const STATUS_COLOR_PALETTE = ['#3b82f6', '#10b981', '#f97316', '#6366f1', '#f43f5e', '#14b8a6']
 
-  const employeeStatusData = stats.employees.byStatus.map(s => ({
+  const employeeStatusData = stats.employees.byStatus.map((s, idx) => ({
     name: s.name,
     value: s.value,
-    color: STATUS_COLORS[s.name] || DEFAULT_COLOR
+    color: STATUS_COLORS[s.name] || STATUS_COLOR_PALETTE[idx % STATUS_COLOR_PALETTE.length]
   }))
 
   // Department Colors (Cycle)
