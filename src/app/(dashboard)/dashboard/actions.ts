@@ -32,8 +32,13 @@ const EMPTY_STATS = {
 
 export async function getDashboardStats() {
   const now = new Date()
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+  const WIB_OFFSET_HOURS = 7
+  const nowWIB = new Date(now.getTime() + WIB_OFFSET_HOURS * 60 * 60 * 1000)
+  const wibYear = nowWIB.getUTCFullYear()
+  const wibMonth = nowWIB.getUTCMonth()
+  const wibDate = nowWIB.getUTCDate()
+  const startOfToday = new Date(Date.UTC(wibYear, wibMonth, wibDate, -WIB_OFFSET_HOURS))
+  const endOfToday = new Date(Date.UTC(wibYear, wibMonth, wibDate + 1, -WIB_OFFSET_HOURS))
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
   const twoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1)
 
