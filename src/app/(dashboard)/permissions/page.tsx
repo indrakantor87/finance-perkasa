@@ -108,6 +108,13 @@ export default function PermissionsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    // Validasi Employee ID untuk role admin
+    const finalEmployeeId = (role === 'EMPLOYEE' || role === 'KARYAWAN') ? currentEmployeeId : formData.employeeId
+    if (!finalEmployeeId) {
+      alert('Silakan pilih karyawan terlebih dahulu')
+      return
+    }
+
     // Calculate duration roughly (days)
     const start = new Date(formData.startDate)
     const end = new Date(formData.endDate)
@@ -120,7 +127,7 @@ export default function PermissionsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          employeeId: (role === 'EMPLOYEE' || role === 'KARYAWAN') ? currentEmployeeId : formData.employeeId,
+          employeeId: finalEmployeeId,
           duration: diffDays,
           durationUnit: 'DAYS'
         })
@@ -129,17 +136,25 @@ export default function PermissionsPage() {
       if (res.ok) {
         setShowModal(false)
         fetchData()
-        setFormData({
-            employeeId: (role === 'EMPLOYEE' || role === 'KARYAWAN') ? currentEmployeeId || '' : '',
+        setFormData(prev => ({
+            ...prev,
             type: 'SICK',
             startDate: new Date().toISOString().split('T')[0],
             endDate: new Date().toISOString().split('T')[0],
             reason: '',
             attachment: ''
-        })
+        }))
+        // Reset employeeId only if admin
+        if (role !== 'EMPLOYEE' && role !== 'KARYAWAN') {
+            setFormData(prev => ({ ...prev, employeeId: '' }))
+        }
+      } else {
+        const data = await res.json()
+        alert(data.error || 'Gagal mengirim pengajuan')
       }
     } catch (error) {
       console.error('Submit error', error)
+      alert('Terjadi kesalahan koneksi')
     }
   }
 

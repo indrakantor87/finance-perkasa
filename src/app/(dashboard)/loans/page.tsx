@@ -25,7 +25,7 @@ type Loan = {
   type: string
   date: string
   employeeId: string
-  status: string // ACTIVE, PAID
+  status: string // ACTIVE, PAID, PENDING, REJECTED
   employee: Employee
   payments: LoanPayment[]
   createdAt: string
@@ -38,6 +38,7 @@ export default function LoansPage() {
   const [showModal, setShowModal] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [expandedLoanId, setExpandedLoanId] = useState<string | null>(null)
+  const [statusFilter, setStatusFilter] = useState('ALL')
 
   // Auth State
   const [role, setRole] = useState<string | null>(null)
@@ -120,11 +121,33 @@ export default function LoansPage() {
                         loan.description.toLowerCase().includes(searchTerm.toLowerCase())
     
     const matchRole = (role === 'EMPLOYEE' || role === 'KARYAWAN') ? loan.employeeId === currentEmployeeId : true
+    const matchStatus = statusFilter === 'ALL' ? true : loan.status === statusFilter
     
-    return matchSearch && matchRole
+    return matchSearch && matchRole && matchStatus
   })
 
   // Handlers
+  const handleApproval = async (id: string, status: 'ACTIVE' | 'REJECTED') => {
+    if (!confirm(`Apakah Anda yakin ingin ${status === 'ACTIVE' ? 'menyetujui' : 'menolak'} pengajuan ini?`)) return
+
+    try {
+      const res = await fetch(`/api/loans/${id}/approval`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      })
+
+      if (res.ok) {
+        fetchData()
+      } else {
+        alert('Gagal memproses persetujuan')
+      }
+    } catch (error) {
+      console.error('Approval error', error)
+      alert('Terjadi kesalahan')
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -272,8 +295,27 @@ export default function LoansPage() {
         )}
       </div>
 
-      <div className="bg-white dark:bg-neutral-900 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-neutral-800 flex flex-wrap gap-4 items-center justify-between">
-        <div className="relative flex-1 max-w-md">
+      <div className="bg-white dark:bg-neutral-900 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-neutral-800 flex flex-col md:flex-row gap-4 items-center justify-between">
+        <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 w-full md:w-auto">
+          {['ALL', 'PENDING', 'ACTIVE', 'PAID', 'REJECTED'].map(status => (
+            <button
+              key={status}
+              onClick={() => setStatusFilter(status)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                statusFilter === status
+                  ? 'bg-blue-600 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-neutral-800 dark:text-gray-400 dark:hover:bg-neutral-700'
+              }`}
+            >
+              {status === 'ALL' ? 'Semua' : 
+               status === 'PENDING' ? 'Menunggu' :
+               status === 'ACTIVE' ? 'Aktif' :
+               status === 'PAID' ? 'Lunas' : 'Ditolak'}
+            </button>
+          ))}
+        </div>
+        
+        <div className="relative flex-1 max-w-md w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input 
                 type="text" 
@@ -306,10 +348,30 @@ export default function LoansPage() {
             filteredLoans.map(loan => {
                 const paid = getPaidAmount(loan)
                 const remaining = getRemainingAmount(loan)
-                const progress = Math.min(100, (paid / loan.amount) * 100)
+                const progress = loan.amount > 0 ? Math.min(100, (paid / loan.amount) * 100) : 0
                 
                 return (
-                    <div key={loan.id} className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-gray-100 dark:border-neutral-800 overflow-hidden hover:shadow-md transition-shadow">
+                    <div key={loan.id} className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-gray-100 dark:border-neutral-800 overflow-hidden hover:shadow-md transition-shadow relative">
+                        {/* Approval Actions for Admin */}
+                        {!isEmployeeRole && loan.status === 'PENDING' && (
+                          <div className="absolute top-0 right-0 p-4 flex gap-2 z-10">
+                            <button
+                              onClick={() => handleApproval(loan.id, 'ACTIVE')}
+                              className="bg-green-100 hover:bg-green-200 text-green-700 p-2 rounded-lg transition-colors"
+                              title="Setujui Pengajuan"
+                            >
+                              <Check size={18} />
+                            </button>
+                            <button
+                              onClick={() => handleApproval(loan.id, 'REJECTED')}
+                              className="bg-red-100 hover:bg-red-200 text-red-700 p-2 rounded-lg transition-colors"
+                              title="Tolak Pengajuan"
+                            >
+                              <X size={18} />
+                            </button>
+                          </div>
+                        )}
+
                         <div className="p-5 space-y-4">
                             <div className="flex justify-between items-start">
                                 <div>
@@ -324,10 +386,16 @@ export default function LoansPage() {
                                         className={`px-2 py-1 rounded-full text-xs font-medium ${
                                             loan.status === 'PAID'
                                                 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                                : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                                                : loan.status === 'ACTIVE'
+                                                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                                                : loan.status === 'PENDING'
+                                                ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                                : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                                         }`}
                                     >
-                                        {loan.status === 'PAID' ? 'Lunas' : 'Aktif'}
+                                        {loan.status === 'PAID' ? 'Lunas' : 
+                                         loan.status === 'ACTIVE' ? 'Aktif' :
+                                         loan.status === 'PENDING' ? 'Menunggu' : 'Ditolak'}
                                     </span>
                                 </div>
                             </div>
@@ -350,7 +418,9 @@ export default function LoansPage() {
                             {/* Progress Bar */}
                             <div className="w-full bg-gray-100 dark:bg-neutral-800 rounded-full h-2">
                                 <div 
-                                    className="bg-blue-600 h-2 rounded-full transition-all duration-500" 
+                                    className={`h-2 rounded-full transition-all duration-500 ${
+                                      loan.status === 'REJECTED' ? 'bg-red-500' : 'bg-blue-600'
+                                    }`}
                                     style={{ width: `${progress}%` }}
                                 ></div>
                             </div>
@@ -381,21 +451,21 @@ export default function LoansPage() {
                             </div>
                         </div>
 
-                        {/* Expanded Payment History */}
+                        {/* Payment History Expandable */}
                         {expandedLoanId === loan.id && (
                             <div className="bg-gray-50 dark:bg-neutral-800/50 p-4 border-t border-gray-100 dark:border-neutral-800 animate-in slide-in-from-top-2">
-                                <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">Riwayat Pembayaran</h4>
+                                <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3">Riwayat Pembayaran</h4>
                                 {loan.payments.length === 0 ? (
-                                    <p className="text-xs text-gray-400 italic">Belum ada pembayaran</p>
+                                    <p className="text-sm text-gray-400 italic text-center py-2">Belum ada pembayaran</p>
                                 ) : (
-                                    <ul className="space-y-2">
-                                        {loan.payments.map(payment => (
-                                            <li key={payment.id} className="flex justify-between text-sm">
+                                    <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
+                                        {loan.payments.map((payment, idx) => (
+                                            <div key={idx} className="flex justify-between text-sm p-2 bg-white dark:bg-neutral-900 rounded border border-gray-100 dark:border-neutral-800">
                                                 <span className="text-gray-600 dark:text-gray-300">{new Date(payment.date).toLocaleDateString('id-ID')}</span>
-                                                <span className="font-medium text-green-600 dark:text-green-400">{formatRupiah(payment.amount)}</span>
-                                            </li>
+                                                <span className="font-medium text-green-600">{formatRupiah(payment.amount)}</span>
+                                            </div>
                                         ))}
-                                    </ul>
+                                    </div>
                                 )}
                             </div>
                         )}

@@ -111,7 +111,7 @@ model Loan {
   type               String   @default("KASBON") // KASBON, PINJAMAN
   employeeId         String
   employee           Employee @relation(fields: [employeeId], references: [id])
-  status             String   @default("ACTIVE") // ACTIVE, PAID
+  status             String   @default("PENDING") // PENDING, ACTIVE, REJECTED, PAID
   
   payments           LoanPayment[] // History pembayaran
   

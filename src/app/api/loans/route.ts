@@ -163,6 +163,10 @@ export async function POST(request: Request) {
       }
     }
 
+    // Determine initial status based on role
+    const isAdmin = sessionRole === 'ADMIN' || sessionRole === 'DEVELOPER' || sessionRole === 'ADMINISTRATOR'
+    const initialStatus = isAdmin ? 'ACTIVE' : 'PENDING'
+
     const loan = await prisma.loan.create({
       data: {
         amount: amountNumber,
@@ -170,7 +174,8 @@ export async function POST(request: Request) {
         description,
         type: normalizedType,
         date: new Date(date),
-        employeeId: targetEmployeeId
+        employeeId: targetEmployeeId,
+        status: initialStatus
       }
     })
 
@@ -183,12 +188,21 @@ export async function POST(request: Request) {
     const amountLabel = formatter.format(amountNumber)
     const jenisLabel = normalizedType === 'KASBON' ? 'kasbon' : 'pinjaman'
 
-    await createNotification(
-      'Pengajuan Pinjaman/Kasbon Di-ACC',
-      `Pengajuan ${jenisLabel} untuk ${employeeName} sebesar ${amountLabel} telah disetujui dan tercatat di sistem.`,
-      'success',
-      'loan'
-    )
+    if (initialStatus === 'ACTIVE') {
+      await createNotification(
+        'Pengajuan Pinjaman/Kasbon Disetujui (Admin)',
+        `Pengajuan ${jenisLabel} untuk ${employeeName} sebesar ${amountLabel} telah dibuat dan disetujui oleh admin.`,
+        'success',
+        'loan'
+      )
+    } else {
+      await createNotification(
+        'Pengajuan Pinjaman/Kasbon Baru',
+        `Pengajuan ${jenisLabel} baru dari ${employeeName} sebesar ${amountLabel} menunggu persetujuan.`,
+        'info',
+        'loan'
+      )
+    }
 
     return NextResponse.json(loan)
   } catch (error) {

@@ -44,7 +44,7 @@ export async function POST(request: Request) {
         type,
         startDate: new Date(startDate),
         endDate: new Date(endDate),
-        duration: parseFloat(duration) || 0,
+        duration: typeof duration === 'string' ? parseFloat(duration) : duration || 0,
         durationUnit: durationUnit || 'DAYS',
         reason,
         attachment
