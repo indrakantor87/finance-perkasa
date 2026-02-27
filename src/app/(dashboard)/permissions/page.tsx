@@ -135,7 +135,7 @@ export default function PermissionsPage() {
     
     // Validasi Employee ID untuk role admin
     const isEmployee = role === 'EMPLOYEE' || role === 'KARYAWAN' || role === 'MARKETING'
-    const finalEmployeeId = isEmployee ? (currentEmployeeId || formData.employeeId) : formData.employeeId
+    let finalEmployeeId = isEmployee ? (currentEmployeeId || formData.employeeId) : formData.employeeId
 
     // Debugging logs
     console.log('Role:', role)
@@ -143,8 +143,21 @@ export default function PermissionsPage() {
     console.log('Form Employee ID:', formData.employeeId)
     console.log('Final Employee ID:', finalEmployeeId)
 
+    // Fail-safe: If Employee ID is missing but we have a name, try to find it in employees list
+    if (isEmployee && !finalEmployeeId && currentEmployeeName) {
+        const found = employees.find(e => e.name === currentEmployeeName || e.name === currentEmployeeName.split(' ')[0])
+        if (found) {
+            console.log('Fail-safe: Found employee ID from name:', found.id)
+            finalEmployeeId = found.id
+        }
+    }
+
     if (!finalEmployeeId) {
-      alert('Silakan pilih karyawan terlebih dahulu')
+      if (isEmployee) {
+          alert('Data sesi Anda tidak lengkap (ID Karyawan tidak ditemukan). Mohon Logout dan Login kembali untuk memperbarui data.')
+      } else {
+          alert('Silakan pilih karyawan terlebih dahulu')
+      }
       return
     }
 
