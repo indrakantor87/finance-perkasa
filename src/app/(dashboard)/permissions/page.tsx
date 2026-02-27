@@ -65,10 +65,11 @@ export default function PermissionsPage() {
       const stored = localStorage.getItem('perkasa-finance-auth') || sessionStorage.getItem('perkasa-finance-auth')
       if (stored) {
         const user = JSON.parse(stored)
+        console.log('User session loaded:', user) // Debug
         setRole(user.role)
         setCurrentEmployeeId(user.employeeId)
         // If employee, set default ID in form
-        if (user.role === 'EMPLOYEE' || user.role === 'KARYAWAN') {
+        if (user.role === 'EMPLOYEE' || user.role === 'KARYAWAN' || user.role === 'MARKETING') {
             setFormData(prev => ({ ...prev, employeeId: user.employeeId }))
         }
       }
@@ -129,7 +130,14 @@ export default function PermissionsPage() {
     
     // Validasi Employee ID untuk role admin
     const isEmployee = role === 'EMPLOYEE' || role === 'KARYAWAN' || role === 'MARKETING'
-    const finalEmployeeId = isEmployee ? currentEmployeeId : formData.employeeId
+    const finalEmployeeId = isEmployee ? (currentEmployeeId || formData.employeeId) : formData.employeeId
+
+    // Debugging logs
+    console.log('Role:', role)
+    console.log('Current Employee ID:', currentEmployeeId)
+    console.log('Form Employee ID:', formData.employeeId)
+    console.log('Final Employee ID:', finalEmployeeId)
+
     if (!finalEmployeeId) {
       alert('Silakan pilih karyawan terlebih dahulu')
       return
