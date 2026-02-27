@@ -1127,6 +1127,7 @@ export default function SalaryPage() {
                         <InputItem label="BPJS Ketenagakerjaan" value={inputData.bpjsAllowance} onChange={(v) => updateInput('bpjsAllowance', v)} />
                         <InputItem label="Transport" value={inputData.transportAmount} onChange={(v) => updateInput('transportAmount', v)} />
                         <InputItem label="Kedisiplinan" value={inputData.disciplineBonus} onChange={(v) => updateInput('disciplineBonus', v)} />
+                        <InputItem label="Kinerja" value={inputData.performanceBonus} onChange={(v) => updateInput('performanceBonus', v)} />
 
                       </>
                   ) : (
