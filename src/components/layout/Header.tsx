@@ -47,14 +47,10 @@ export default function Header() {
       const stored = localStorage.getItem('perkasa-finance-auth') || sessionStorage.getItem('perkasa-finance-auth');
       if (!stored) return;
       const user = JSON.parse(stored);
-      const role = user.role as string | undefined;
-      let label = 'User';
-      if (role === 'DEVELOPER') label = 'Developer';
-      else if (role === 'ADMINISTRATOR') label = 'Administrator';
-      else if (role === 'ADMIN') label = 'Admin';
-      else if (role === 'EMPLOYEE' || role === 'KARYAWAN') label = 'Karyawan';
-      else if (role === 'STAFF') label = 'Staff';
-      setRoleLabel(label);
+      
+      // Use name (Employee Name or Account Name) instead of Role
+      const name = user.employeeName || user.name || user.email || 'User';
+      setRoleLabel(name);
     } catch (e) {
       console.error('Failed to parse auth for header role', e);
     }
