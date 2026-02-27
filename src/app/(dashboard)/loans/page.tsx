@@ -61,7 +61,7 @@ export default function LoansPage() {
       const stored = localStorage.getItem('perkasa-finance-auth') || sessionStorage.getItem('perkasa-finance-auth')
       if (stored) {
         const user = JSON.parse(stored)
-        setRole(user.role)
+        setRole((user.role || '').toUpperCase())
         setCurrentEmployeeId(user.employeeId || null)
         setCurrentUserName(user.employeeName || user.name || null)
       }
@@ -117,10 +117,14 @@ export default function LoansPage() {
 
   // Filter Logic
   const filteredLoans = loans.filter(loan => {
-    const matchSearch = loan.employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        loan.description.toLowerCase().includes(searchTerm.toLowerCase())
+    if (!loan) return false
+    const empName = loan.employee?.name || ''
+    const desc = loan.description || ''
     
-    const matchRole = (role === 'EMPLOYEE' || role === 'KARYAWAN' || role === 'MARKETING') ? loan.employeeId === currentEmployeeId : true
+    const matchSearch = empName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        desc.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    const matchRole = isEmployeeRole ? loan.employeeId === currentEmployeeId : true
     const matchStatus = statusFilter === 'ALL' ? true : loan.status === statusFilter
     
     return matchSearch && matchRole && matchStatus
@@ -229,11 +233,12 @@ export default function LoansPage() {
   }
 
   const getPaidAmount = (loan: Loan) => {
-    return loan.payments.reduce((sum, p) => sum + p.amount, 0)
+    if (!loan.payments || !Array.isArray(loan.payments)) return 0
+    return loan.payments.reduce((sum, p) => sum + (p.amount || 0), 0)
   }
 
   const getRemainingAmount = (loan: Loan) => {
-    return loan.amount - getPaidAmount(loan)
+    return (loan.amount || 0) - getPaidAmount(loan)
   }
 
   const isEmployeeRole = role === 'EMPLOYEE' || role === 'KARYAWAN' || role === 'MARKETING'
@@ -375,8 +380,8 @@ export default function LoansPage() {
                         <div className="p-5 space-y-4">
                             <div className="flex justify-between items-start">
                                 <div>
-                                    <h3 className="font-bold text-gray-800 dark:text-slate-100">{loan.employee.name}</h3>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">{loan.employee.department}</p>
+                                    <h3 className="font-bold text-gray-800 dark:text-slate-100">{loan.employee?.name || 'Karyawan Tidak Dikenal'}</h3>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">{loan.employee?.department || '-'}</p>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
