@@ -19,13 +19,13 @@ export async function GET(request: Request) {
       try {
         const parsed = JSON.parse(sessionCookie.value)
         sessionEmployeeId = parsed.employeeId || null
-        sessionRole = parsed.role || null
+        sessionRole = (parsed.role || '').toUpperCase()
       } catch {
       }
     }
 
     const where: any = {}
-    if (sessionRole === 'EMPLOYEE' || sessionRole === 'KARYAWAN') {
+    if (sessionRole === 'EMPLOYEE' || sessionRole === 'KARYAWAN' || sessionRole === 'MARKETING') {
       if (sessionEmployeeId) {
         where.employeeId = sessionEmployeeId
       } else {
@@ -79,14 +79,14 @@ export async function POST(request: Request) {
       try {
         const parsed = JSON.parse(sessionCookie.value)
         sessionEmployeeId = parsed.employeeId || null
-        sessionRole = parsed.role || null
+        sessionRole = (parsed.role || '').toUpperCase()
       } catch {
       }
     }
 
     let targetEmployeeId = (employeeId as string | null) || null
 
-    if (sessionRole === 'EMPLOYEE' || sessionRole === 'KARYAWAN') {
+    if (sessionRole === 'EMPLOYEE' || sessionRole === 'KARYAWAN' || sessionRole === 'MARKETING') {
       if (sessionEmployeeId) {
         targetEmployeeId = sessionEmployeeId
       } else if (targetEmployeeId) {
@@ -189,19 +189,27 @@ export async function POST(request: Request) {
     const jenisLabel = normalizedType === 'KASBON' ? 'kasbon' : 'pinjaman'
 
     if (initialStatus === 'ACTIVE') {
-      await createNotification(
-        'Pengajuan Pinjaman/Kasbon Disetujui (Admin)',
-        `Pengajuan ${jenisLabel} untuk ${employeeName} sebesar ${amountLabel} telah dibuat dan disetujui oleh admin.`,
-        'success',
-        'loan'
-      )
+      try {
+        await createNotification(
+          'Pengajuan Pinjaman/Kasbon Disetujui (Admin)',
+          `Pengajuan ${jenisLabel} untuk ${employeeName} sebesar ${amountLabel} telah dibuat dan disetujui oleh admin.`,
+          'success',
+          'loan'
+        )
+      } catch (e) {
+        console.error('Notification error:', e)
+      }
     } else {
-      await createNotification(
-        'Pengajuan Pinjaman/Kasbon Baru',
-        `Pengajuan ${jenisLabel} baru dari ${employeeName} sebesar ${amountLabel} menunggu persetujuan.`,
-        'info',
-        'loan'
-      )
+      try {
+        await createNotification(
+          'Pengajuan Pinjaman/Kasbon Baru',
+          `Pengajuan ${jenisLabel} baru dari ${employeeName} sebesar ${amountLabel} menunggu persetujuan.`,
+          'info',
+          'loan'
+        )
+      } catch (e) {
+        console.error('Notification error:', e)
+      }
     }
 
     return NextResponse.json(loan)

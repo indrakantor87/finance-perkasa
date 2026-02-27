@@ -77,7 +77,7 @@ export default function LoansPage() {
   }, []) // Fetch all initially, then filter
 
   useEffect(() => {
-    const isEmployeeLike = role === 'EMPLOYEE' || role === 'KARYAWAN'
+    const isEmployeeLike = role === 'EMPLOYEE' || role === 'KARYAWAN' || role === 'MARKETING'
     if (!isEmployeeLike) return
     if (currentEmployeeId && employees.some(e => e.id === currentEmployeeId)) return
     if (!currentUserName) return
@@ -120,7 +120,7 @@ export default function LoansPage() {
     const matchSearch = loan.employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                         loan.description.toLowerCase().includes(searchTerm.toLowerCase())
     
-    const matchRole = (role === 'EMPLOYEE' || role === 'KARYAWAN') ? loan.employeeId === currentEmployeeId : true
+    const matchRole = (role === 'EMPLOYEE' || role === 'KARYAWAN' || role === 'MARKETING') ? loan.employeeId === currentEmployeeId : true
     const matchStatus = statusFilter === 'ALL' ? true : loan.status === statusFilter
     
     return matchSearch && matchRole && matchStatus
@@ -236,7 +236,7 @@ export default function LoansPage() {
     return loan.amount - getPaidAmount(loan)
   }
 
-  const isEmployeeRole = role === 'EMPLOYEE' || role === 'KARYAWAN'
+  const isEmployeeRole = role === 'EMPLOYEE' || role === 'KARYAWAN' || role === 'MARKETING'
 
   const currentEmployee = isEmployeeRole && currentEmployeeId
     ? employees.find(emp => emp.id === currentEmployeeId) || null
