@@ -38,7 +38,7 @@ export default function LoansPage() {
   const [showModal, setShowModal] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [expandedLoanId, setExpandedLoanId] = useState<string | null>(null)
-  const [statusFilter, setStatusFilter] = useState('ALL')
+  const [statusFilter, setStatusFilter] = useState('ALL') // ALL, ACTIVE, PENDING, HISTORY
   const [groupByEmployee, setGroupByEmployee] = useState(false)
   const [expandedEmployees, setExpandedEmployees] = useState<Record<string, boolean>>({})
 
@@ -425,6 +425,30 @@ export default function LoansPage() {
                 {expandedLoanId === loan.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
               </button>
 
+              {!isEmployeeRole && loan.status === 'ACTIVE' && remaining > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const defaultAmount = Math.min(
+                      remaining,
+                      loan.type === 'PINJAMAN' && loan.monthlyInstallment > 0 ? loan.monthlyInstallment : remaining
+                    )
+
+                    setSelectedLoanForPayment(loan)
+                    setPaymentFormData({
+                      amount: String(defaultAmount),
+                      date: new Date().toISOString().split('T')[0],
+                      note: ''
+                    })
+                    setShowPaymentModal(true)
+                  }}
+                  className="flex items-center gap-1 px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md text-xs font-medium transition-colors border border-blue-200"
+                  title="Input Pembayaran"
+                >
+                  <CreditCard size={14} /> Bayar
+                </button>
+              )}
+
               {!isEmployeeRole && loan.status === 'PENDING' && (
                 <div className="flex items-center gap-2">
                   <button
@@ -519,7 +543,7 @@ export default function LoansPage() {
 
       <div className="bg-white dark:bg-neutral-900 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-neutral-800 flex flex-col md:flex-row gap-4 items-center justify-between">
         <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 w-full md:w-auto">
-          {['ALL', 'PENDING', 'ACTIVE', 'PAID', 'REJECTED'].map(status => (
+          {['ALL', 'PENDING', 'ACTIVE', 'HISTORY'].map(status => (
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
@@ -529,10 +553,10 @@ export default function LoansPage() {
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-neutral-800 dark:text-gray-400 dark:hover:bg-neutral-700'
               }`}
             >
-              {status === 'ALL' ? 'Semua' : 
+              {status === 'ALL' ? 'Aktif & Baru' : 
                status === 'PENDING' ? 'Menunggu' :
-               status === 'ACTIVE' ? 'Aktif' :
-               status === 'PAID' ? 'Lunas' : 'Ditolak'}
+               status === 'ACTIVE' ? 'Disetujui' :
+               'Riwayat / Lunas'}
             </button>
           ))}
         </div>
