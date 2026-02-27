@@ -173,6 +173,47 @@ export default function LoansPage() {
     }))
   }
 
+  const handlePaymentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedLoanForPayment) return
+
+    const amount = parseFloat(paymentFormData.amount)
+    if (amount <= 0 || isNaN(amount)) {
+      alert('Jumlah pembayaran tidak valid')
+      return
+    }
+
+    const remaining = getRemainingAmount(selectedLoanForPayment)
+    if (amount > remaining) {
+      alert(`Jumlah pembayaran melebihi sisa pinjaman (${formatRupiah(remaining)})`)
+      return
+    }
+
+    try {
+      const res = await fetch(`/api/loans/${selectedLoanForPayment.id}/payments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(paymentFormData)
+      })
+
+      if (res.ok) {
+        setShowPaymentModal(false)
+        fetchData()
+        setPaymentFormData({
+          amount: '',
+          date: new Date().toISOString().split('T')[0],
+          note: ''
+        })
+        setSelectedLoanForPayment(null)
+      } else {
+        alert('Gagal mencatat pembayaran')
+      }
+    } catch (error) {
+      console.error('Payment error', error)
+      alert('Terjadi kesalahan')
+    }
+  }
+
   // Handlers
   const handleApproval = async (id: string, status: 'ACTIVE' | 'REJECTED') => {
     if (!confirm(`Apakah Anda yakin ingin ${status === 'ACTIVE' ? 'menyetujui' : 'menolak'} pengajuan ini?`)) return
@@ -710,6 +751,72 @@ export default function LoansPage() {
                             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-lg transition-colors shadow-sm"
                         >
                             Simpan Data
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+      )}
+
+      {/* Payment Modal */}
+      {showPaymentModal && selectedLoanForPayment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                <div className="px-6 py-4 border-b border-gray-100 dark:border-neutral-800 flex justify-between items-center bg-gray-50 dark:bg-neutral-800/50">
+                    <div>
+                      <h3 className="font-semibold text-gray-800 dark:text-white">Input Pembayaran</h3>
+                      <p className="text-xs text-gray-500">{selectedLoanForPayment.employee?.name} - {selectedLoanForPayment.type}</p>
+                    </div>
+                    <button onClick={() => setShowPaymentModal(false)} className="text-gray-400 hover:text-gray-600">
+                        <XCircle size={20} />
+                    </button>
+                </div>
+                
+                <form onSubmit={handlePaymentSubmit} className="p-6 space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Jumlah Pembayaran</label>
+                        <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs">Rp</span>
+                            <input 
+                                type="number"
+                                required
+                                value={paymentFormData.amount}
+                                onChange={(e) => setPaymentFormData({...paymentFormData, amount: e.target.value})}
+                                className="w-full pl-8 pr-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-blue-500 outline-none"
+                                placeholder="0"
+                            />
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Sisa Pinjaman: {formatRupiah(getRemainingAmount(selectedLoanForPayment))}</p>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tanggal Bayar</label>
+                        <input 
+                            type="date" 
+                            required
+                            value={paymentFormData.date}
+                            onChange={(e) => setPaymentFormData({...paymentFormData, date: e.target.value})}
+                            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Catatan (Opsional)</label>
+                        <textarea 
+                            value={paymentFormData.note}
+                            onChange={(e) => setPaymentFormData({...paymentFormData, note: e.target.value})}
+                            rows={2}
+                            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 focus:ring-2 focus:ring-blue-500 outline-none"
+                            placeholder="Contoh: Potong Gaji Bulan X"
+                        />
+                    </div>
+
+                    <div className="pt-2">
+                        <button 
+                            type="submit" 
+                            className="w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 rounded-lg transition-colors shadow-sm"
+                        >
+                            Simpan Pembayaran
                         </button>
                     </div>
                 </form>
