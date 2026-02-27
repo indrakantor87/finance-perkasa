@@ -42,6 +42,15 @@ export default function LoansPage() {
   const [groupByEmployee, setGroupByEmployee] = useState(false)
   const [expandedEmployees, setExpandedEmployees] = useState<Record<string, boolean>>({})
 
+  // Payment Modal State
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [selectedLoanForPayment, setSelectedLoanForPayment] = useState<Loan | null>(null)
+  const [paymentFormData, setPaymentFormData] = useState({
+    amount: '',
+    date: new Date().toISOString().split('T')[0],
+    note: ''
+  })
+
   // Auth State
   const [role, setRole] = useState<string | null>(null)
   const [currentEmployeeId, setCurrentEmployeeId] = useState<string | null>(null)
