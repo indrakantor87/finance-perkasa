@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { CreditCard, Plus, Search, Trash2, XCircle, ChevronDown, ChevronUp } from 'lucide-react'
+import React, { useEffect, useMemo, useState } from 'react'
+import { CreditCard, Plus, Search, Trash2, XCircle, ChevronDown, ChevronUp, Check, X } from 'lucide-react'
 
 type Employee = {
   id: string
@@ -39,11 +39,15 @@ export default function LoansPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [expandedLoanId, setExpandedLoanId] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState('ALL')
+  const [groupByEmployee, setGroupByEmployee] = useState(false)
+  const [expandedEmployees, setExpandedEmployees] = useState<Record<string, boolean>>({})
 
   // Auth State
   const [role, setRole] = useState<string | null>(null)
   const [currentEmployeeId, setCurrentEmployeeId] = useState<string | null>(null)
   const [currentUserName, setCurrentUserName] = useState<string | null>(null)
+
+  const isEmployeeRole = role === 'EMPLOYEE' || role === 'KARYAWAN' || role === 'MARKETING'
 
   // Form State
   const [formData, setFormData] = useState({
@@ -61,9 +65,11 @@ export default function LoansPage() {
       const stored = localStorage.getItem('perkasa-finance-auth') || sessionStorage.getItem('perkasa-finance-auth')
       if (stored) {
         const user = JSON.parse(stored)
-        setRole((user.role || '').toUpperCase())
+        const normalizedRole = (user.role || '').toUpperCase()
+        setRole(normalizedRole)
         setCurrentEmployeeId(user.employeeId || null)
         setCurrentUserName(user.employeeName || user.name || null)
+        setGroupByEmployee(!['EMPLOYEE', 'KARYAWAN', 'MARKETING'].includes(normalizedRole))
       }
     } catch (e) {
       console.error(e)
@@ -105,7 +111,11 @@ export default function LoansPage() {
         fetch('/api/employees', { signal })
       ])
       
-      if (loansRes.ok) setLoans(await loansRes.json())
+      if (loansRes.ok) {
+        const data = await loansRes.json()
+        setLoans(data)
+        // console.log('DEBUG LOANS FETCH:', data)
+      }
       if (empRes.ok) setEmployees(await empRes.json())
     } catch (error: any) {
       if (error.name === 'AbortError') return
@@ -124,11 +134,44 @@ export default function LoansPage() {
     const matchSearch = empName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                         desc.toLowerCase().includes(searchTerm.toLowerCase())
     
+    // For Employee/Marketing role, the API already filters by employeeId, 
+    // but we double check here just in case.
     const matchRole = isEmployeeRole ? loan.employeeId === currentEmployeeId : true
     const matchStatus = statusFilter === 'ALL' ? true : loan.status === statusFilter
     
+    // Debugging logic to find why loans are filtered out
+    // if (isEmployeeRole && !matchRole) {
+    //   console.log('Filtered out by role:', { loanId: loan.id, loanEmpId: loan.employeeId, currEmpId: currentEmployeeId });
+    // }
+
     return matchSearch && matchRole && matchStatus
-  })
+  }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+
+  const groupedLoans = useMemo(() => {
+    const map = new Map<string, { employeeId: string; employeeName: string; department: string; loans: Loan[] }>()
+
+    for (const loan of filteredLoans) {
+      const employeeId = loan.employeeId || 'UNKNOWN'
+      const employeeName = loan.employee?.name || 'Karyawan Tidak Dikenal'
+      const department = loan.employee?.department || '-'
+
+      const existing = map.get(employeeId)
+      if (!existing) {
+        map.set(employeeId, { employeeId, employeeName, department, loans: [loan] })
+      } else {
+        existing.loans.push(loan)
+      }
+    }
+
+    return Array.from(map.values()).sort((a, b) => a.employeeName.localeCompare(b.employeeName, 'id-ID'))
+  }, [filteredLoans])
+
+  const toggleEmployeeExpanded = (employeeId: string) => {
+    setExpandedEmployees(prev => ({
+      ...prev,
+      [employeeId]: !prev[employeeId]
+    }))
+  }
 
   // Handlers
   const handleApproval = async (id: string, status: 'ACTIVE' | 'REJECTED') => {
@@ -241,7 +284,7 @@ export default function LoansPage() {
     return (loan.amount || 0) - getPaidAmount(loan)
   }
 
-  const isEmployeeRole = role === 'EMPLOYEE' || role === 'KARYAWAN' || role === 'MARKETING'
+  // const isEmployeeRole = role === 'EMPLOYEE' || role === 'KARYAWAN' || role === 'MARKETING' (Moved to top)
 
   const currentEmployee = isEmployeeRole && currentEmployeeId
     ? employees.find(emp => emp.id === currentEmployeeId) || null
@@ -260,6 +303,130 @@ export default function LoansPage() {
         })
         .reduce((sum, loan) => sum + loan.amount, 0)
     : 0
+
+  const renderLoanCard = (loan: Loan) => {
+    const paid = getPaidAmount(loan)
+    const remaining = getRemainingAmount(loan)
+    const progress = loan.amount > 0 ? Math.min(100, (paid / loan.amount) * 100) : 0
+
+    return (
+      <div key={loan.id} className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-gray-100 dark:border-neutral-800 overflow-hidden hover:shadow-md transition-shadow relative">
+        <div className="p-5 space-y-4">
+          <div className="flex justify-between items-start">
+            <div className="pr-2">
+              <h3 className="font-bold text-gray-800 dark:text-slate-100 truncate">{loan.employee?.name || 'Karyawan Tidak Dikenal'}</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{loan.employee?.department || '-'}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
+                {loan.type === 'PINJAMAN' ? 'Pinjaman' : 'Kasbon'}
+              </span>
+              <span
+                className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  loan.status === 'PAID'
+                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                    : loan.status === 'ACTIVE'
+                    ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                    : loan.status === 'PENDING'
+                    ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                    : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                }`}
+              >
+                {loan.status === 'PAID' ? 'Lunas' : loan.status === 'ACTIVE' ? 'Aktif' : loan.status === 'PENDING' ? 'Menunggu' : 'Ditolak'}
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500 dark:text-gray-400">Total {loan.type === 'KASBON' ? 'Kasbon' : 'Pinjaman'}</span>
+              <span className="font-semibold text-gray-800 dark:text-slate-200">{formatRupiah(loan.amount)}</span>
+            </div>
+            {loan.type === 'PINJAMAN' && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500 dark:text-gray-400">Angsuran/bln</span>
+                <span className="font-medium text-gray-800 dark:text-slate-200">{formatRupiah(loan.monthlyInstallment)}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500 dark:text-gray-400">Sisa</span>
+              <span className="font-bold text-red-600 dark:text-red-400">{formatRupiah(remaining)}</span>
+            </div>
+          </div>
+
+          <div className="w-full bg-gray-100 dark:bg-neutral-800 rounded-full h-2">
+            <div
+              className={`h-2 rounded-full transition-all duration-500 ${loan.status === 'REJECTED' ? 'bg-red-500' : 'bg-blue-600'}`}
+              style={{ width: `${progress}%` }}
+            ></div>
+          </div>
+          <div className="flex justify-between text-xs text-gray-400">
+            <span>Terbayar: {Math.round(progress)}%</span>
+            <span>{new Date(loan.date).toLocaleDateString('id-ID')}</span>
+          </div>
+
+          <div className="pt-3 border-t border-gray-100 dark:border-neutral-800 flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setExpandedLoanId(expandedLoanId === loan.id ? null : loan.id)}
+                className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+              >
+                {expandedLoanId === loan.id ? 'Tutup Riwayat' : 'Riwayat Bayar'}
+                {expandedLoanId === loan.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </button>
+
+              {!isEmployeeRole && loan.status === 'PENDING' && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleApproval(loan.id, 'ACTIVE')}
+                    className="flex items-center gap-1 px-3 py-1 bg-green-100 hover:bg-green-200 text-green-700 rounded-md text-xs font-medium transition-colors"
+                    title="Setujui"
+                  >
+                    <Check size={14} /> Setujui
+                  </button>
+                  <button
+                    onClick={() => handleApproval(loan.id, 'REJECTED')}
+                    className="flex items-center gap-1 px-3 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded-md text-xs font-medium transition-colors"
+                    title="Tolak"
+                  >
+                    <X size={14} /> Tolak
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {role !== 'EMPLOYEE' && role !== 'KARYAWAN' && (
+              <button
+                onClick={() => handleDelete(loan.id)}
+                className="text-gray-400 hover:text-red-600 transition-colors p-1"
+                title="Hapus Data"
+              >
+                <Trash2 size={16} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {expandedLoanId === loan.id && (
+          <div className="bg-gray-50 dark:bg-neutral-800/50 p-4 border-t border-gray-100 dark:border-neutral-800 animate-in slide-in-from-top-2">
+            <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3">Riwayat Pembayaran</h4>
+            {loan.payments.length === 0 ? (
+              <p className="text-sm text-gray-400 italic text-center py-2">Belum ada pembayaran</p>
+            ) : (
+              <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
+                {loan.payments.map((payment, idx) => (
+                  <div key={idx} className="flex justify-between text-sm p-2 bg-white dark:bg-neutral-900 rounded border border-gray-100 dark:border-neutral-800">
+                    <span className="text-gray-600 dark:text-gray-300">{new Date(payment.date).toLocaleDateString('id-ID')}</span>
+                    <span className="font-medium text-green-600">{formatRupiah(payment.amount)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="p-6 max-w-[1600px] mx-auto space-y-6 font-sans">
@@ -320,6 +487,7 @@ export default function LoansPage() {
           ))}
         </div>
         
+        {!isEmployeeRole && (
         <div className="relative flex-1 max-w-md w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input 
@@ -330,6 +498,20 @@ export default function LoansPage() {
                 className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
             />
         </div>
+        )}
+        {!isEmployeeRole && (
+          <button
+            type="button"
+            onClick={() => setGroupByEmployee(v => !v)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+              groupByEmployee
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-neutral-800 dark:text-gray-300 dark:hover:bg-neutral-700'
+            }`}
+          >
+            {groupByEmployee ? 'Per Karyawan' : 'Tanpa Grup'}
+          </button>
+        )}
         {isEmployeeRole && (
           <div className="text-right text-sm">
             <div className="text-gray-500 dark:text-gray-400">Total Kasbon bulan ini</div>
@@ -341,144 +523,73 @@ export default function LoansPage() {
       </div>
 
       {/* Loans Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {loading ? (
-            <div className="col-span-full text-center py-12 text-gray-500">Loading data...</div>
-        ) : filteredLoans.length === 0 ? (
-            <div className="col-span-full text-center py-12 text-gray-500 flex flex-col items-center gap-3">
-                <CreditCard size={48} className="text-gray-300" />
-                <p>Belum ada data pinjaman</p>
+      {groupByEmployee && !isEmployeeRole ? (
+        <div className="space-y-4">
+          {loading ? (
+            <div className="text-center py-12 text-gray-500">Loading data...</div>
+          ) : groupedLoans.length === 0 ? (
+            <div className="text-center py-12 text-gray-500 flex flex-col items-center gap-3">
+              <CreditCard size={48} className="text-gray-300" />
+              <p>Belum ada data pinjaman</p>
             </div>
-        ) : (
-            filteredLoans.map(loan => {
-                const paid = getPaidAmount(loan)
-                const remaining = getRemainingAmount(loan)
-                const progress = loan.amount > 0 ? Math.min(100, (paid / loan.amount) * 100) : 0
-                
-                return (
-                    <div key={loan.id} className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-gray-100 dark:border-neutral-800 overflow-hidden hover:shadow-md transition-shadow relative">
-                        {/* Approval Actions for Admin */}
-                        {!isEmployeeRole && loan.status === 'PENDING' && (
-                          <div className="absolute top-0 right-0 p-4 flex gap-2 z-10">
-                            <button
-                              onClick={() => handleApproval(loan.id, 'ACTIVE')}
-                              className="bg-green-100 hover:bg-green-200 text-green-700 p-2 rounded-lg transition-colors"
-                              title="Setujui Pengajuan"
-                            >
-                              <Check size={18} />
-                            </button>
-                            <button
-                              onClick={() => handleApproval(loan.id, 'REJECTED')}
-                              className="bg-red-100 hover:bg-red-200 text-red-700 p-2 rounded-lg transition-colors"
-                              title="Tolak Pengajuan"
-                            >
-                              <X size={18} />
-                            </button>
-                          </div>
-                        )}
+          ) : (
+            groupedLoans.map(group => {
+              const kasbonCount = group.loans.filter(l => l.type === 'KASBON').length
+              const pinjamanCount = group.loans.filter(l => l.type === 'PINJAMAN').length
+              const pendingCount = group.loans.filter(l => l.status === 'PENDING').length
+              const outstanding = group.loans
+                .filter(l => l.status !== 'REJECTED')
+                .reduce((sum, l) => sum + getRemainingAmount(l), 0)
 
-                        <div className="p-5 space-y-4">
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <h3 className="font-bold text-gray-800 dark:text-slate-100">{loan.employee?.name || 'Karyawan Tidak Dikenal'}</h3>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">{loan.employee?.department || '-'}</p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
-                                        {loan.type === 'PINJAMAN' ? 'Pinjaman' : 'Kasbon'}
-                                    </span>
-                                    <span
-                                        className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                            loan.status === 'PAID'
-                                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                                : loan.status === 'ACTIVE'
-                                                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                                                : loan.status === 'PENDING'
-                                                ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                                                : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                        }`}
-                                    >
-                                        {loan.status === 'PAID' ? 'Lunas' : 
-                                         loan.status === 'ACTIVE' ? 'Aktif' :
-                                         loan.status === 'PENDING' ? 'Menunggu' : 'Ditolak'}
-                                    </span>
-                                </div>
-                            </div>
+              const isOpen = expandedEmployees[group.employeeId] ?? pendingCount > 0
 
-                            <div className="space-y-2">
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-gray-500 dark:text-gray-400">Total Pinjaman</span>
-                                    <span className="font-semibold text-gray-800 dark:text-slate-200">{formatRupiah(loan.amount)}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-gray-500 dark:text-gray-400">Angsuran/bln</span>
-                                    <span className="font-medium text-gray-800 dark:text-slate-200">{formatRupiah(loan.monthlyInstallment)}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-gray-500 dark:text-gray-400">Sisa</span>
-                                    <span className="font-bold text-red-600 dark:text-red-400">{formatRupiah(remaining)}</span>
-                                </div>
-                            </div>
-
-                            {/* Progress Bar */}
-                            <div className="w-full bg-gray-100 dark:bg-neutral-800 rounded-full h-2">
-                                <div 
-                                    className={`h-2 rounded-full transition-all duration-500 ${
-                                      loan.status === 'REJECTED' ? 'bg-red-500' : 'bg-blue-600'
-                                    }`}
-                                    style={{ width: `${progress}%` }}
-                                ></div>
-                            </div>
-                            <div className="flex justify-between text-xs text-gray-400">
-                                <span>Terbayar: {Math.round(progress)}%</span>
-                                <span>{new Date(loan.date).toLocaleDateString('id-ID')}</span>
-                            </div>
-
-                            {/* Actions */}
-                            <div className="pt-3 border-t border-gray-100 dark:border-neutral-800 flex justify-between items-center">
-                                <button 
-                                    onClick={() => setExpandedLoanId(expandedLoanId === loan.id ? null : loan.id)}
-                                    className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                                >
-                                    {expandedLoanId === loan.id ? 'Tutup Riwayat' : 'Riwayat Bayar'}
-                                    {expandedLoanId === loan.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                                </button>
-
-                                {role !== 'EMPLOYEE' && role !== 'KARYAWAN' && (
-                                    <button 
-                                        onClick={() => handleDelete(loan.id)}
-                                        className="text-gray-400 hover:text-red-600 transition-colors p-1"
-                                        title="Hapus Data"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Payment History Expandable */}
-                        {expandedLoanId === loan.id && (
-                            <div className="bg-gray-50 dark:bg-neutral-800/50 p-4 border-t border-gray-100 dark:border-neutral-800 animate-in slide-in-from-top-2">
-                                <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3">Riwayat Pembayaran</h4>
-                                {loan.payments.length === 0 ? (
-                                    <p className="text-sm text-gray-400 italic text-center py-2">Belum ada pembayaran</p>
-                                ) : (
-                                    <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
-                                        {loan.payments.map((payment, idx) => (
-                                            <div key={idx} className="flex justify-between text-sm p-2 bg-white dark:bg-neutral-900 rounded border border-gray-100 dark:border-neutral-800">
-                                                <span className="text-gray-600 dark:text-gray-300">{new Date(payment.date).toLocaleDateString('id-ID')}</span>
-                                                <span className="font-medium text-green-600">{formatRupiah(payment.amount)}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        )}
+              return (
+                <div key={group.employeeId} className="bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-gray-100 dark:border-neutral-800 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => toggleEmployeeExpanded(group.employeeId)}
+                    className="w-full p-4 flex items-center justify-between gap-4"
+                  >
+                    <div className="text-left min-w-0">
+                      <div className="font-semibold text-gray-800 dark:text-slate-100 truncate">{group.employeeName}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{group.department}</div>
                     </div>
-                )
+                    <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                      <span className="px-2 py-1 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">Kasbon: {kasbonCount}</span>
+                      <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">Pinjaman: {pinjamanCount}</span>
+                      {pendingCount > 0 && (
+                        <span className="px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300">Menunggu: {pendingCount}</span>
+                      )}
+                      <span className="font-semibold text-gray-800 dark:text-slate-100">{formatRupiah(outstanding)}</span>
+                      {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    </div>
+                  </button>
+                  {isOpen && (
+                    <div className="p-4 pt-0">
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {group.loans.map(renderLoanCard)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
             })
-        )}
-      </div>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {loading ? (
+            <div className="col-span-full text-center py-12 text-gray-500">Loading data...</div>
+          ) : filteredLoans.length === 0 ? (
+            <div className="col-span-full text-center py-12 text-gray-500 flex flex-col items-center gap-3">
+              <CreditCard size={48} className="text-gray-300" />
+              <p>Belum ada data pinjaman</p>
+            </div>
+          ) : (
+            filteredLoans.map(renderLoanCard)
+          )}
+        </div>
+      )}
 
       {/* Add Modal */}
       {showModal && (

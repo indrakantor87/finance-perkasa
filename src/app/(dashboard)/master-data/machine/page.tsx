@@ -523,7 +523,7 @@ export default function MachineManagementPage() {
             {/* Machine Controls Group */}
             <div className="flex items-center gap-1 bg-gray-100 dark:bg-neutral-800 p-1 rounded-lg">
                 <button 
-                    onClick={fetchUsers}
+                    onClick={() => fetchUsers()}
                     disabled={loading}
                     className="p-2 text-gray-600 hover:text-blue-600 hover:bg-white dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-neutral-700 rounded-md transition-all"
                     title="Refresh Data dari Mesin"

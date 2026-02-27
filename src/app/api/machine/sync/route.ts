@@ -42,8 +42,7 @@ export async function POST() {
         const existing = await prisma.employee.findFirst({
           where: {
             name: {
-              equals: user.name,
-              mode: 'insensitive' // Case insensitive match
+              equals: user.name
             }
           }
         });

@@ -2,12 +2,14 @@
 
 import prisma from '@/lib/prisma'
 
+type NamedValue = { name: string; value: number }
+
 const EMPTY_STATS = {
   employees: {
     total: 0,
     newCount: 0,
-    byStatus: [],
-    byDept: []
+    byStatus: [] as NamedValue[],
+    byDept: [] as NamedValue[]
   },
   attendance: {
     present: 0,

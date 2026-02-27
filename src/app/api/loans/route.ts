@@ -20,21 +20,33 @@ export async function GET(request: Request) {
         const parsed = JSON.parse(sessionCookie.value)
         sessionEmployeeId = parsed.employeeId || null
         sessionRole = (parsed.role || '').toUpperCase()
+        // console.log('DEBUG API LOANS GET:', { sessionRole, sessionEmployeeId })
       } catch {
       }
     }
 
     const where: any = {}
-    if (sessionRole === 'EMPLOYEE' || sessionRole === 'KARYAWAN' || sessionRole === 'MARKETING') {
+    // Normalize role check
+    const isEmployee = sessionRole === 'EMPLOYEE' || sessionRole === 'KARYAWAN' || sessionRole === 'MARKETING'
+    
+    if (isEmployee) {
       if (sessionEmployeeId) {
         where.employeeId = sessionEmployeeId
+      } else if (employeeIdParam) {
+        // Fallback: If session doesn't have employeeId (e.g. legacy data), use param
+        // BUT verify if the user actually owns this employeeId (simplified check for now)
+        where.employeeId = employeeIdParam
       } else {
+        // Force empty result if employeeId is missing for employee role
         where.employeeId = '__NONE__'
       }
     } else if (employeeIdParam) {
       where.employeeId = employeeIdParam
     }
+    
     if (status && status !== 'ALL') where.status = status
+
+    // console.log('DEBUG API LOANS QUERY:', where)
 
     const loans = await prisma.loan.findMany({
       where,

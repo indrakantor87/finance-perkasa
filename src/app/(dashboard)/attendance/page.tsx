@@ -6,6 +6,7 @@ import {
   LayoutDashboard, Database, UserCheck, Banknote, 
   CreditCard, FileCheck, Bell, Upload, Search, Filter, CheckCircle, XCircle, AlertCircle, Download, Edit3, ChevronDown, Trash2, RefreshCw
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 interface Attendance {
   id: string
@@ -368,7 +369,7 @@ export default function AttendancePage() {
 
       // Strategy 1: Explicit In/Out columns
       if (inIdx !== -1 || outIdx !== -1) {
-        parsedData = jsonData.slice(1).map((row: any, index) => {
+        parsedData = jsonData.slice(1).map((row: any, index: number) => {
           const name = nameIdx !== -1 ? row[nameIdx] : fileBase
           if (!name) return null
           const emp = matchEmployee(name)

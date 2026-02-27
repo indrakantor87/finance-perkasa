@@ -11,7 +11,8 @@ export default function MasterDataPage() {
       icon: <Cpu className="w-8 h-8 text-blue-600 dark:text-blue-400" />,
       href: "/master-data/machine",
       color: "bg-blue-50 dark:bg-blue-900/20",
-      borderColor: "border-blue-100 dark:border-blue-800"
+      borderColor: "border-blue-100 dark:border-blue-800",
+      disabled: false
     },
     // Placeholder menus for future master data
     {
@@ -20,7 +21,8 @@ export default function MasterDataPage() {
       icon: <Shield className="w-8 h-8 text-purple-600 dark:text-purple-400" />,
       href: "/master-data/job-categories",
       color: "bg-purple-50 dark:bg-purple-900/20",
-      borderColor: "border-purple-100 dark:border-purple-800"
+      borderColor: "border-purple-100 dark:border-purple-800",
+      disabled: true
     },
     {
       title: "Konfigurasi Server",
@@ -28,7 +30,8 @@ export default function MasterDataPage() {
       icon: <Server className="w-8 h-8 text-orange-600 dark:text-orange-400" />,
       href: "/master-data/server-config",
       color: "bg-orange-50 dark:bg-orange-900/20",
-      borderColor: "border-orange-100 dark:border-orange-800"
+      borderColor: "border-orange-100 dark:border-orange-800",
+      disabled: true
     }
   ];
 
