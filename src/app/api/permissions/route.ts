@@ -1,15 +1,53 @@
 import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import prisma from '@/lib/prisma'
 import { createNotification } from '@/lib/notification-service'
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
-    const employeeId = searchParams.get('employeeId')
+    const employeeIdParam = searchParams.get('employeeId')
+    const monthParam = searchParams.get('month')
+    const yearParam = searchParams.get('year')
     
+    const cookieStore = await cookies()
+    const sessionCookie = cookieStore.get('perkasa-finance-auth')
+    let sessionEmployeeId: string | null = null
+    let sessionRole: string | null = null
+
+    if (sessionCookie?.value) {
+      try {
+        const parsed = JSON.parse(sessionCookie.value)
+        sessionEmployeeId = parsed.employeeId || null
+        sessionRole = (parsed.role || '').toUpperCase()
+      } catch {}
+    }
+
     const where: any = {}
-    if (employeeId) {
-        where.employeeId = employeeId
+    
+    // Strict Data Isolation
+    const isEmployee = sessionRole === 'EMPLOYEE' || sessionRole === 'KARYAWAN' || sessionRole === 'MARKETING'
+    if (isEmployee) {
+      if (sessionEmployeeId) {
+        where.employeeId = sessionEmployeeId
+      } else {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+    } else if (employeeIdParam) {
+        where.employeeId = employeeIdParam
+    }
+
+    // Monthly Filter Logic
+    if (monthParam && yearParam) {
+      const month = parseInt(monthParam)
+      const year = parseInt(yearParam)
+      const startDate = new Date(year, month - 1, 1)
+      const endDate = new Date(year, month, 0, 23, 59, 59)
+      
+      where.startDate = {
+        gte: startDate,
+        lte: endDate
+      }
     }
 
     const requests = await prisma.leaveRequest.findMany({
@@ -34,13 +72,37 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { employeeId, type, startDate, endDate, duration, durationUnit, reason, attachment } = body
     
-    if (!employeeId || !type || !startDate || !endDate || !reason) {
+    const cookieStore = await cookies()
+    const sessionCookie = cookieStore.get('perkasa-finance-auth')
+    let sessionRole: string | null = null
+    let sessionEmployeeId: string | null = null
+
+    if (sessionCookie?.value) {
+      try {
+        const parsed = JSON.parse(sessionCookie.value)
+        sessionRole = (parsed.role || '').toUpperCase()
+        sessionEmployeeId = parsed.employeeId || null
+      } catch {}
+    }
+
+    let targetEmployeeId = employeeId
+
+    // Enforce ID for employees
+    const isEmployee = sessionRole === 'EMPLOYEE' || sessionRole === 'KARYAWAN' || sessionRole === 'MARKETING'
+    if (isEmployee) {
+      if (!sessionEmployeeId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+      targetEmployeeId = sessionEmployeeId
+    }
+
+    if (!targetEmployeeId || !type || !startDate || !endDate || !reason) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
     const newRequest = await prisma.leaveRequest.create({
       data: {
-        employeeId,
+        employeeId: targetEmployeeId,
         type,
         startDate: new Date(startDate),
         endDate: new Date(endDate),
@@ -52,7 +114,7 @@ export async function POST(request: Request) {
     })
 
     const employee = await prisma.employee.findUnique({
-      where: { id: employeeId },
+      where: { id: targetEmployeeId },
       select: { name: true }
     })
 

@@ -43,6 +43,7 @@ export default function PermissionsPage() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
+  const [isHistoryView, setIsHistoryView] = useState(false)
   
   // Auth State
   const [role, setRole] = useState<string | null>(null)
@@ -76,19 +77,36 @@ export default function PermissionsPage() {
     }
     
     const controller = new AbortController()
-    fetchData(controller.signal)
+    fetchData(isHistoryView, controller.signal)
     return () => controller.abort()
-  }, [])
+  }, [isHistoryView])
 
-  const fetchData = async (signal?: AbortSignal) => {
+  const fetchData = async (history: boolean, signal?: AbortSignal) => {
     setLoading(true)
     try {
+      let url = '/api/permissions'
+      if (!history) {
+        const now = new Date()
+        const month = now.getMonth() + 1
+        const year = now.getFullYear()
+        url += `?month=${month}&year=${year}`
+      }
+
       const [reqRes, empRes] = await Promise.all([
-        fetch('/api/permissions', { signal }),
+        fetch(url, { signal }),
         fetch('/api/employees', { signal })
       ])
       
-      if (reqRes.ok) setRequests(await reqRes.json())
+      if (reqRes.ok) {
+        let data = await reqRes.json()
+        if (history) {
+            // Filter out current month data for history view
+            const now = new Date()
+            const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+            data = data.filter((d: any) => new Date(d.startDate) < startOfCurrentMonth)
+        }
+        setRequests(data)
+      }
       if (empRes.ok) setEmployees(await empRes.json())
     } catch (error: any) {
       if (error.name === 'AbortError') return
@@ -100,7 +118,8 @@ export default function PermissionsPage() {
 
   // Filter Logic
   const filteredRequests = requests.filter(req => {
-    const matchEmployee = (role === 'EMPLOYEE' || role === 'KARYAWAN') ? req.employeeId === currentEmployeeId : true
+    // Role filtering is now handled by API for strictness, but we keep this for UI consistency
+    const matchEmployee = (role === 'EMPLOYEE' || role === 'KARYAWAN' || role === 'MARKETING') ? req.employeeId === currentEmployeeId : true
     return matchEmployee
   })
 
@@ -109,7 +128,8 @@ export default function PermissionsPage() {
     e.preventDefault()
     
     // Validasi Employee ID untuk role admin
-    const finalEmployeeId = (role === 'EMPLOYEE' || role === 'KARYAWAN') ? currentEmployeeId : formData.employeeId
+    const isEmployee = role === 'EMPLOYEE' || role === 'KARYAWAN' || role === 'MARKETING'
+    const finalEmployeeId = isEmployee ? currentEmployeeId : formData.employeeId
     if (!finalEmployeeId) {
       alert('Silakan pilih karyawan terlebih dahulu')
       return
@@ -135,7 +155,7 @@ export default function PermissionsPage() {
 
       if (res.ok) {
         setShowModal(false)
-        fetchData()
+        fetchData(isHistoryView)
         setFormData(prev => ({
             ...prev,
             type: 'SICK',
@@ -145,7 +165,7 @@ export default function PermissionsPage() {
             attachment: ''
         }))
         // Reset employeeId only if admin
-        if (role !== 'EMPLOYEE' && role !== 'KARYAWAN') {
+        if (!isEmployee) {
             setFormData(prev => ({ ...prev, employeeId: '' }))
         }
       } else {
@@ -165,7 +185,7 @@ export default function PermissionsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
       })
-      if (res.ok) fetchData()
+      if (res.ok) fetchData(isHistoryView)
     } catch (error) {
       console.error('Update status error', error)
     }
@@ -175,7 +195,7 @@ export default function PermissionsPage() {
     if(!confirm('Hapus data perizinan ini?')) return
     try {
       const res = await fetch(`/api/permissions/${id}`, { method: 'DELETE' })
-      if (res.ok) fetchData()
+      if (res.ok) fetchData(isHistoryView)
     } catch (error) {
       console.error('Delete error', error)
     }
@@ -219,12 +239,28 @@ export default function PermissionsPage() {
             </h1>
             <p className="text-gray-500 dark:text-slate-400">Manajemen ketidakhadiran dan cuti karyawan</p>
         </div>
-        <button 
-            onClick={() => setShowModal(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm"
-        >
-            <Plus size={18} /> Ajukan Izin
-        </button>
+        <div className="flex gap-3">
+            <div className="flex bg-gray-100 dark:bg-neutral-800 rounded-lg p-1">
+                <button
+                    onClick={() => setIsHistoryView(false)}
+                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${!isHistoryView ? 'bg-white dark:bg-neutral-700 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
+                >
+                    Bulan Ini
+                </button>
+                <button
+                    onClick={() => setIsHistoryView(true)}
+                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${isHistoryView ? 'bg-white dark:bg-neutral-700 shadow-sm text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
+                >
+                    Riwayat
+                </button>
+            </div>
+            <button 
+                onClick={() => setShowModal(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm"
+            >
+                <Plus size={18} /> Ajukan Izin
+            </button>
+        </div>
       </div>
 
       {/* Table */}
@@ -316,7 +352,18 @@ export default function PermissionsPage() {
                     <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 transition-colors"><XCircle size={20} /></button>
                 </div>
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                    {(role !== 'EMPLOYEE' && role !== 'KARYAWAN') && (
+                    {/* Auto-fill for employee, Select for Admin */}
+                    {(role === 'EMPLOYEE' || role === 'KARYAWAN' || role === 'MARKETING') ? (
+                        <div>
+                            <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-slate-300">Karyawan</label>
+                            <input 
+                                type="text" 
+                                disabled 
+                                value={employees.find(e => e.id === currentEmployeeId)?.name || 'Anda'}
+                                className="w-full p-2 border border-gray-300 dark:border-neutral-700 rounded bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-slate-400 font-medium"
+                            />
+                        </div>
+                    ) : (
                     <div>
                         <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-slate-300">Karyawan</label>
                         <select 
