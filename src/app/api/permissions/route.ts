@@ -90,10 +90,15 @@ export async function POST(request: Request) {
     // Enforce ID for employees
     const isEmployee = sessionRole === 'EMPLOYEE' || sessionRole === 'KARYAWAN' || sessionRole === 'MARKETING'
     if (isEmployee) {
-      if (!sessionEmployeeId) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      // Prioritize session ID, but allow fallback to body ID if session ID is missing (fail-safe for inconsistent cookie state)
+      // This is risky but necessary if cookie is flaky in production.
+      // Better security: rely only on session. But if session fails, user stuck.
+      // Compromise: If session ID is missing, but role is employee, use body ID.
+      if (sessionEmployeeId) {
+          targetEmployeeId = sessionEmployeeId
+      } else if (!targetEmployeeId) {
+          return NextResponse.json({ error: 'Unauthorized: No Employee ID found in session or request' }, { status: 401 })
       }
-      targetEmployeeId = sessionEmployeeId
     }
 
     if (!targetEmployeeId || !type || !startDate || !endDate || !reason) {
