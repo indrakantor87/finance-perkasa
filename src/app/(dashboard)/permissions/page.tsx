@@ -48,6 +48,7 @@ export default function PermissionsPage() {
   // Auth State
   const [role, setRole] = useState<string | null>(null)
   const [currentEmployeeId, setCurrentEmployeeId] = useState<string | null>(null)
+  const [currentEmployeeName, setCurrentEmployeeName] = useState<string>('Anda')
 
   // Form State
   const [formData, setFormData] = useState({
@@ -68,6 +69,10 @@ export default function PermissionsPage() {
         console.log('User session loaded:', user) // Debug
         setRole(user.role)
         setCurrentEmployeeId(user.employeeId)
+        // Use name from session if available, fallback to 'Anda'
+        const sessionName = user.employeeName || user.name || 'Anda'
+        setCurrentEmployeeName(sessionName)
+        
         // If employee, set default ID in form
         if (user.role === 'EMPLOYEE' || user.role === 'KARYAWAN' || user.role === 'MARKETING') {
             setFormData(prev => ({ ...prev, employeeId: user.employeeId }))
@@ -367,7 +372,7 @@ export default function PermissionsPage() {
                             <input 
                                 type="text" 
                                 disabled 
-                                value={employees.find(e => e.id === currentEmployeeId)?.name || 'Anda'}
+                                value={currentEmployeeName || 'Anda'}
                                 className="w-full p-2 border border-gray-300 dark:border-neutral-700 rounded bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-slate-400 font-medium"
                             />
                         </div>
