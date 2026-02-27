@@ -115,8 +115,20 @@ export default function LoansPage() {
   const fetchData = async (signal?: AbortSignal) => {
     setLoading(true)
     try {
+      let url = '/api/loans'
+      const queryParams = []
+
+      // Add employeeId to query if available (for fail-safe if session cookie is missing on GET)
+      if ((role === 'EMPLOYEE' || role === 'KARYAWAN' || role === 'MARKETING') && currentEmployeeId) {
+          queryParams.push(`employeeId=${currentEmployeeId}`)
+      }
+
+      if (queryParams.length > 0) {
+          url += `?${queryParams.join('&')}`
+      }
+
       const [loansRes, empRes] = await Promise.all([
-        fetch('/api/loans', { signal }),
+        fetch(url, { signal }),
         fetch('/api/employees', { signal })
       ])
       

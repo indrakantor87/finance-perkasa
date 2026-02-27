@@ -30,11 +30,10 @@ export async function GET(request: Request) {
     const isEmployee = sessionRole === 'EMPLOYEE' || sessionRole === 'KARYAWAN' || sessionRole === 'MARKETING'
     
     if (isEmployee) {
+      // Prioritize session ID, but allow fallback to body/query param ID if session ID is missing (fail-safe)
       if (sessionEmployeeId) {
         where.employeeId = sessionEmployeeId
       } else if (employeeIdParam) {
-        // Fallback: If session doesn't have employeeId (e.g. legacy data), use param
-        // BUT verify if the user actually owns this employeeId (simplified check for now)
         where.employeeId = employeeIdParam
       } else {
         // Force empty result if employeeId is missing for employee role
