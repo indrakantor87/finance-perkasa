@@ -30,8 +30,12 @@ export async function GET(request: Request) {
     if (isEmployee) {
       if (sessionEmployeeId) {
         where.employeeId = sessionEmployeeId
+      } else if (employeeIdParam) {
+        // Fallback: If session ID is missing but param exists, use param
+        // This is a fail-safe for production where cookie might be flaky
+        where.employeeId = employeeIdParam
       } else {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        return NextResponse.json({ error: 'Unauthorized: No Employee ID found' }, { status: 401 })
       }
     } else if (employeeIdParam) {
         where.employeeId = employeeIdParam

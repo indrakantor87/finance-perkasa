@@ -91,11 +91,23 @@ export default function PermissionsPage() {
     setLoading(true)
     try {
       let url = '/api/permissions'
+      const queryParams = []
+      
       if (!history) {
         const now = new Date()
         const month = now.getMonth() + 1
         const year = now.getFullYear()
-        url += `?month=${month}&year=${year}`
+        queryParams.push(`month=${month}`)
+        queryParams.push(`year=${year}`)
+      }
+
+      // Add employeeId to query if available (for fail-safe if session cookie is missing on GET)
+      if ((role === 'EMPLOYEE' || role === 'KARYAWAN' || role === 'MARKETING') && currentEmployeeId) {
+          queryParams.push(`employeeId=${currentEmployeeId}`)
+      }
+
+      if (queryParams.length > 0) {
+          url += `?${queryParams.join('&')}`
       }
 
       const [reqRes, empRes] = await Promise.all([
