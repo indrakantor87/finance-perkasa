@@ -44,7 +44,6 @@ export default function Navigation() {
     { icon: <CreditCard size={18} />, label: "Pinjaman", href: "/loans", roles: ['DEVELOPER', 'ADMINISTRATOR', 'ADMIN', 'EMPLOYEE', 'KARYAWAN'] },
     { icon: <FileCheck size={18} />, label: "Perizinan", href: "/permissions", roles: ['DEVELOPER', 'ADMINISTRATOR', 'ADMIN', 'EMPLOYEE', 'KARYAWAN'] },
     { icon: <Database size={18} />, label: "Master Data", href: "/master-data", roles: ['DEVELOPER', 'ADMINISTRATOR'] },
-    { icon: <Settings size={18} />, label: "Settings", href: "/settings", roles: ['DEVELOPER', 'ADMINISTRATOR'] },
   ];
 
   // Filter items based on role

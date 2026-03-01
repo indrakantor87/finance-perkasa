@@ -56,9 +56,10 @@ export async function PUT(
     const statusLabel = status === 'ACTIVE' ? 'DISETUJUI' : 'DITOLAK'
     const notifType = status === 'ACTIVE' ? 'success' : 'error' // 'error' biasanya merah, cocok untuk reject
 
+    const employeeName = loan.employee?.name || 'Karyawan'
     await createNotification(
-      `Pengajuan ${jenisLabel} ${statusLabel}`,
-      `Pengajuan ${jenisLabel} Anda sebesar Rp ${loan.amount.toLocaleString('id-ID')} telah ${statusLabel.toLowerCase()}.`,
+      `Pengajuan ${jenisLabel} ${statusLabel} untuk ${employeeName}`,
+      `Pengajuan ${jenisLabel} atas nama ${employeeName} sebesar Rp ${loan.amount.toLocaleString('id-ID')} telah ${statusLabel.toLowerCase()}.`,
       notifType,
       'loan'
     )

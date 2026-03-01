@@ -14,12 +14,16 @@ export async function GET(request: Request) {
 
     let sessionEmployeeId: string | null = null
     let sessionRole: string | null = null
+    let sessionUserId: string | null = null
+    let sessionEmail: string | null = null
 
     if (sessionCookie?.value) {
       try {
         const parsed = JSON.parse(sessionCookie.value)
         sessionEmployeeId = parsed.employeeId || null
         sessionRole = (parsed.role || '').toUpperCase()
+        sessionUserId = parsed.id || null
+        sessionEmail = parsed.email || null
         // console.log('DEBUG API LOANS GET:', { sessionRole, sessionEmployeeId })
       } catch {
       }
@@ -30,6 +34,17 @@ export async function GET(request: Request) {
     const isEmployee = sessionRole === 'EMPLOYEE' || sessionRole === 'KARYAWAN' || sessionRole === 'MARKETING'
     
     if (isEmployee) {
+      // Fallback: resolve employeeId from user record if not present in session
+      if (!sessionEmployeeId && (sessionUserId || sessionEmail)) {
+        try {
+          const userRecord = sessionUserId
+            ? await prisma.user.findUnique({ where: { id: sessionUserId } })
+            : await prisma.user.findUnique({ where: { email: sessionEmail! } })
+          if (userRecord?.employeeId) {
+            sessionEmployeeId = userRecord.employeeId
+          }
+        } catch {}
+      }
       // Prioritize session ID, but allow fallback to body/query param ID if session ID is missing (fail-safe)
       if (sessionEmployeeId) {
         where.employeeId = sessionEmployeeId
@@ -155,8 +170,8 @@ export async function POST(request: Request) {
       })
 
       let outstanding = 0
-      activeLoans.forEach(loan => {
-        const paid = loan.payments.reduce((sum, p) => sum + p.amount, 0)
+      activeLoans.forEach((loan: { amount: number; payments: Array<{ amount: number }> }) => {
+        const paid = (loan.payments || []).reduce((sum: number, p: { amount: number }) => sum + p.amount, 0)
         outstanding += loan.amount - paid
       })
 

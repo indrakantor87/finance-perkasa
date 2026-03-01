@@ -248,6 +248,11 @@ export default function LoansPage() {
 
       if (res.ok) {
         fetchData()
+        try {
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('notifications-updated'))
+          }
+        } catch {}
       } else {
         alert('Gagal memproses persetujuan')
       }
@@ -300,6 +305,11 @@ export default function LoansPage() {
       if (res.ok) {
         setShowModal(false)
         fetchData()
+        try {
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('notifications-updated'))
+          }
+        } catch {}
         setFormData({
           employeeId: '',
           amount: '',

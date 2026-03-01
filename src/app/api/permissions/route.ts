@@ -14,12 +14,16 @@ export async function GET(request: Request) {
     const sessionCookie = cookieStore.get('perkasa-finance-auth')
     let sessionEmployeeId: string | null = null
     let sessionRole: string | null = null
+    let sessionUserId: string | null = null
+    let sessionEmail: string | null = null
 
     if (sessionCookie?.value) {
       try {
         const parsed = JSON.parse(sessionCookie.value)
         sessionEmployeeId = parsed.employeeId || null
         sessionRole = (parsed.role || '').toUpperCase()
+        sessionUserId = parsed.id || null
+        sessionEmail = parsed.email || null
       } catch {}
     }
 
@@ -28,6 +32,20 @@ export async function GET(request: Request) {
     // Strict Data Isolation
     const isEmployee = sessionRole === 'EMPLOYEE' || sessionRole === 'KARYAWAN' || sessionRole === 'MARKETING'
     if (isEmployee) {
+      // Fallback: resolve employeeId from user record when missing in session
+      if (!sessionEmployeeId && (sessionUserId || sessionEmail)) {
+        try {
+          const userRecord = sessionUserId
+            ? await prisma.user.findUnique({ where: { id: sessionUserId } })
+            : await prisma.user.findUnique({ where: { email: sessionEmail! } })
+          if (userRecord?.employeeId) {
+            sessionEmployeeId = userRecord.employeeId
+          } else if (userRecord?.name) {
+            const emp = await prisma.employee.findFirst({ where: { name: userRecord.name } })
+            if (emp?.id) sessionEmployeeId = emp.id
+          }
+        } catch {}
+      }
       if (sessionEmployeeId) {
         where.employeeId = sessionEmployeeId
       } else if (employeeIdParam) {
@@ -35,23 +53,26 @@ export async function GET(request: Request) {
         // This is a fail-safe for production where cookie might be flaky
         where.employeeId = employeeIdParam
       } else {
-        return NextResponse.json({ error: 'Unauthorized: No Employee ID found' }, { status: 401 })
+        // As a last resort, return empty result set with 200 instead of 401 to avoid UI error
+        where.employeeId = '__NONE__'
       }
     } else if (employeeIdParam) {
         where.employeeId = employeeIdParam
     }
 
-    // Monthly Filter Logic
+    // Monthly Filter Logic (overlap within month)
     if (monthParam && yearParam) {
       const month = parseInt(monthParam)
       const year = parseInt(yearParam)
-      const startDate = new Date(year, month - 1, 1)
-      const endDate = new Date(year, month, 0, 23, 59, 59)
-      
-      where.startDate = {
-        gte: startDate,
-        lte: endDate
-      }
+      const startOfMonth = new Date(year, month - 1, 1)
+      const endOfMonth = new Date(year, month, 0, 23, 59, 59, 999)
+
+      // Show requests that overlap with the month window:
+      // startDate <= endOfMonth AND endDate >= startOfMonth
+      where.AND = [
+        { startDate: { lte: endOfMonth } },
+        { endDate: { gte: startOfMonth } }
+      ]
     }
 
     const requests = await prisma.leaveRequest.findMany({
@@ -80,12 +101,16 @@ export async function POST(request: Request) {
     const sessionCookie = cookieStore.get('perkasa-finance-auth')
     let sessionRole: string | null = null
     let sessionEmployeeId: string | null = null
+    let sessionUserId: string | null = null
+    let sessionEmail: string | null = null
 
     if (sessionCookie?.value) {
       try {
         const parsed = JSON.parse(sessionCookie.value)
         sessionRole = (parsed.role || '').toUpperCase()
         sessionEmployeeId = parsed.employeeId || null
+        sessionUserId = parsed.id || null
+        sessionEmail = parsed.email || null
       } catch {}
     }
 
@@ -100,8 +125,22 @@ export async function POST(request: Request) {
       // Compromise: If session ID is missing, but role is employee, use body ID.
       if (sessionEmployeeId) {
           targetEmployeeId = sessionEmployeeId
-      } else if (!targetEmployeeId) {
-          return NextResponse.json({ error: 'Unauthorized: No Employee ID found in session or request' }, { status: 401 })
+      } else {
+          // Try to resolve from user record using id/email
+          try {
+            const userRecord = sessionUserId
+              ? await prisma.user.findUnique({ where: { id: sessionUserId } })
+              : await prisma.user.findUnique({ where: { email: sessionEmail! } })
+            if (userRecord?.employeeId) {
+              targetEmployeeId = userRecord.employeeId
+            } else if (userRecord?.name) {
+              const emp = await prisma.employee.findFirst({ where: { name: userRecord.name } })
+              if (emp?.id) targetEmployeeId = emp.id
+            }
+          } catch {}
+          if (!targetEmployeeId) {
+            return NextResponse.json({ error: 'Unauthorized: No Employee ID found in session or request' }, { status: 401 })
+          }
       }
     }
 

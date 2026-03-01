@@ -115,17 +115,37 @@ export default function PermissionsPage() {
         fetch('/api/employees', { signal })
       ])
       
+      if (empRes.ok) setEmployees(await empRes.json())
+
       if (reqRes.ok) {
         let data = await reqRes.json()
         if (history) {
-            // Filter out current month data for history view
             const now = new Date()
             const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1)
             data = data.filter((d: any) => new Date(d.startDate) < startOfCurrentMonth)
         }
         setRequests(data)
+      } else if ((role === 'EMPLOYEE' || role === 'KARYAWAN' || role === 'MARKETING') && !currentEmployeeId) {
+        // Second-chance fetch: resolve employeeId by name and refetch
+        try {
+          const sessionRaw = localStorage.getItem('perkasa-finance-auth') || sessionStorage.getItem('perkasa-finance-auth') || ''
+          let sessionName = currentEmployeeName
+          if (sessionRaw) {
+            const s = JSON.parse(sessionRaw)
+            sessionName = s.employeeName || s.name || sessionName
+          }
+          const list = await empRes.clone().json().catch(() => [])
+          const match = Array.isArray(list) ? list.find((e: any) => e?.name === sessionName) : null
+          if (match?.id) {
+            const retryUrl = url.includes('?') ? `${url}&employeeId=${match.id}` : `${url}?employeeId=${match.id}`
+            const retry = await fetch(retryUrl, { signal })
+            if (retry.ok) {
+              const retryData = await retry.json()
+              setRequests(retryData)
+            }
+          }
+        } catch {}
       }
-      if (empRes.ok) setEmployees(await empRes.json())
     } catch (error: any) {
       if (error.name === 'AbortError') return
       console.error('Failed to fetch data', error)
@@ -136,9 +156,12 @@ export default function PermissionsPage() {
 
   // Filter Logic
   const filteredRequests = requests.filter(req => {
-    // Role filtering is now handled by API for strictness, but we keep this for UI consistency
-    const matchEmployee = (role === 'EMPLOYEE' || role === 'KARYAWAN' || role === 'MARKETING') ? req.employeeId === currentEmployeeId : true
-    return matchEmployee
+    // Jika role karyawan dan currentEmployeeId belum tersedia (cookie tidak memuat employeeId),
+    // jangan singkirkan data—API sudah memfilter. Toleransi: tampilkan semua yang dikembalikan server.
+    const isEmpRole = role === 'EMPLOYEE' || role === 'KARYAWAN' || role === 'MARKETING'
+    if (!isEmpRole) return true
+    if (!currentEmployeeId) return true
+    return req.employeeId === currentEmployeeId
   })
 
   // Handlers
@@ -194,6 +217,11 @@ export default function PermissionsPage() {
       if (res.ok) {
         setShowModal(false)
         fetchData(isHistoryView)
+        try {
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('notifications-updated'))
+          }
+        } catch {}
         setFormData(prev => ({
             ...prev,
             type: 'SICK',
@@ -223,7 +251,14 @@ export default function PermissionsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
       })
-      if (res.ok) fetchData(isHistoryView)
+      if (res.ok) {
+        fetchData(isHistoryView)
+        try {
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('notifications-updated'))
+          }
+        } catch {}
+      }
     } catch (error) {
       console.error('Update status error', error)
     }
@@ -233,7 +268,14 @@ export default function PermissionsPage() {
     if(!confirm('Hapus data perizinan ini?')) return
     try {
       const res = await fetch(`/api/permissions/${id}`, { method: 'DELETE' })
-      if (res.ok) fetchData(isHistoryView)
+      if (res.ok) {
+        fetchData(isHistoryView)
+        try {
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('notifications-updated'))
+          }
+        } catch {}
+      }
     } catch (error) {
       console.error('Delete error', error)
     }

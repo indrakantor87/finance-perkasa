@@ -252,14 +252,25 @@ export function SalarySlip({ data, employeeName, role, department, month, year }
 
       <div className="mt-4 flex justify-end text-center font-bold text-sm px-8">
           <div className="flex flex-col items-center relative">
-              <div className="mb-[-15px] relative z-10">DIREKTUR</div>
+              {/* Titles above all */}
+              <div className="mb-[-15px] relative z-20">DIREKTUR</div>
               <div className="relative w-32 h-20 flex items-center justify-center">
-                  {/* Signature Layer */}
-                  <img src="/images/ttd.png" alt="Signature" className="absolute top-0 left-0 w-full h-full object-contain scale-75" />
-                  {/* Stamp Layer (On Top) */}
-                  <img src="/uploads/stempel.png" alt="Stamp" className="absolute top-0 left-0 w-full h-full object-contain opacity-80 -rotate-12 scale-110" />
+                  {/* Stamp Layer (Bottom) */}
+                  <img
+                    src="/uploads/stamp.png"
+                    alt="Stamp"
+                    className="absolute inset-0 w-[180%] h-[180%] object-contain opacity-60 -rotate-12 translate-x-2 -translate-y-5 mix-blend-multiply z-0"
+                    style={{ printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}
+                  />
+                  {/* Signature Layer (Above stamp) */}
+                  <img
+                    src="/images/ttd.png"
+                    alt="Signature"
+                    className="absolute inset-0 w-full h-full object-contain scale-75 z-10"
+                    style={{ printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}
+                  />
               </div>
-              <div className="mt-[-15px] relative z-10">DARNO</div>
+              <div className="mt-[-15px] relative z-20">DARNO</div>
           </div>
           {/* Recipient Signature - Hidden for Marketing style match, but can be enabled if needed */}
           {/* 

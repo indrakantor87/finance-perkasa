@@ -14,12 +14,14 @@ interface SystemSetting {
   defaultWorkDays: number
   machineIp: string
   machinePort: number
+  machineDevices?: Array<{ name?: string; ip: string; port: number; enabled?: boolean }>
 }
 
 export default function ServerConfigPage() {
   const [settings, setSettings] = useState<SystemSetting | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [devices, setDevices] = useState<Array<{ name?: string; ip: string; port: number; enabled?: boolean }>>([])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -33,6 +35,7 @@ export default function ServerConfigPage() {
       if (res.ok) {
         const data = await res.json()
         setSettings(data)
+        setDevices(Array.isArray(data.machineDevices) ? data.machineDevices : [])
       }
     } catch (error) {
       console.error('Failed to fetch settings:', error)
@@ -50,7 +53,7 @@ export default function ServerConfigPage() {
       const res = await fetch('/api/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings)
+        body: JSON.stringify({ ...settings, machineDevices: devices })
       })
       if (res.ok) {
         alert('Konfigurasi server berhasil disimpan.')
@@ -114,39 +117,7 @@ export default function ServerConfigPage() {
             </div>
           ) : (
             <form onSubmit={handleSave} className="p-6 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-slate-300">
-                    IP Address Mesin Fingerprint
-                  </label>
-                  <input
-                    type="text"
-                    value={settings.machineIp}
-                    onChange={e => setSettings({ ...settings, machineIp: e.target.value })}
-                    className="w-full p-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-950 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-orange-500 focus:outline-none transition-colors"
-                  />
-                  <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
-                    Contoh: <span className="font-mono">192.168.1.50</span> atau IP publik yang terhubung ke mesin.
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-slate-300">
-                    Port Mesin Fingerprint
-                  </label>
-                  <input
-                    type="number"
-                    value={settings.machinePort}
-                    onChange={e =>
-                      setSettings({ ...settings, machinePort: parseInt(e.target.value || '0', 10) })
-                    }
-                    className="w-full p-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-950 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-orange-500 focus:outline-none transition-colors"
-                  />
-                  <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
-                    Default ZKTeco biasanya <span className="font-mono">4370</span>.
-                  </p>
-                </div>
-              </div>
+              {/* IP/Port tunggal dipindahkan: gunakan daftar perangkat di bawah untuk konfigurasi multi-mesin */}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -172,6 +143,97 @@ export default function ServerConfigPage() {
                     fingerprint berikutnya. Pastikan mesin sudah dikonfigurasi dengan alamat yang
                     sama.
                   </p>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-gray-100 dark:border-neutral-800">
+                <h3 className="text-sm font-semibold mb-3 text-gray-800 dark:text-slate-100">Daftar Perangkat Fingerprint</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 dark:bg-neutral-800 text-gray-600 dark:text-gray-300">
+                      <tr>
+                        <th className="px-3 py-2 text-left">Nama</th>
+                        <th className="px-3 py-2 text-left">IP</th>
+                        <th className="px-3 py-2 text-left">Port</th>
+                        <th className="px-3 py-2 text-left">Aktif</th>
+                        <th className="px-3 py-2"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {devices.map((d, idx) => (
+                        <tr key={idx} className="border-b border-gray-100 dark:border-neutral-700">
+                          <td className="px-3 py-2">
+                            <input
+                              type="text"
+                              value={d.name || ''}
+                              onChange={e => {
+                                const v = e.target.value
+                                setDevices(prev => prev.map((x, i) => i === idx ? { ...x, name: v } : x))
+                              }}
+                              className="w-full p-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-950 text-gray-900 dark:text-slate-100"
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <input
+                              type="text"
+                              value={d.ip}
+                              onChange={e => {
+                                const v = e.target.value
+                                setDevices(prev => prev.map((x, i) => i === idx ? { ...x, ip: v } : x))
+                              }}
+                              className="w-full p-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-950 text-gray-900 dark:text-slate-100"
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <input
+                              type="number"
+                              value={d.port}
+                              onChange={e => {
+                                const v = parseInt(e.target.value || '0', 10)
+                                setDevices(prev => prev.map((x, i) => i === idx ? { ...x, port: v } : x))
+                              }}
+                              className="w-28 p-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-950 text-gray-900 dark:text-slate-100"
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <input
+                              type="checkbox"
+                              checked={d.enabled !== false}
+                              onChange={e => {
+                                const v = e.target.checked
+                                setDevices(prev => prev.map((x, i) => i === idx ? { ...x, enabled: v } : x))
+                              }}
+                            />
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            <button
+                              type="button"
+                              onClick={() => setDevices(prev => prev.filter((_, i) => i !== idx))}
+                              className="px-3 py-1 rounded bg-red-500 text-white text-xs"
+                            >
+                              Hapus
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {devices.length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="px-3 py-6 text-center text-gray-500 dark:text-gray-400">
+                            Belum ada perangkat ditambahkan.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={() => setDevices(prev => [...prev, { name: '', ip: '', port: 4370, enabled: true }])}
+                    className="px-4 py-2 rounded bg-gray-100 dark:bg-neutral-800 border border-gray-200 dark:border-neutral-700 text-sm hover:bg-gray-200 dark:hover:bg-neutral-700"
+                  >
+                    Tambah Perangkat
+                  </button>
                 </div>
               </div>
 

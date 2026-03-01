@@ -7,7 +7,6 @@ export async function GET() {
     let settings = await prisma.systemSetting.findFirst()
 
     if (!settings) {
-      // Create default settings if not exists
       settings = await prisma.systemSetting.create({
         data: {
           companyName: 'PSB PERKASA',
@@ -21,7 +20,19 @@ export async function GET() {
       })
     }
 
-    return NextResponse.json(settings)
+    let machineDevices: any = []
+    try {
+      const rows = await prisma.$queryRawUnsafe('SELECT machineDevices FROM SystemSetting WHERE id = ? LIMIT 1', settings.id as any) as any[]
+      const raw = Array.isArray(rows) && rows[0] ? (rows[0] as any).machineDevices : null
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+      if (Array.isArray(parsed)) machineDevices = parsed
+    } catch {
+      try {
+        await prisma.$executeRawUnsafe('ALTER TABLE `SystemSetting` ADD COLUMN `machineDevices` JSON NULL')
+      } catch {}
+    }
+
+    return NextResponse.json({ ...settings, machineDevices })
   } catch (error) {
     console.error('Failed to fetch settings:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
@@ -40,7 +51,8 @@ export async function PUT(request: Request) {
       payrollCutoffDate, 
       defaultWorkDays,
       machineIp,
-      machinePort
+      machinePort,
+      machineDevices
     } = body
 
     if (!id) {
@@ -60,6 +72,14 @@ export async function PUT(request: Request) {
         machinePort: parseInt(machinePort)
       }
     })
+
+    if (machineDevices) {
+      try {
+        await prisma.$executeRawUnsafe('ALTER TABLE `SystemSetting` ADD COLUMN `machineDevices` JSON NULL')
+      } catch {}
+      const json = JSON.stringify(machineDevices || [])
+      await prisma.$executeRawUnsafe(`UPDATE \`SystemSetting\` SET \`machineDevices\` = '${json.replace(/'/g, "''")}' WHERE id = '${id}'`)
+    }
 
     return NextResponse.json(updatedSettings)
   } catch (error) {

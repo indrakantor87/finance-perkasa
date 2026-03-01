@@ -530,13 +530,6 @@ export default function MachineManagementPage() {
                 >
                     <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
                 </button>
-                <button
-                    onClick={() => setIsSettingsOpen(true)}
-                    className="p-2 text-gray-600 hover:text-blue-600 hover:bg-white dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-neutral-700 rounded-md transition-all"
-                    title="Konfigurasi IP Mesin"
-                >
-                    <Settings className="w-5 h-5" />
-                </button>
             </div>
 
             <div className="h-8 w-px bg-gray-300 dark:bg-neutral-700 mx-1 hidden md:block"></div>
@@ -712,65 +705,7 @@ export default function MachineManagementPage() {
         </div>
       </div>
 
-      {/* Settings Modal */}
-      {isSettingsOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-neutral-800 rounded-xl p-6 w-full max-w-md shadow-2xl border border-gray-200 dark:border-neutral-700">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold dark:text-white flex items-center gap-2">
-                <Settings className="w-5 h-5" />
-                Konfigurasi Mesin
-              </h2>
-              <button onClick={() => setIsSettingsOpen(false)} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                <X size={24} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveSettings} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1 dark:text-gray-200">IP Address Mesin</label>
-                <input
-                  type="text"
-                  required
-                  value={machineSettings.machineIp}
-                  onChange={(e) => setMachineSettings({ ...machineSettings, machineIp: e.target.value })}
-                  className="w-full p-2 border rounded-lg dark:bg-neutral-700 dark:border-neutral-600 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                  placeholder="Contoh: 103.162.16.14"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1 dark:text-gray-200">Port</label>
-                <input
-                  type="number"
-                  required
-                  value={machineSettings.machinePort}
-                  onChange={(e) => setMachineSettings({ ...machineSettings, machinePort: parseInt(e.target.value) })}
-                  className="w-full p-2 border rounded-lg dark:bg-neutral-700 dark:border-neutral-600 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none"
-                  placeholder="4370"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setIsSettingsOpen(false)}
-                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg dark:text-gray-300 dark:hover:bg-neutral-700 transition-colors"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSavingSettings}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-2"
-                >
-                  {isSavingSettings ? 'Menyimpan...' : 'Simpan Konfigurasi'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Settings Modal removed: konfigurasi dipindahkan ke Master Data → Konfigurasi Server */}
 
       {/* Add/Edit User Modal */}
       {isModalOpen && (

@@ -621,9 +621,11 @@ export default function AttendancePage() {
     if (totalMinutes <= 0) return 0
 
     let overtimeMinutes = 0
+    const WORK_MINUTES = 9 * 60
 
     if (inHour > 17 || (inHour === 17 && inMinute >= 0)) {
-      overtimeMinutes = totalMinutes
+      // Shift malam: lembur dihitung hanya kelebihan di atas 9 jam kerja
+      overtimeMinutes = Math.max(0, totalMinutes - WORK_MINUTES)
     } else {
       const standardExit = new Date(inDate)
       standardExit.setHours(17, 0, 0, 0)

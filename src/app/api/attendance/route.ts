@@ -234,8 +234,13 @@ export async function POST(request: Request) {
             continue
           }
 
-          const finalCheckIn = hasCheckIn ? (checkIn ?? null) : existing.checkIn
-          const finalCheckOut = hasCheckOut ? (checkOut ?? null) : existing.checkOut
+          let finalCheckIn = hasCheckIn ? (checkIn ?? null) : existing.checkIn
+          let finalCheckOut = hasCheckOut ? (checkOut ?? null) : existing.checkOut
+          
+          // Guard: if equal timestamps, drop checkOut
+          if (finalCheckIn && finalCheckOut && finalCheckIn.getTime() === finalCheckOut.getTime()) {
+            finalCheckOut = null
+          }
           
           const computedOT = calcOvertimeHours(finalCheckIn, finalCheckOut)
 
@@ -250,8 +255,8 @@ export async function POST(request: Request) {
           const updated = await prisma.attendance.update({
             where: { id: existing.id },
             data: {
-              checkIn: hasCheckIn ? (checkIn ?? null) : existing.checkIn,
-              checkOut: hasCheckOut ? (checkOut ?? null) : existing.checkOut,
+              checkIn: finalCheckIn,
+              checkOut: finalCheckOut,
               status: item.status || existing.status,
               overtimeHours: newOT
             }
@@ -286,8 +291,12 @@ export async function POST(request: Request) {
     } else {
       // Single create
       const { employeeId, date, checkIn, checkOut, status, overtimeHours, lockedByAdmin } = body
-      const inDate = checkIn ? new Date(checkIn) : null
-      const outDate = checkOut ? new Date(checkOut) : null
+      let inDate = checkIn ? new Date(checkIn) : null
+      let outDate = checkOut ? new Date(checkOut) : null
+      
+      if (inDate && outDate && inDate.getTime() === outDate.getTime()) {
+        outDate = null
+      }
       
       const computedOT = calcOvertimeHours(inDate, outDate)
       const computedOTMin = toMinutes(computedOT)

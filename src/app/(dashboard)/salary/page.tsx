@@ -170,6 +170,7 @@ export default function SalaryPage() {
       // Fetch images
       let headerLogoId: number | null = null;
       let ttdLogoId: number | null = null;
+      let stampLogoId: number | null = null;
 
       try {
           const headerResponse = await fetch('/images/header-banner.png');
@@ -186,6 +187,16 @@ export default function SalaryPage() {
               const ttdBuffer = await ttdResponse.arrayBuffer();
               ttdLogoId = workbook.addImage({
                   buffer: ttdBuffer,
+                  extension: 'png',
+              });
+          }
+
+          // Stamp logo from uploads
+          const stampResponse = await fetch('/uploads/stamp.png');
+          if (stampResponse.ok) {
+              const stampBuffer = await stampResponse.arrayBuffer();
+              stampLogoId = workbook.addImage({
+                  buffer: stampBuffer,
                   extension: 'png',
               });
           }
@@ -402,21 +413,31 @@ export default function SalaryPage() {
         sheet.mergeCells(ttdRowStart, col1, ttdRowStart, col2);
         const ttdTitle = sheet.getCell(ttdRowStart, col1);
         ttdTitle.value = 'DIREKTUR';
+        // Samakan dengan preview: posisi teks di tengah area tanda tangan/stempel
         ttdTitle.alignment = { horizontal: 'center' };
         ttdTitle.font = { bold: true, name: 'Times New Roman' };
 
         currentRow += 4;
         
+        // Stamp placed first (behind) then signature on top
+        if (stampLogoId !== null) {
+            // Geser 1 kolom ke kiri (relatif dari posisi sebelumnya)
+            sheet.addImage(stampLogoId, {
+                tl: { col: col1 - 0.82, row: ttdRowStart + 0.55 },
+                ext: { width: 220, height: 76 }
+            } as any);
+        }
         if (ttdLogoId !== null) {
             sheet.addImage(ttdLogoId, {
-                tl: { col: col1 + 0.5, row: ttdRowStart + 0.5 }, 
-                br: { col: col1 + 1.5, row: currentRow }
+                tl: { col: col1 - 0.78, row: ttdRowStart + 0.5 }, 
+                ext: { width: 200, height: 70 }
             } as any);
         }
 
         sheet.mergeCells(currentRow, col1, currentRow, col2);
         const ttdName = sheet.getCell(currentRow, col1);
         ttdName.value = 'DARNO';
+        // Samakan dengan preview: posisi teks di tengah area tanda tangan/stempel
         ttdName.alignment = { horizontal: 'center' };
         ttdName.font = { bold: true, name: 'Times New Roman', underline: true };
 

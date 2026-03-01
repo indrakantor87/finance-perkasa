@@ -25,9 +25,11 @@ export async function GET() {
         throw new Error('Failed to create socket: ' + err)
     }
     
-    const users = await zkInstance.getUsers()
+    const usersRes = await zkInstance.getUsers()
+    const usersData = Array.isArray(usersRes) ? usersRes : (usersRes?.data || [])
 
-    const logs = await zkInstance.getAttendances()
+    const logsRes = await zkInstance.getAttendances()
+    const logsData = Array.isArray(logsRes) ? logsRes : (logsRes?.data || [])
     
     // Get device time
     let time = 'Unknown'
@@ -41,10 +43,10 @@ export async function GET() {
       status: 'success',
       message: 'Connected to device',
       deviceTime: time,
-      usersCount: users?.data?.length || 0,
-      logsCount: logs?.data?.length || 0,
-      sampleUsers: users?.data?.slice(0, 5),
-      sampleLogs: logs?.data?.slice(logs?.data?.length - 5) // Show last 5 logs
+      usersCount: usersData.length,
+      logsCount: logsData.length,
+      sampleUsers: usersData.slice(0, 5),
+      sampleLogs: logsData.slice(Math.max(0, logsData.length - 5)) // Show last 5 logs
     })
     
   } catch (error: any) {

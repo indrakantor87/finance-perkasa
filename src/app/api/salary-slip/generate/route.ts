@@ -83,7 +83,28 @@ export async function POST(request: Request) {
     }
 
     // 1. Kehadiran Absensi
-    const baseSalary = getVal('baseSalary', employee.baseSalary)
+    // Default Gaji Pokok: employee.baseSalary > 0 ? employee.baseSalary : base salary berdasarkan kategori
+    let baseMap: Record<string, number> = {
+      'DIREKTUR': 0,
+      'GENERAL MANAGER': 0,
+      'MANAGER': 0,
+      'SPV': 0,
+      'LEADER': 0,
+      'STAFF': 0,
+    }
+    try {
+      const row2 = await prisma.$queryRawUnsafe('SELECT jobCategoryBaseSalaries FROM SystemSetting LIMIT 1') as any[]
+      const raw2 = Array.isArray(row2) && row2[0] ? (row2[0] as any).jobCategoryBaseSalaries : null
+      const parsed2 = typeof raw2 === 'string' ? JSON.parse(raw2) : raw2
+      if (parsed2 && typeof parsed2 === 'object') {
+        const upper: Record<string, number> = {}
+        for (const k of Object.keys(parsed2)) upper[k.toUpperCase()] = Number(parsed2[k]) || 0
+        baseMap = { ...baseMap, ...upper }
+      }
+    } catch {}
+    const catForBase = inferCategory(employee.role || '')
+    const employeeBaseDefault = employee.baseSalary && employee.baseSalary > 0 ? employee.baseSalary : (baseMap[catForBase] ?? 0)
+    const baseSalary = getVal('baseSalary', employeeBaseDefault)
     const attendanceAllowance = getVal('attendanceAllowance', 0)
 
     // Marketing Package Counts (for Base Salary calculation)
@@ -130,10 +151,39 @@ export async function POST(request: Request) {
     const overtimeAmount = getVal('overtimeAmount', overtimeDefault)
 
     // 4. Tunjangan Jabatan
+    let allowMap: Record<string, number> = {
+      'DIREKTUR': 0,
+      'GENERAL MANAGER': 0,
+      'MANAGER': 0,
+      'SPV': 0,
+      'LEADER': 0,
+      'STAFF': 0,
+    }
+    try {
+      const row = await prisma.$queryRawUnsafe('SELECT jobCategoryAllowances FROM SystemSetting LIMIT 1') as any[]
+      const raw = Array.isArray(row) && row[0] ? (row[0] as any).jobCategoryAllowances : null
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+      if (parsed && typeof parsed === 'object') {
+        const upper: Record<string, number> = {}
+        for (const k of Object.keys(parsed)) upper[k.toUpperCase()] = Number(parsed[k]) || 0
+        allowMap = { ...allowMap, ...upper }
+      }
+    } catch {}
+    const inferCategory = (roleName: string) => {
+      const r = (roleName || '').toUpperCase()
+      if (r.includes('DIREKTUR')) return 'DIREKTUR'
+      if (r.includes('GENERAL MANAGER') || r.includes('GM')) return 'GENERAL MANAGER'
+      if (r.includes('MANAGER')) return 'MANAGER'
+      if (r.includes('SPV') || r.includes('SUPERVISOR')) return 'SPV'
+      if (r.includes('LEADER')) return 'LEADER'
+      return 'STAFF'
+    }
     let defaultPositionAllowance = 0
-    // Check role loosely or strictly based on business logic
-    if (['LEADER', 'MANAGER', 'ADMIN', 'SPV'].some(r => employee!.role.toUpperCase().includes(r))) {
-        defaultPositionAllowance = employee.positionAllowance
+    const category = inferCategory(employee.role || '')
+    if (employee.positionAllowance && employee.positionAllowance > 0) {
+      defaultPositionAllowance = employee.positionAllowance
+    } else {
+      defaultPositionAllowance = allowMap[category] ?? 0
     }
     const positionAllowance = getVal('positionAllowance', defaultPositionAllowance)
 

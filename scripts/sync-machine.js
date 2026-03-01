@@ -17,15 +17,15 @@ function parseMachineTime(recordTime) {
     return isNaN(d.getTime()) ? null : d
 }
 
-async function main() {
+async function main(opts) {
     let zk = null
     try {
         console.log('Starting sync process (zkteco-js)...')
         
         // Fetch settings
         const settings = await prisma.systemSetting.findFirst()
-        const ip = settings?.machineIp || '103.162.16.14'
-        const port = settings?.machinePort || 4370
+        const ip = (opts && opts.ip) || settings?.machineIp || '103.162.16.14'
+        const port = (opts && opts.port) || settings?.machinePort || 4370
 
         // Setup connection
         // Increase timeout for slow connections
@@ -49,19 +49,16 @@ async function main() {
 
         // Get Users
         console.log('Fetching users...')
-        const users = await zk.getUsers()
-        console.log(`Fetched ${users?.data?.length || 0} users.`)
+        const usersRes = await zk.getUsers()
+        const usersData = Array.isArray(usersRes) ? usersRes : (usersRes?.data || [])
+        console.log(`Fetched ${usersData.length} users.`)
 
-        // Early exit if no logs
-        if (logCount === 0) {
-            console.log('No logs on machine. Sync skipped.')
-            await zk.disconnect()
-            return
-        }
+        // Jangan early-exit hanya berdasarkan getInfo; beberapa perangkat gagal melaporkan logCount
+        // Tetap lanjut ambil log dengan getAttendances()
 
         // Fetch Logs with Timeout
         console.log('Fetching attendance logs...')
-        let logs = { data: [] }
+        let logsRes = { data: [] }
         
         // Define a max time based on log count (e.g., 1000 logs = 1 sec?)
         // 63k logs might take 60s+
@@ -73,8 +70,9 @@ async function main() {
                 setTimeout(() => reject(new Error(`Fetch timeout (${timeoutMs}ms). Data too large?`)), timeoutMs)
             )
             
-            logs = await Promise.race([fetchPromise, timeoutPromise])
-            console.log(`Fetched ${logs?.data?.length || 0} logs.`)
+            logsRes = await Promise.race([fetchPromise, timeoutPromise])
+            const logsDataTmp = Array.isArray(logsRes) ? logsRes : (logsRes?.data || [])
+            console.log(`Fetched ${logsDataTmp.length} logs.`)
         } catch (err) {
             const errorMsg = err instanceof Error ? err.message : String(err)
             console.error('Failed to fetch logs:', errorMsg)
@@ -100,19 +98,21 @@ async function main() {
             throw err
         }
         
-        if (!logs?.data?.length) {
-            console.log('No logs to process.')
+        const logsData = Array.isArray(logsRes) ? logsRes : (logsRes?.data || [])
+        if (!logsData.length) {
+            console.log('No logs to process. Returning empty result.')
+            return { processedCount: 0, createdCount: 0, updatedCount: 0, skippedCount: 0, reason: 'No logs on machine' }
         }
 
         // Process logs if any
-        if (logs?.data?.length) {
+        if (logsData.length) {
              // 1. Map Machine User ID to Employee ID (via Name)
             const employees = await prisma.employee.findMany()
             const employeeMap = {} // machineUserId -> prismaEmployeeId
             const unmappedUsers = []
             
-            if (users?.data) {
-                for (const u of users.data) {
+            if (usersData && usersData.length) {
+                for (const u of usersData) {
                     const emp = employees.find(e => e.name.toLowerCase() === u.name.toLowerCase())
                     if (emp) {
                         employeeMap[u.userId] = emp.id
@@ -150,7 +150,7 @@ async function main() {
                              createdUserCount++
                         }
                         
-                        const machineUsersForName = users.data.filter(u => u.name === name)
+                        const machineUsersForName = usersData.filter(u => u.name === name)
                         for (const mu of machineUsersForName) {
                             if (empId) {
                                 employeeMap[mu.userId] = empId
@@ -169,7 +169,7 @@ async function main() {
             const groupedLogs = {} 
             let debugCount = 0
             
-            for (const log of logs.data) {
+            for (const log of logsData) {
                 // Handle property name differences (zkteco-js vs node-zklib style)
                 const uid = log.deviceUserId || log.user_id
                 const rawRecordTime = log.recordTime || log.record_time
@@ -239,6 +239,10 @@ async function main() {
                             
                             if (diff > 5 * 60 * 1000 || prevState !== currState) {
                                 validLogs.push(curr)
+                            } else {
+                                // Same state within 5 minutes: last wins (replace previous)
+                                // Ini mengakomodasi koreksi cepat pada mesin: tap ulang akan menggantikan data sebelumnya.
+                                validLogs[validLogs.length - 1] = curr
                             }
                         }
                     }
@@ -283,6 +287,15 @@ async function main() {
                         // Handle partials:
                         // Case: Only CheckOut exists (User scenario) -> checkIn is null, checkOut is set.
                         // Case: Only CheckIn exists -> checkIn is set, checkOut is null.
+                        // Penanganan koreksi di mesin:
+                        // Jika CheckIn ada tapi tidak ada CheckOut eksplisit, namun ada beberapa log,
+                        // gunakan log terakhir sebagai CheckOut (last-wins) selama berbeda dari CheckIn.
+                        if (checkIn && !checkOut && validLogs.length > 1) {
+                            const lastLog = validLogs[validLogs.length - 1]
+                            if (lastLog?.recordTime && lastLog.recordTime.getTime() !== checkIn.getTime()) {
+                                checkOut = new Date(lastLog.recordTime)
+                            }
+                        }
                     }
 
                     // FINAL SAFETY: If we have CheckIn & CheckOut, ensure In < Out
@@ -296,6 +309,11 @@ async function main() {
                         // But maybe the "Out" belongs to previous shift?
                         // Since we group by Date, these are same calendar day.
                         // We'll trust the explicit states.
+                    }
+                    
+                    // If CheckIn and CheckOut are exactly the same timestamp, treat as single tap
+                    if (checkIn && checkOut && checkIn.getTime() === checkOut.getTime()) {
+                        checkOut = null
                     }
                     
                     let overtimeHours = 0
@@ -372,7 +390,11 @@ async function main() {
                         const finalCheckIn = checkIn || existing.checkIn
                         const finalCheckOut = checkOut || existing.checkOut
 
-                        if (finalCheckIn && finalCheckOut) {
+                        // If equal timestamps, drop checkOut
+                        if (finalCheckIn && finalCheckOut && finalCheckIn.getTime() === finalCheckOut.getTime()) {
+                            updateData.checkOut = null
+                            updateData.overtimeHours = 0
+                        } else if (finalCheckIn && finalCheckOut) {
                             const WIB_OFFSET = 7 * 60 * 60 * 1000
                             const inDateWIB = new Date(finalCheckIn.getTime() + WIB_OFFSET)
                             let outDateWIB = new Date(finalCheckOut.getTime() + WIB_OFFSET)

