@@ -1245,6 +1245,15 @@ export default function AttendancePage() {
                               const rajinCount = group.attendances.filter(a => a.checkIn && a.checkOut).length
                               const percentage = totalDays > 0 ? (rajinCount / totalDays) * 100 : 0
                               
+                              // Jika belum ada log sama sekali, jangan tampilkan status baik/buruk
+                              if (totalDays === 0) {
+                                return (
+                                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-neutral-800 dark:text-gray-400">
+                                    -
+                                  </span>
+                                )
+                              }
+                              
                               let status = 'Buruk'
                               let colorClass = 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                               
