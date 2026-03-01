@@ -82,6 +82,17 @@ export async function POST(request: Request) {
       return overrides && overrides[key] !== undefined ? Number(overrides[key]) : defaultVal
     }
 
+    // Infer kategori jabatan dari nama role (di-hoist agar tidak terkena TDZ)
+    function inferCategory(roleName: string): 'DIREKTUR' | 'GENERAL MANAGER' | 'MANAGER' | 'SPV' | 'LEADER' | 'STAFF' {
+      const r = (roleName || '').toUpperCase()
+      if (r.includes('DIREKTUR')) return 'DIREKTUR'
+      if (r.includes('GENERAL MANAGER') || r.includes('GM')) return 'GENERAL MANAGER'
+      if (r.includes('MANAGER')) return 'MANAGER'
+      if (r.includes('SPV') || r.includes('SUPERVISOR')) return 'SPV'
+      if (r.includes('LEADER')) return 'LEADER'
+      return 'STAFF'
+    }
+
     // 1. Kehadiran Absensi
     // Default Gaji Pokok: employee.baseSalary > 0 ? employee.baseSalary : base salary berdasarkan kategori
     let baseMap: Record<string, number> = {
@@ -169,15 +180,6 @@ export async function POST(request: Request) {
         allowMap = { ...allowMap, ...upper }
       }
     } catch {}
-    const inferCategory = (roleName: string) => {
-      const r = (roleName || '').toUpperCase()
-      if (r.includes('DIREKTUR')) return 'DIREKTUR'
-      if (r.includes('GENERAL MANAGER') || r.includes('GM')) return 'GENERAL MANAGER'
-      if (r.includes('MANAGER')) return 'MANAGER'
-      if (r.includes('SPV') || r.includes('SUPERVISOR')) return 'SPV'
-      if (r.includes('LEADER')) return 'LEADER'
-      return 'STAFF'
-    }
     let defaultPositionAllowance = 0
     const category = inferCategory(employee.role || '')
     if (employee.positionAllowance && employee.positionAllowance > 0) {
