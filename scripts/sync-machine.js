@@ -214,82 +214,58 @@ async function main(opts) {
 
             for (const uid in groupedLogs) {
                 const employeeId = employeeMap[uid]
-                for (const dateStr in groupedLogs[uid]) {
-                    const rawLogs = groupedLogs[uid][dateStr].sort((a, b) => 
-                        a.recordTime - b.recordTime
-                    )
-                    
-                    // Deduplicate logic (Double Tap Prevention)
-                    // We only keep logs that are > 2 mins apart or have DIFFERENT states
+                const dateKeys = Object.keys(groupedLogs[uid])
+                const minDateStr = dateKeys.reduce((a, b) => (a < b ? a : b))
+                const maxDateStr = dateKeys.reduce((a, b) => (a > b ? a : b))
+                const minDate = new Date(`${minDateStr}T00:00:00.000Z`)
+                const maxDate = new Date(`${maxDateStr}T23:59:59.999Z`)
+                const existingList = await prisma.attendance.findMany({
+                    where: {
+                        employeeId,
+                        date: { gte: minDate, lte: maxDate }
+                    },
+                    select: { id: true, date: true, checkIn: true, checkOut: true }
+                })
+                const existingMap = new Map()
+                for (const ex of existingList) {
+                    const ds = new Date(ex.date).toISOString().split('T')[0]
+                    existingMap.set(ds, ex)
+                }
+                let ops = []
+                for (const dateStr of dateKeys) {
+                    const rawLogs = groupedLogs[uid][dateStr].sort((a, b) => a.recordTime - b.recordTime)
                     const validLogs = []
                     if (rawLogs.length > 0) {
                         validLogs.push(rawLogs[0])
                         for (let i = 1; i < rawLogs.length; i++) {
                             const prev = validLogs[validLogs.length - 1]
                             const curr = rawLogs[i]
-                            
                             const prevTime = prev.recordTime.getTime()
                             const currTime = curr.recordTime.getTime()
                             const diff = currTime - prevTime
-                            
-                            // If diff > 5 mins OR State is different (e.g. In vs Out), keep it
-                            // (If state is same and < 5 mins, likely double tap)
                             const prevState = prev.state
                             const currState = curr.state
-                            
                             if (diff > 5 * 60 * 1000 || prevState !== currState) {
                                 validLogs.push(curr)
                             } else {
-                                // Same state within 5 minutes: last wins (replace previous)
-                                // Ini mengakomodasi koreksi cepat pada mesin: tap ulang akan menggantikan data sebelumnya.
                                 validLogs[validLogs.length - 1] = curr
                             }
                         }
                     }
-
-                    // DETERMINE CheckIn / CheckOut based on STATE (User Request: Identik dengan mesin)
-                    // State 0 = CheckIn, State 1 = CheckOut
-                    // If state is not 0/1 (e.g. Break), we ignore for basic In/Out or map to closest
-                    
                     let checkIn = null
                     let checkOut = null
-                    
-                    // Find explicit Check In (First State 0)
                     const inLog = validLogs.find(l => l.state === 0)
-                    if (inLog) {
-                        checkIn = new Date(inLog.recordTime)
-                    }
-
-                    // Find explicit Check Out (Last State 1)
-                    // We search from end
+                    if (inLog) checkIn = new Date(inLog.recordTime)
                     const outLog = [...validLogs].reverse().find(l => l.state === 1)
-                    if (outLog) {
-                        checkOut = new Date(outLog.recordTime)
-                    }
-
-                    // FALLBACK: If no explicit states found (some machines don't send state properly or all 0)
-                    // Or if only one log exists and it has no valid state
+                    if (outLog) checkOut = new Date(outLog.recordTime)
                     if (!checkIn && !checkOut) {
-                         if (validLogs.length === 1) {
-                             // Only one log, unknown state. Assume CheckIn (Standard behavior)
-                             // BUT User specifically said "Historis jam masuk hilang, hanya jam keluar".
-                             // If the log is late (> 12:00), maybe it's Out?
-                             // Let's stick to standard unless we are sure.
-                             // However, if we switched to zkteco-js, we SHOULD see the state.
-                             checkIn = new Date(validLogs[0].recordTime)
-                         } else if (validLogs.length > 1) {
-                             // Multiple logs, assume First In, Last Out
-                             checkIn = new Date(validLogs[0].recordTime)
-                             checkOut = new Date(validLogs[validLogs.length - 1].recordTime)
-                         }
+                        if (validLogs.length === 1) {
+                            checkIn = new Date(validLogs[0].recordTime)
+                        } else if (validLogs.length > 1) {
+                            checkIn = new Date(validLogs[0].recordTime)
+                            checkOut = new Date(validLogs[validLogs.length - 1].recordTime)
+                        }
                     } else {
-                        // We have at least one explicit state.
-                        // Handle partials:
-                        // Case: Only CheckOut exists (User scenario) -> checkIn is null, checkOut is set.
-                        // Case: Only CheckIn exists -> checkIn is set, checkOut is null.
-                        // Penanganan koreksi di mesin:
-                        // Jika CheckIn ada tapi tidak ada CheckOut eksplisit, namun ada beberapa log,
-                        // gunakan log terakhir sebagai CheckOut (last-wins) selama berbeda dari CheckIn.
                         if (checkIn && !checkOut && validLogs.length > 1) {
                             const lastLog = validLogs[validLogs.length - 1]
                             if (lastLog?.recordTime && lastLog.recordTime.getTime() !== checkIn.getTime()) {
@@ -297,121 +273,66 @@ async function main(opts) {
                             }
                         }
                     }
-
-                    // FINAL SAFETY: If we have CheckIn & CheckOut, ensure In < Out
-                    if (checkIn && checkOut && checkIn > checkOut) {
-                        // Swapped? Or midnight crossing?
-                        // If same day, this is weird. Maybe Out was recorded before In?
-                        // Or multiple shifts?
-                        // For now, if In > Out, invalidate the Out (or In?)
-                        // Let's just keep them, but overtime calc might be weird.
-                        // Actually, if In > Out on same day, it's invalid sequence.
-                        // But maybe the "Out" belongs to previous shift?
-                        // Since we group by Date, these are same calendar day.
-                        // We'll trust the explicit states.
-                    }
-                    
-                    // If CheckIn and CheckOut are exactly the same timestamp, treat as single tap
                     if (checkIn && checkOut && checkIn.getTime() === checkOut.getTime()) {
                         checkOut = null
                     }
-                    
                     let overtimeHours = 0
                     if (checkIn && checkOut) {
-                         const WIB_OFFSET = 7 * 60 * 60 * 1000
-                         const inDateWIB = new Date(checkIn.getTime() + WIB_OFFSET)
-                         let outDateWIB = new Date(checkOut.getTime() + WIB_OFFSET)
-                         
-                         const inHour = inDateWIB.getUTCHours()
-                         const inMinute = inDateWIB.getUTCMinutes()
-
-                         if (outDateWIB.getTime() <= inDateWIB.getTime() && (inHour > 17 || (inHour === 17 && inMinute >= 0))) {
-                             outDateWIB = new Date(outDateWIB.getTime() + 24 * 60 * 60 * 1000)
-                         }
-                         
-                         const durationMillis = outDateWIB.getTime() - inDateWIB.getTime()
-                         const totalDurationMinutes = Math.floor(durationMillis / 60000)
-                         let overtimeMinutes = 0
-
-                         if (totalDurationMinutes > 0) {
-                             const WORK_MINUTES = 9 * 60
-
-                             if (inHour > 17 || (inHour === 17 && inMinute >= 0)) {
-                                 const regularEndWIB = new Date(inDateWIB.getTime() + WORK_MINUTES * 60000)
-                                 if (outDateWIB.getTime() > regularEndWIB.getTime()) {
-                                     overtimeMinutes = Math.floor((outDateWIB.getTime() - regularEndWIB.getTime()) / 60000)
-                                 }
-                             } else {
-                                 const standardExitWIB = new Date(inDateWIB)
-                                 standardExitWIB.setUTCHours(17, 0, 0, 0)
-                                 if (outDateWIB.getTime() > standardExitWIB.getTime()) {
-                                     overtimeMinutes = Math.floor((outDateWIB.getTime() - standardExitWIB.getTime()) / 60000)
-                                 }
-                             }
-
-                             if (overtimeMinutes > totalDurationMinutes) {
-                                 console.warn(`Overtime calculation anomaly detected: OT ${overtimeMinutes}m > Duration ${totalDurationMinutes}m. Capping to duration.`);
-                                 overtimeMinutes = totalDurationMinutes;
-                             }
-
-                             if (overtimeMinutes > 0) {
+                        const WIB_OFFSET = 7 * 60 * 60 * 1000
+                        const inDateWIB = new Date(checkIn.getTime() + WIB_OFFSET)
+                        let outDateWIB = new Date(checkOut.getTime() + WIB_OFFSET)
+                        const inHour = inDateWIB.getUTCHours()
+                        const inMinute = inDateWIB.getUTCMinutes()
+                        if (outDateWIB.getTime() <= inDateWIB.getTime() && (inHour > 17 || (inHour === 17 && inMinute >= 0))) {
+                            outDateWIB = new Date(outDateWIB.getTime() + 24 * 60 * 60 * 1000)
+                        }
+                        const durationMillis = outDateWIB.getTime() - inDateWIB.getTime()
+                        const totalDurationMinutes = Math.floor(durationMillis / 60000)
+                        let overtimeMinutes = 0
+                        if (totalDurationMinutes > 0) {
+                            const WORK_MINUTES = 9 * 60
+                            if (inHour > 17 || (inHour === 17 && inMinute >= 0)) {
+                                const regularEndWIB = new Date(inDateWIB.getTime() + WORK_MINUTES * 60000)
+                                if (outDateWIB.getTime() > regularEndWIB.getTime()) {
+                                    overtimeMinutes = Math.floor((outDateWIB.getTime() - regularEndWIB.getTime()) / 60000)
+                                }
+                            } else {
+                                const standardExitWIB = new Date(inDateWIB)
+                                standardExitWIB.setUTCHours(17, 0, 0, 0)
+                                if (outDateWIB.getTime() > standardExitWIB.getTime()) {
+                                    overtimeMinutes = Math.floor((outDateWIB.getTime() - standardExitWIB.getTime()) / 60000)
+                                }
+                            }
+                            if (overtimeMinutes > totalDurationMinutes) overtimeMinutes = totalDurationMinutes
+                            if (overtimeMinutes > 0) {
                                 const hh = Math.floor(overtimeMinutes / 60)
                                 const mm = Math.round(overtimeMinutes % 60)
                                 overtimeHours = parseFloat(`${hh}.${mm.toString().padStart(2, '0')}`)
-                             }
-                         }
-                    }
-
-                    const startOfDay = new Date(`${dateStr}T00:00:00.000Z`)
-                    const endOfDay = new Date(`${dateStr}T23:59:59.999Z`)
-
-                    const existing = await prisma.attendance.findFirst({
-                        where: {
-                            employeeId,
-                            date: {
-                                gte: startOfDay,
-                                lte: endOfDay
                             }
                         }
-                    })
-
-                        if (existing) {
-                        // Merge Logic: mesin selalu menang jika punya data (override jam existing)
-                        const updateData = {}
-                        
-                        if (checkIn) {
-                            updateData.checkIn = checkIn
-                        }
-                        
-                        if (checkOut) {
-                            updateData.checkOut = checkOut
-                        }
-                        
-                        const finalCheckIn = checkIn || existing.checkIn
-                        const finalCheckOut = checkOut || existing.checkOut
-
-                        // If equal timestamps, drop checkOut
-                        if (finalCheckIn && finalCheckOut && finalCheckIn.getTime() === finalCheckOut.getTime()) {
-                            updateData.checkOut = null
-                            updateData.overtimeHours = 0
-                        } else if (finalCheckIn && finalCheckOut) {
+                    }
+                    const startOfDay = new Date(`${dateStr}T00:00:00.000Z`)
+                    const ex = existingMap.get(dateStr)
+                    if (ex) {
+                        const finalCheckIn = checkIn || ex.checkIn
+                        const finalCheckOut = checkOut || ex.checkOut
+                        let updateData = {}
+                        if (checkIn) updateData.checkIn = checkIn
+                        if (checkOut) updateData.checkOut = checkOut
+                        if (finalCheckIn && finalCheckOut) {
                             const WIB_OFFSET = 7 * 60 * 60 * 1000
                             const inDateWIB = new Date(finalCheckIn.getTime() + WIB_OFFSET)
                             let outDateWIB = new Date(finalCheckOut.getTime() + WIB_OFFSET)
                             const inHour = inDateWIB.getUTCHours()
                             const inMinute = inDateWIB.getUTCMinutes()
-
                             if (outDateWIB.getTime() <= inDateWIB.getTime() && (inHour > 17 || (inHour === 17 && inMinute >= 0))) {
                                 outDateWIB = new Date(outDateWIB.getTime() + 24 * 60 * 60 * 1000)
                             }
-
                             const dur = outDateWIB.getTime() - inDateWIB.getTime()
                             const totalDur = Math.floor(dur / 60000)
                             let otMin = 0
-
                             if (totalDur > 0) {
                                 const WORK_MINUTES = 9 * 60
-
                                 if (inHour > 17 || (inHour === 17 && inMinute >= 0)) {
                                     const regularEndWIB = new Date(inDateWIB.getTime() + WORK_MINUTES * 60000)
                                     if (outDateWIB.getTime() > regularEndWIB.getTime()) {
@@ -424,9 +345,7 @@ async function main(opts) {
                                         otMin = Math.floor((outDateWIB.getTime() - stdExit.getTime()) / 60000)
                                     }
                                 }
-
                                 if (otMin > totalDur) otMin = totalDur
-
                                 if (otMin > 0) {
                                     const h = Math.floor(otMin / 60)
                                     const m = Math.round(otMin % 60)
@@ -436,37 +355,37 @@ async function main(opts) {
                                 }
                             }
                         }
-
                         if (Object.keys(updateData).length > 0) {
-                            await prisma.attendance.update({
-                                where: { id: existing.id },
-                                data: updateData
-                            })
+                            ops.push(prisma.attendance.update({ where: { id: ex.id }, data: updateData }))
                             updatedCount++
                         } else {
                             skippedCount++
                         }
                     } else {
-                        // Check if we have valid data to save
-                        // We save if at least CheckIn OR CheckOut is present
                         if (checkIn || checkOut) {
-                            await prisma.attendance.create({
+                            ops.push(prisma.attendance.create({
                                 data: {
                                     employeeId,
                                     date: startOfDay,
-                                    checkIn: checkIn, // Can be null
-                                    checkOut: checkOut, // Can be null
+                                    checkIn: checkIn || null,
+                                    checkOut: checkOut || null,
                                     status: 'PRESENT',
                                     overtimeHours: overtimeHours
                                 }
-                            })
+                            }))
                             createdCount++
                         } else {
-                            // No valid times (should not happen if logs exist)
-                            skippedCount++ 
+                            skippedCount++
                         }
                     }
                     processedCount++
+                    if (ops.length >= 50) {
+                        await prisma.$transaction(ops)
+                        ops = []
+                    }
+                }
+                if (ops.length > 0) {
+                    await prisma.$transaction(ops)
                 }
             }
             console.log(`Sync Complete. Processed: ${processedCount}, Created: ${createdCount}, Updated: ${updatedCount}, Skipped: ${skippedCount}`)
