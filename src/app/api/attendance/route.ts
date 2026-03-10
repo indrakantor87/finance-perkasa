@@ -53,7 +53,57 @@ export async function GET(request: Request) {
       }
     }
 
-    if (employeeId) {
+    const cookieStore = await cookies()
+    const sessionCookie = cookieStore.get('perkasa-finance-auth')
+
+    let sessionEmployeeId: string | null = null
+    let sessionRole: string | null = null
+    let sessionUserId: string | null = null
+    let sessionEmail: string | null = null
+
+    if (sessionCookie?.value) {
+      try {
+        const parsed = JSON.parse(sessionCookie.value)
+        sessionEmployeeId = parsed.employeeId || null
+        sessionRole = (parsed.role || '').toUpperCase()
+        sessionUserId = parsed.id || null
+        sessionEmail = parsed.email || null
+      } catch {}
+    }
+
+    const isEmployee = sessionRole === 'EMPLOYEE' || sessionRole === 'KARYAWAN' || sessionRole === 'MARKETING'
+
+    if (isEmployee) {
+      if (!sessionEmployeeId && (sessionUserId || sessionEmail)) {
+        try {
+          const userRecord = sessionUserId
+            ? await prisma.user.findUnique({ where: { id: sessionUserId } })
+            : await prisma.user.findUnique({ where: { email: sessionEmail! } })
+
+          if (userRecord?.employeeId) {
+            sessionEmployeeId = userRecord.employeeId
+          } else if (userRecord?.name) {
+            const exact = await prisma.employee.findFirst({ where: { name: userRecord.name } })
+            if (exact?.id) {
+              sessionEmployeeId = exact.id
+            } else {
+              const contains = await prisma.employee.findFirst({
+                where: { name: { contains: userRecord.name } }
+              })
+              if (contains?.id) sessionEmployeeId = contains.id
+            }
+          }
+        } catch {}
+      }
+
+      if (sessionEmployeeId) {
+        where.employeeId = sessionEmployeeId
+      } else if (employeeId) {
+        where.employeeId = employeeId
+      } else {
+        where.employeeId = '__NONE__'
+      }
+    } else if (employeeId) {
       where.employeeId = employeeId
     }
 
@@ -73,7 +123,9 @@ export async function GET(request: Request) {
       }
     })
 
-    return NextResponse.json(attendances)
+    const response = NextResponse.json(attendances)
+    response.headers.set('Cache-Control', 'no-store')
+    return response
   } catch (error) {
     console.error('Error fetching attendance:', error)
     return NextResponse.json({ error: 'Failed to fetch attendance' }, { status: 500 })

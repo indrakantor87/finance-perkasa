@@ -53,6 +53,41 @@ export default function DashboardClient({ stats }: { stats: DashboardStats | nul
   const [role, setRole] = useState<string | null>(null)
   const [recentNotifications, setRecentNotifications] = useState<RecentNotification[]>([])
   const [notificationsLoading, setNotificationsLoading] = useState(false)
+  const [employeeData, setEmployeeData] = useState<{
+    loading: boolean
+    attendance: {
+      label: string
+      checkIn?: string
+      checkOut?: string
+    }
+    loans: {
+      pendingCount: number
+      activeCount: number
+      outstanding: number
+      kasbonMonth: number
+    }
+    permissions: {
+      pendingCount: number
+      approvedCount: number
+      rejectedCount: number
+    }
+    salary: {
+      label: string
+      netSalary: number | null
+    }
+    warningLetters: {
+      activeCount: number
+      lastLevel: number | null
+      lastIssuedAt: string | null
+    }
+  }>({
+    loading: false,
+    attendance: { label: 'Belum ada data' },
+    loans: { pendingCount: 0, activeCount: 0, outstanding: 0, kasbonMonth: 0 },
+    permissions: { pendingCount: 0, approvedCount: 0, rejectedCount: 0 },
+    salary: { label: 'Belum tersedia', netSalary: null },
+    warningLetters: { activeCount: 0, lastLevel: null, lastIssuedAt: null }
+  })
 
   useEffect(() => {
     setMounted(true);
@@ -66,6 +101,159 @@ export default function DashboardClient({ stats }: { stats: DashboardStats | nul
       console.error(e)
     }
   }, []);
+
+  useEffect(() => {
+    if (!mounted) return
+    if (role !== 'EMPLOYEE' && role !== 'KARYAWAN') return
+
+    let aborted = false
+    const controller = new AbortController()
+
+    const fmtTime = (iso: string | null) => {
+      if (!iso) return undefined
+      const d = new Date(iso)
+      if (isNaN(d.getTime())) return undefined
+      return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+    }
+
+    const isLate = (checkInIso: string | null) => {
+      if (!checkInIso) return false
+      const checkIn = new Date(checkInIso)
+      if (isNaN(checkIn.getTime())) return false
+      const WIB_OFFSET = 7 * 60 * 60 * 1000
+      const wib = new Date(checkIn.getTime() + WIB_OFFSET)
+      const hour = wib.getUTCHours()
+      const minute = wib.getUTCMinutes()
+      const isShift2 = hour > 17 || (hour === 17 && minute >= 0)
+      if (isShift2) return false
+      return hour > 8 || (hour === 8 && minute > 0)
+    }
+
+    const isoDateOnly = (d: Date) => d.toISOString().split('T')[0]
+
+    const fetchEmployeeDashboard = async () => {
+      setEmployeeData(prev => ({ ...prev, loading: true }))
+      const now = new Date()
+      const month = now.getMonth() + 1
+      const year = now.getFullYear()
+      const prevMonth = month === 1 ? 12 : month - 1
+      const prevYear = month === 1 ? year - 1 : year
+      const monthLabel = now.toLocaleString('id-ID', { month: 'long', year: 'numeric' })
+
+      try {
+        const [attendanceRes, loansRes, permissionsRes, slipsRes1, slipsRes2, warningRes] = await Promise.all([
+          fetch(`/api/attendance?date=${encodeURIComponent(isoDateOnly(now))}`, { signal: controller.signal }),
+          fetch('/api/loans', { signal: controller.signal }),
+          fetch(`/api/permissions?month=${month}&year=${year}`, { signal: controller.signal }),
+          fetch(`/api/salary-slip?month=${month}&year=${year}`, { signal: controller.signal }),
+          fetch(`/api/salary-slip?month=${prevMonth}&year=${prevYear}`, { signal: controller.signal }),
+          fetch('/api/warning-letters', { signal: controller.signal }),
+        ])
+
+        const attendanceJson = attendanceRes.ok ? await attendanceRes.json().catch(() => []) : []
+        const loansJson = loansRes.ok ? await loansRes.json().catch(() => []) : []
+        const permissionsJson = permissionsRes.ok ? await permissionsRes.json().catch(() => []) : []
+        const slips1 = slipsRes1.ok ? await slipsRes1.json().catch(() => []) : []
+        const slips2 = slipsRes2.ok ? await slipsRes2.json().catch(() => []) : []
+        const warningJson = warningRes.ok ? await warningRes.json().catch(() => []) : []
+
+        if (aborted) return
+
+        const attendanceToday = Array.isArray(attendanceJson) && attendanceJson.length > 0 ? attendanceJson[0] : null
+        const attendanceLabel = attendanceToday
+          ? (() => {
+              const rawStatus = String(attendanceToday.status || '').toUpperCase()
+              if (rawStatus === 'ALPHA') return 'Alpha'
+              if (rawStatus === 'SAKIT' || rawStatus === 'SICK') return 'Sakit'
+              if (rawStatus === 'IZIN' || rawStatus === 'PERMIT') return 'Izin'
+              if (isLate(attendanceToday.checkIn || null)) return 'Terlambat'
+              return 'Hadir'
+            })()
+          : 'Belum absen'
+
+        const loansArr = Array.isArray(loansJson) ? loansJson : []
+        let outstanding = 0
+        let activeCount = 0
+        let pendingCount = 0
+        let kasbonMonth = 0
+
+        for (const loan of loansArr) {
+          const status = String(loan.status || '').toUpperCase()
+          if (status === 'ACTIVE') activeCount++
+          if (status === 'PENDING') pendingCount++
+
+          if (status !== 'REJECTED') {
+            const amount = Number(loan.amount || 0)
+            const payments = Array.isArray(loan.payments) ? loan.payments : []
+            const paid = payments.reduce((sum: number, p: any) => sum + Number(p?.amount || 0), 0)
+            outstanding += Math.max(0, amount - paid)
+          }
+
+          const type = String(loan.type || '').toUpperCase()
+          if (type === 'KASBON') {
+            const d = new Date(loan.date)
+            if (!isNaN(d.getTime()) && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) {
+              kasbonMonth += Number(loan.amount || 0)
+            }
+          }
+        }
+
+        const permsArr = Array.isArray(permissionsJson) ? permissionsJson : []
+        const pendingPerm = permsArr.filter((p: any) => String(p.status || '').toUpperCase() === 'PENDING').length
+        const approvedPerm = permsArr.filter((p: any) => String(p.status || '').toUpperCase() === 'APPROVED').length
+        const rejectedPerm = permsArr.filter((p: any) => String(p.status || '').toUpperCase() === 'REJECTED').length
+
+        const slipsArr1 = Array.isArray(slips1) ? slips1 : []
+        const slipsArr2 = Array.isArray(slips2) ? slips2 : []
+        const bestSlip = slipsArr1[0] || slipsArr2[0] || null
+        const salaryLabel = bestSlip ? `Slip ${bestSlip.month}/${bestSlip.year}` : `Slip ${monthLabel}`
+        const netSalary = bestSlip ? Number(bestSlip.netSalary || 0) : null
+
+        const warningArr = Array.isArray(warningJson) ? warningJson : []
+        const activeWarnings = warningArr.filter((w: any) => String(w.status || '').toUpperCase() === 'ACTIVE')
+        const lastWarning = warningArr[0] || null
+
+        setEmployeeData({
+          loading: false,
+          attendance: {
+            label: attendanceLabel,
+            checkIn: fmtTime(attendanceToday?.checkIn || null),
+            checkOut: fmtTime(attendanceToday?.checkOut || null),
+          },
+          loans: {
+            pendingCount,
+            activeCount,
+            outstanding,
+            kasbonMonth
+          },
+          permissions: {
+            pendingCount: pendingPerm,
+            approvedCount: approvedPerm,
+            rejectedCount: rejectedPerm
+          },
+          salary: {
+            label: salaryLabel,
+            netSalary
+          },
+          warningLetters: {
+            activeCount: activeWarnings.length,
+            lastLevel: lastWarning ? Number(lastWarning.level || 0) : null,
+            lastIssuedAt: lastWarning?.issuedDate ? new Date(lastWarning.issuedDate).toLocaleDateString('id-ID') : null
+          }
+        })
+      } catch (err: any) {
+        if (aborted || err?.name === 'AbortError') return
+        setEmployeeData(prev => ({ ...prev, loading: false }))
+      }
+    }
+
+    fetchEmployeeDashboard()
+
+    return () => {
+      aborted = true
+      controller.abort()
+    }
+  }, [mounted, role])
 
   useEffect(() => {
     if (!mounted) return;
@@ -113,12 +301,122 @@ export default function DashboardClient({ stats }: { stats: DashboardStats | nul
 
   // Karyawan View
   if (role === 'EMPLOYEE' || role === 'KARYAWAN') {
+    const formatRupiah = (val: number) =>
+      new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(val)
+
     return (
         <div className="font-sans text-slate-800 dark:text-slate-100 p-6 max-w-[1600px] mx-auto space-y-6">
-            <div className="bg-white dark:bg-neutral-900 p-8 rounded-2xl shadow-sm border border-gray-100 dark:border-neutral-800 text-center">
-                <h2 className="text-2xl font-bold mb-4">Selamat Datang di Portal Karyawan</h2>
-                <p className="text-gray-500 dark:text-gray-400 mb-8">Silakan akses menu di bawah ini untuk melihat data Anda.</p>
-                
+            <div className="bg-white dark:bg-neutral-900 p-8 rounded-2xl shadow-sm border border-gray-100 dark:border-neutral-800">
+                <div className="text-center">
+                  <h2 className="text-2xl font-bold mb-2">Selamat Datang di Portal Karyawan</h2>
+                  <p className="text-gray-500 dark:text-gray-400 mb-6">Ringkasan data Anda hari ini.</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                  <div className="p-5 rounded-xl border border-gray-100 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-800/40">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">Absensi Hari Ini</div>
+                      <UserCheck className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div className="mt-2 text-xl font-bold text-gray-900 dark:text-slate-100">{employeeData.attendance.label}</div>
+                    <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      {employeeData.attendance.checkIn ? `Masuk ${employeeData.attendance.checkIn}` : 'Masuk -'} • {employeeData.attendance.checkOut ? `Pulang ${employeeData.attendance.checkOut}` : 'Pulang -'}
+                    </div>
+                  </div>
+
+                  <div className="p-5 rounded-xl border border-gray-100 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-800/40">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">Pinjaman</div>
+                      <Wallet className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+                    </div>
+                    <div className="mt-2 text-xl font-bold text-gray-900 dark:text-slate-100">{employeeData.loans.activeCount} Aktif</div>
+                    <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      Menunggu {employeeData.loans.pendingCount} • Sisa {formatRupiah(employeeData.loans.outstanding)}
+                    </div>
+                  </div>
+
+                  <div className="p-5 rounded-xl border border-gray-100 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-800/40">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">Kasbon Bulan Ini</div>
+                      <CreditCard className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                    </div>
+                    <div className="mt-2 text-xl font-bold text-gray-900 dark:text-slate-100">{formatRupiah(employeeData.loans.kasbonMonth)}</div>
+                    <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">Total kasbon bulan berjalan</div>
+                  </div>
+
+                  <div className="p-5 rounded-xl border border-gray-100 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-800/40">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">Perizinan</div>
+                      <FileCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <div className="mt-2 text-xl font-bold text-gray-900 dark:text-slate-100">{employeeData.permissions.pendingCount} Menunggu</div>
+                    <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      Disetujui {employeeData.permissions.approvedCount} • Ditolak {employeeData.permissions.rejectedCount}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+                  <div className="lg:col-span-2 p-5 rounded-xl border border-gray-100 dark:border-neutral-800 bg-white dark:bg-neutral-900">
+                    <div className="flex items-center justify-between">
+                      <div className="font-semibold text-gray-900 dark:text-slate-100">Notifikasi Terbaru</div>
+                      <Link href="/notifications" className="text-sm text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                        Lihat semua <ChevronRight className="w-4 h-4" />
+                      </Link>
+                    </div>
+                    <div className="mt-4 space-y-3">
+                      {notificationsLoading ? (
+                        <div className="text-sm text-gray-500 dark:text-gray-400">Memuat notifikasi...</div>
+                      ) : recentNotifications.length === 0 ? (
+                        <div className="text-sm text-gray-500 dark:text-gray-400">Belum ada notifikasi.</div>
+                      ) : (
+                        recentNotifications.map(n => (
+                          <div key={n.id} className="p-3 rounded-lg border border-gray-100 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-800/40">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="font-medium text-gray-900 dark:text-slate-100 truncate">{n.title}</div>
+                                <div className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">{n.message}</div>
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                {n.createdAt ? new Date(n.createdAt).toLocaleDateString('id-ID') : ''}
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="p-5 rounded-xl border border-gray-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 space-y-4">
+                    <div className="font-semibold text-gray-900 dark:text-slate-100">Ringkasan</div>
+                    <div className="p-3 rounded-lg border border-gray-100 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-800/40">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">Slip Gaji</div>
+                      <div className="mt-1 font-semibold text-gray-900 dark:text-slate-100">{employeeData.salary.label}</div>
+                      <div className="text-sm text-gray-700 dark:text-gray-300">
+                        {employeeData.salary.netSalary === null ? 'Belum tersedia' : formatRupiah(employeeData.salary.netSalary)}
+                      </div>
+                      <div className="mt-2">
+                        <Link href="/salary" className="text-sm text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                          Buka gaji <ChevronRight className="w-4 h-4" />
+                        </Link>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-lg border border-gray-100 dark:border-neutral-800 bg-gray-50 dark:bg-neutral-800/40">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">Sanksi & SP</div>
+                      <div className="mt-1 font-semibold text-gray-900 dark:text-slate-100">{employeeData.warningLetters.activeCount} Aktif</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {employeeData.warningLetters.lastLevel ? `Terakhir SP ${employeeData.warningLetters.lastLevel} • ${employeeData.warningLetters.lastIssuedAt || ''}` : 'Belum ada data'}
+                      </div>
+                      <div className="mt-2">
+                        <Link href="/employees/disciplinary" className="text-sm text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                          Buka sanksi <ChevronRight className="w-4 h-4" />
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                      <Link href="/attendance" className="p-6 bg-blue-50 dark:bg-blue-900/20 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors border border-blue-100 dark:border-blue-800 group">
                         <UserCheck className="w-10 h-10 text-blue-600 dark:text-blue-400 mb-4 mx-auto group-hover:scale-110 transition-transform" />
