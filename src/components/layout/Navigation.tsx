@@ -44,6 +44,7 @@ export default function Navigation() {
     { icon: <CreditCard size={18} />, label: "Pinjaman", href: "/loans", roles: ['DEVELOPER', 'ADMINISTRATOR', 'ADMIN', 'EMPLOYEE', 'KARYAWAN'] },
     { icon: <FileCheck size={18} />, label: "Perizinan", href: "/permissions", roles: ['DEVELOPER', 'ADMINISTRATOR', 'ADMIN', 'EMPLOYEE', 'KARYAWAN'] },
     { icon: <Database size={18} />, label: "Master Data", href: "/master-data", roles: ['DEVELOPER', 'ADMINISTRATOR'] },
+    { icon: <Settings size={18} />, label: "Input User", href: "/settings?tab=account", roles: ['DEVELOPER', 'ADMINISTRATOR', 'ADMIN'] },
   ];
 
   // Filter items based on role
@@ -55,7 +56,8 @@ export default function Navigation() {
     <div className="bg-white dark:bg-neutral-900 border-b border-gray-200 dark:border-neutral-800 overflow-x-auto no-scrollbar print:hidden">
       <div className="px-6 flex gap-8 text-sm font-medium min-w-max">
         {navItems.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const hrefPath = item.href.split('?')[0]
+          const isActive = pathname === hrefPath || pathname.startsWith(`${hrefPath}/`);
           return (
             <Link 
               key={item.href}

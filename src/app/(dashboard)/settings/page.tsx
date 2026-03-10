@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Building, Banknote, Shield, Save, Settings, Trash2, Plus, User, Check, X } from 'lucide-react';
 
 interface UserData {
@@ -21,7 +22,9 @@ interface SystemSetting {
 }
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState('company')
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const activeTab = searchParams.get('tab') || 'company'
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [settings, setSettings] = useState<SystemSetting>({
@@ -37,7 +40,7 @@ export default function SettingsPage() {
   // User Management State
   const [users, setUsers] = useState<UserData[]>([])
   const [showUserModal, setShowUserModal] = useState(false)
-  const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'ADMIN' })
+  const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'KARYAWAN' })
 
   useEffect(() => {
     if (activeTab === 'account') {
@@ -73,7 +76,7 @@ export default function SettingsPage() {
       if (res.ok) {
         alert('User berhasil dibuat')
         setShowUserModal(false)
-        setNewUser({ name: '', email: '', password: '', role: 'ADMIN' })
+        setNewUser({ name: '', email: '', password: '', role: 'KARYAWAN' })
         fetchUsers()
       } else {
         const data = await res.json()
@@ -157,7 +160,8 @@ export default function SettingsPage() {
           {/* Sidebar Menu */}
           <div className="w-full md:w-64 bg-gray-50 dark:bg-neutral-800/50 border-r border-gray-100 dark:border-neutral-800 p-4 space-y-2">
             <button
-              onClick={() => setActiveTab('company')}
+              type="button"
+              onClick={() => router.replace('/settings?tab=company')}
               className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 text-sm font-medium transition-colors ${
                 activeTab === 'company' 
                   ? 'bg-white dark:bg-neutral-800 shadow-sm text-blue-700 dark:text-blue-400' 
@@ -167,7 +171,8 @@ export default function SettingsPage() {
               <Building size={18} /> Profil Perusahaan
             </button>
             <button
-              onClick={() => setActiveTab('payroll')}
+              type="button"
+              onClick={() => router.replace('/settings?tab=payroll')}
               className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 text-sm font-medium transition-colors ${
                 activeTab === 'payroll' 
                   ? 'bg-white dark:bg-neutral-800 shadow-sm text-blue-700 dark:text-blue-400' 
@@ -177,7 +182,8 @@ export default function SettingsPage() {
               <Banknote size={18} /> Pengaturan Gaji
             </button>
             <button
-              onClick={() => setActiveTab('account')}
+              type="button"
+              onClick={() => router.replace('/settings?tab=account')}
               className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 text-sm font-medium transition-colors ${
                 activeTab === 'account' 
                   ? 'bg-white dark:bg-neutral-800 shadow-sm text-blue-700 dark:text-blue-400' 
@@ -380,10 +386,9 @@ export default function SettingsPage() {
                                 onChange={e => setNewUser({...newUser, role: e.target.value})}
                                 className="w-full p-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-950 text-gray-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-colors"
                               >
-                                <option value="ADMIN">ADMIN</option>
-                                <option value="ADMINISTRATOR">ADMINISTRATOR</option>
-                                <option value="STAFF">STAFF</option>
-                                <option value="KARYAWAN">KARYAWAN</option>
+                                <option value="ADMINISTRATOR">Administrator</option>
+                                <option value="ADMIN">Admin</option>
+                                <option value="KARYAWAN">Karyawan</option>
                               </select>
                             </div>
                             

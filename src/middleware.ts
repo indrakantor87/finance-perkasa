@@ -84,6 +84,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - uploads (public uploads)
      */
-    '/((?!_next/static|_next/image|favicon.ico|uploads).*)',
+    '/((?!_next/static|_next/image|favicon.ico|uploads|suppress-logs\\.js).*)',
   ],
 }
