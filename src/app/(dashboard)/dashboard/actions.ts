@@ -1,6 +1,7 @@
 'use server'
 
 import prisma from '@/lib/prisma'
+import { unstable_noStore } from 'next/cache'
 
 type NamedValue = { name: string; value: number }
 
@@ -33,6 +34,7 @@ const EMPTY_STATS = {
 }
 
 export async function getDashboardStats() {
+  unstable_noStore()
   const now = new Date()
   const WIB_OFFSET_HOURS = 7
   const nowWIB = new Date(now.getTime() + WIB_OFFSET_HOURS * 60 * 60 * 1000)
