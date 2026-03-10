@@ -86,10 +86,11 @@ export default function LoansPage() {
   }, [])
 
   useEffect(() => {
+    if (!role) return
     const controller = new AbortController()
     fetchData(controller.signal)
     return () => controller.abort()
-  }, []) // Fetch all initially, then filter
+  }, [role, currentEmployeeId])
 
   useEffect(() => {
     const isEmployeeLike = role === 'EMPLOYEE' || role === 'KARYAWAN' || role === 'MARKETING'
@@ -158,7 +159,12 @@ export default function LoansPage() {
     // For Employee/Marketing role, the API already filters by employeeId, 
     // but we double check here just in case.
     const matchRole = isEmployeeRole ? loan.employeeId === currentEmployeeId : true
-    const matchStatus = statusFilter === 'ALL' ? true : loan.status === statusFilter
+    const matchStatus =
+      statusFilter === 'ALL'
+        ? true
+        : statusFilter === 'HISTORY'
+          ? loan.status === 'PAID' || loan.status === 'REJECTED'
+          : loan.status === statusFilter
     
     // Debugging logic to find why loans are filtered out
     // if (isEmployeeRole && !matchRole) {

@@ -42,6 +42,18 @@ export async function GET(request: Request) {
             : await prisma.user.findUnique({ where: { email: sessionEmail! } })
           if (userRecord?.employeeId) {
             sessionEmployeeId = userRecord.employeeId
+          } else if (userRecord?.name) {
+            const exact = await prisma.employee.findFirst({
+              where: { name: userRecord.name }
+            })
+            if (exact?.id) {
+              sessionEmployeeId = exact.id
+            } else {
+              const contains = await prisma.employee.findFirst({
+                where: { name: { contains: userRecord.name } }
+              })
+              if (contains?.id) sessionEmployeeId = contains.id
+            }
           }
         } catch {}
       }
@@ -83,7 +95,9 @@ export async function GET(request: Request) {
       }
     })
 
-    return NextResponse.json(loans)
+    const response = NextResponse.json(loans)
+    response.headers.set('Cache-Control', 'no-store')
+    return response
   } catch (error) {
     console.error('Error fetching loans:', error)
     return NextResponse.json({ error: 'Failed to fetch loans' }, { status: 500 })
