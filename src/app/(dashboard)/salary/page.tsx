@@ -205,6 +205,7 @@ export default function SalaryPage() {
 
           // Stamp logo from uploads
           const stampImg =
+            (await fetchImage('/images/stampel.png')) ??
             (await fetchImage('/uploads/Stampel.PNG')) ??
             (await fetchImage('/uploads/stamp.png')) ??
             (await fetchImage('/images/signature-director.jpeg'))

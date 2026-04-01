@@ -257,7 +257,7 @@ export function SalarySlip({ data, employeeName, role, department, month, year }
               <div className="relative w-32 h-20 flex items-center justify-center">
                   {/* Stamp Layer (Bottom) */}
                   <img
-                    src="/uploads/Stampel.PNG"
+                    src="/images/stampel.png"
                     alt="Stamp"
                     className="absolute inset-0 w-[180%] h-[180%] object-contain opacity-60 -rotate-12 translate-x-2 -translate-y-5 mix-blend-multiply z-0"
                     style={{ printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}
