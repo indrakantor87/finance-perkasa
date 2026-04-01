@@ -204,7 +204,10 @@ export default function SalaryPage() {
           }
 
           // Stamp logo from uploads
-          const stampImg = (await fetchImage('/uploads/stamp.png')) ?? (await fetchImage('/images/signature-director.jpeg'))
+          const stampImg =
+            (await fetchImage('/uploads/Stampel.PNG')) ??
+            (await fetchImage('/uploads/stamp.png')) ??
+            (await fetchImage('/images/signature-director.jpeg'))
           if (stampImg) {
             stampLogoId = workbook.addImage({
               buffer: stampImg.buffer,
