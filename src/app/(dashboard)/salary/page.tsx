@@ -173,6 +173,18 @@ export default function SalaryPage() {
       let stampLogoId: number | null = null;
 
       try {
+          const fetchImage = async (url: string) => {
+            const r = await fetch(url)
+            if (!r.ok) return null
+            const buffer = await r.arrayBuffer()
+            const ct = (r.headers.get('content-type') || '').toLowerCase()
+            const extension =
+              ct.includes('image/jpeg') || url.toLowerCase().endsWith('.jpg') || url.toLowerCase().endsWith('.jpeg')
+                ? 'jpeg'
+                : 'png'
+            return { buffer, extension }
+          }
+
           const headerResponse = await fetch('/images/header-banner.png');
           if (headerResponse.ok) {
               const headerBuffer = await headerResponse.arrayBuffer();
@@ -192,13 +204,12 @@ export default function SalaryPage() {
           }
 
           // Stamp logo from uploads
-          const stampResponse = await fetch('/uploads/stamp.png');
-          if (stampResponse.ok) {
-              const stampBuffer = await stampResponse.arrayBuffer();
-              stampLogoId = workbook.addImage({
-                  buffer: stampBuffer,
-                  extension: 'png',
-              });
+          const stampImg = (await fetchImage('/uploads/stamp.png')) ?? (await fetchImage('/images/signature-director.jpeg'))
+          if (stampImg) {
+            stampLogoId = workbook.addImage({
+              buffer: stampImg.buffer,
+              extension: stampImg.extension as any,
+            });
           }
       } catch (e) {
           console.error("Error loading images", e);

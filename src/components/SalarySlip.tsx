@@ -261,6 +261,10 @@ export function SalarySlip({ data, employeeName, role, department, month, year }
                     alt="Stamp"
                     className="absolute inset-0 w-[180%] h-[180%] object-contain opacity-60 -rotate-12 translate-x-2 -translate-y-5 mix-blend-multiply z-0"
                     style={{ printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}
+                    onError={(e) => {
+                      if (e.currentTarget.src.includes('/images/signature-director.jpeg')) return
+                      e.currentTarget.src = '/images/signature-director.jpeg'
+                    }}
                   />
                   {/* Signature Layer (Above stamp) */}
                   <img
