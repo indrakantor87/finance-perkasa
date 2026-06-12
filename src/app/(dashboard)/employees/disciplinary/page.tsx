@@ -2,7 +2,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Plus, Trash2, Search, X, AlertTriangle, FileText, MessageCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, Search, X, AlertTriangle, FileText, MessageCircle } from 'lucide-react';
 
 interface Employee {
   id: string
@@ -31,6 +31,7 @@ export default function DisciplinaryPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [role, setRole] = useState('')
   const [currentEmployeeId, setCurrentEmployeeId] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
   
   // WhatsApp Preview State
   const [showWhatsappModal, setShowWhatsappModal] = useState(false)
@@ -95,19 +96,35 @@ export default function DisciplinaryPage() {
     }
   }
 
+  const handleEdit = (wl: WarningLetter) => {
+    setEditingId(wl.id)
+    setFormData({
+      employeeId: wl.employeeId,
+      level: wl.level.toString(),
+      reason: wl.reason,
+      description: wl.description || '',
+      validUntil: wl.validUntil.split('T')[0]
+    })
+    setShowModal(true)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!formData.employeeId) return alert('Pilih karyawan')
 
     try {
+      const method = editingId ? 'PUT' : 'POST'
+      const body = editingId ? { ...formData, id: editingId } : formData
+      
       const res = await fetch('/api/warning-letters', {
-        method: 'POST',
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(body)
       })
 
       if (res.ok) {
         setShowModal(false)
+        setEditingId(null)
         fetchWarningLetters()
         setFormData({
             employeeId: '',
@@ -117,7 +134,7 @@ export default function DisciplinaryPage() {
             validUntil: new Date(new Date().setMonth(new Date().getMonth() + 6)).toISOString().split('T')[0]
         })
       } else {
-        alert('Gagal membuat SP')
+        alert(editingId ? 'Gagal mengupdate SP' : 'Gagal membuat SP')
       }
     } catch (err) {
       console.error('Error submitting form', err)
@@ -128,7 +145,7 @@ export default function DisciplinaryPage() {
   const filteredData = warningLetters.filter(wl => {
     const matchesSearch = wl.employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       wl.reason.toLowerCase().includes(searchTerm.toLowerCase())
-      
+    
     const matchesRole = (role === 'EMPLOYEE' || role === 'KARYAWAN') ? wl.employeeId === currentEmployeeId : true
     
     return matchesSearch && matchesRole
@@ -265,6 +282,16 @@ export default function DisciplinaryPage() {
                         </span>
                     </td>
                     <td className="px-6 py-4">
+                      <div className="flex items-center gap-1">
+                        {(!role || (role !== 'EMPLOYEE' && role !== 'KARYAWAN')) && (
+                            <button
+                                onClick={() => handleEdit(wl)}
+                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 p-2 rounded-full transition-colors"
+                                title="Edit SP"
+                            >
+                                <Edit2 size={18} />
+                            </button>
+                        )}
                         {wl.employee.whatsapp ? (
                             <button
                                 onClick={() => sendToWhatsapp(wl)}
@@ -273,9 +300,8 @@ export default function DisciplinaryPage() {
                             >
                                 <MessageCircle size={18} />
                             </button>
-                        ) : (
-                            <span className="text-neutral-300 p-2" title="No WhatsApp">-</span>
-                        )}
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -290,8 +316,8 @@ export default function DisciplinaryPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <div className="bg-white dark:bg-neutral-900 rounded-xl shadow-xl max-w-md w-full overflow-hidden">
             <div className="p-6 border-b border-neutral-200 dark:border-neutral-800 flex justify-between items-center">
-              <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">Buat Surat Peringatan (SP)</h2>
-              <button onClick={() => setShowModal(false)} className="text-neutral-500 hover:text-neutral-700">
+              <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">{editingId ? 'Edit Surat Peringatan (SP)' : 'Buat Surat Peringatan (SP)'}</h2>
+              <button onClick={() => { setShowModal(false); setEditingId(null); }} className="text-neutral-500 hover:text-neutral-700">
                 <X size={20} />
               </button>
             </div>
@@ -376,7 +402,7 @@ export default function DisciplinaryPage() {
                   type="submit"
                   className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
                 >
-                  Simpan SP
+                  {editingId ? 'Update SP' : 'Simpan SP'}
                 </button>
               </div>
             </form>
@@ -430,3 +456,4 @@ export default function DisciplinaryPage() {
     </div>
   )
 }
+
